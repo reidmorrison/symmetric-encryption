@@ -1,12 +1,12 @@
-namespace 'symmetric-encryption' do
+namespace :symmetric_encryption do
 
-  desc 'Decrypt the supplied string. Example: VALUE="Hello World" rake symmetric-encryption:decrypt'
+  desc 'Decrypt the supplied string. Example: VALUE="Hello World" rake symmetric_encryption:decrypt'
   task :decrypt do
     puts "\nEncrypted: #{ENV['VALUE']}"
     puts "Decrypted: #{Symmetric::Encryption.decrypt(ENV['VALUE'])}\n\n"
   end
 
-  desc 'Encrypt a value, such as a password. Example: rake symmetric-encryption:encrypt'
+  desc 'Encrypt a value, such as a password. Example: rake symmetric_encryption:encrypt'
   task :encrypt do
     require 'highline'
     password1 = nil
@@ -23,7 +23,7 @@ namespace 'symmetric-encryption' do
     puts "\nEncrypted: #{Symmetric::Encryption.encrypt(password1)}\n\n"
   end
 
-  desc 'Generate a random password and display its encrypted form'
+  desc 'Generate a random password and display its encrypted form. Example: rake symmetric_encryption:random_password'
   task :random_password do
     p = Symmetric::Encryption.random_password
     puts "\nGenerated Password: #{p}"

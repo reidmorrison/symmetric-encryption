@@ -1,12 +1,16 @@
+lib = File.expand_path('../lib/', __FILE__)
+$:.unshift lib unless $:.include?(lib)
+
 require 'rake/clean'
 require 'rake/testtask'
 require 'date'
+require 'symmetric/version'
 
 desc "Build gem"
 task :gem  do |t|
   gemspec = Gem::Specification.new do |s|
     s.name        = 'symmetric-encryption'
-    s.version     = '0.0.1'
+    s.version     = Symmetric::VERSION
     s.platform    = Gem::Platform::RUBY
     s.authors     = ['Reid Morrison']
     s.email       = ['reidmo@gmail.com']
@@ -14,7 +18,7 @@ task :gem  do |t|
     s.date        = Date.today.to_s
     s.summary     = "Symmetric Encryption for Ruby, and Ruby on Rails"
     s.description = "Symmetric Encryption is a library to seamlessly enable symmetric encryption in a project, written in Ruby."
-    s.files       = FileList["./**/*"].exclude('*.gem', './nbproject/*').map{|f| f.sub(/^\.\//, '')}
+    s.files       = FileList["./**/*"].exclude('*.gem', 'nbproject').map{|f| f.sub(/^\.\//, '')}
     s.has_rdoc    = true
   end
   Gem::Builder.new(gemspec).build

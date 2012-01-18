@@ -13,7 +13,7 @@ module Symmetric #:nodoc:
     #config.symmetric_encryption = ::Symmetric::Config
 
     rake_tasks do
-      load "symmetric/railties/symmetric-encryption.rake"
+      load "symmetric/railties/symmetric_encryption.rake"
     end
 
     # Initialize Symmetry. This will look for a symmetry.yml in the config
