@@ -55,9 +55,8 @@ module Symmetric
         self.key = symmetric_key
         self.iv = symmetric_iv
       else
-        load_keys(config['key_filename'], config['iv_filename'], config['private_key'])
+        load_keys(config['symmetric_key_filename'], config['symmetric_iv_filename'], config['private_rsa_key'])
       end
-
     end
 
     # Load the symmetric key to use for encrypting and decrypting data
@@ -76,35 +75,39 @@ module Symmetric
       nil
     end
 
-    # Generate new random keys for use with this Encryption library
+    # Generate new random symmetric keys for use with this Encryption library
     #
-    # Creates:
-    #   2048 bit Private Key private.key
-    #   2048 bit Public Key public.key
-    #
-    #   Symmetric Key .key
+    # Creates Symmetric Key .key
     #   and initilization vector .iv
     #       which is encrypted with the above Public key
     #
     # Note: Existing files will be overwritten
-    def self.generate_key_files(symmetric_keys_path='.', rsa_keys_path='.', cipher='aes-256-cbc')
-      # Generate Asymmetric key pair
-      new_key = OpenSSL::PKey::RSA.generate(2048)
+    def self.generate_symmetric_key_files(filename=nil, environment=nil)
+      # Temporary: Generate private key manually for now. Will automate soon.
+      #new_key = OpenSSL::PKey::RSA.generate(2048)
+
+      filename ||= File.join(Rails.root, "config", "symmetric-encryption.yml")
+      environment ||= (Rails.env || ENV['RAILS'])
+      config = YAML.load_file(filename)[environment]
+
+      raise "Missing mandatory 'key_filename' for environment:#{environment} in #{filename}" unless key_filename = config['symmetric_key_filename']
+      iv_filename = config['symmetric_iv_filename']
+      raise "Missing mandatory 'private_key' for environment:#{environment} in #{filename}" unless private_key = config['private_rsa_key']
+      rsa_key = OpenSSL::PKey::RSA.new(private_key)
+
       # To ensure compatibility with C openssl code, remove RSA from pub file headers
-      pub_key = new_key.public_key.export.gsub('RSA PUBLIC','PUBLIC')
-      File.open(File.join(rsa_keys_path, 'public.key'), 'w') {|file| file.write(pub_key)}
-      File.open(File.join(rsa_keys_path, 'private.key'), 'w') {|file| file.write(new_key.to_pem)}
+      #File.open(File.join(rsa_keys_path, 'private.key'), 'w') {|file| file.write(new_key.to_pem)}
 
       # Generate Symmetric Key
-      cipher = OpenSSL::Cipher::Cipher.new(cipher)
-      cipher.encrypt
-      @@key = cipher.random_key
-      @@iv = cipher.random_iv
+      openssl_cipher = OpenSSL::Cipher::Cipher.new(config['cipher'] || 'aes-256-cbc')
+      openssl_cipher.encrypt
+      @@key = openssl_cipher.random_key
+      @@iv = openssl_cipher.random_iv if iv_filename
 
       # Save symmetric key after encrypting it with the private asymmetric key
-      File.open(File.join(symmetric_keys_path, '.key'), 'wb') {|file| file.write( OpenSSL::PKey::RSA.new(new_key.public_key).public_encrypt(@@key) ) }
-      File.open(File.join(symmetric_keys_path, '.iv'), 'wb') {|file| file.write( OpenSSL::PKey::RSA.new(new_key.public_key).public_encrypt(@@iv) ) }
-      Rails.logger.info("Generated new Private, Public and Symmetric Key for encryption. Please copy #{filename} to the other servers.")
+      File.open(key_filename, 'wb') {|file| file.write( rsa_key.public_encrypt(@@key) ) }
+      File.open(iv_filename, 'wb') {|file| file.write( rsa_key.public_encrypt(@@iv) ) } if iv_filename
+      puts("Generated new Symmetric Key for encryption. Please copy #{key_filename} and #{iv_filename} to the other web servers in #{environment}.")
     end
 
     # Generate a 22 character random password
