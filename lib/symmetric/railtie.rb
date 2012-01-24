@@ -19,22 +19,22 @@ module Symmetric #:nodoc:
     # Initialize Symmetry. This will look for a symmetry.yml in the config
     # directory and configure Symmetry appropriately.
     #
-    # @example symmetry.yml
+    # @example symmetric-encryption.yml
     #
     #   development:
     #     cipher: aes-256-cbc
     #     symmetric_key: 1234567890ABCDEF1234567890ABCDEF
     #     symmetric_iv: 1234567890ABCDEF
     #
-    initializer "load symmetry encryption keys" do
-      config.before_initialize do
-        config_file = Rails.root.join("config", "symmetric-encryption.yml")
-        if config_file.file?
-          ::Symmetric::Encryption.load!(config_file, Rails.env)
-        else
-          puts "\nSymmetric Encryption config not found. Create a config file at: config/symmetric-encryption.yml"
-          #            puts "to generate one run: rails generate symmetric-encryption:config\n\n"
-        end
+    # Loaded before Active Record initializes since database.yml can have encrypted
+    # passwords in it
+    initializer "load symmetry encryption keys" , :before=>"active_record.initialize_database" do
+      config_file = Rails.root.join("config", "symmetric-encryption.yml")
+      if config_file.file?
+        ::Symmetric::Encryption.load!(config_file, Rails.env)
+      else
+        puts "\nSymmetric Encryption config not found. Create a config file at: config/symmetric-encryption.yml"
+        #           puts "to generate one run: rails generate symmetric-encryption:config\n\n"
       end
     end
 
