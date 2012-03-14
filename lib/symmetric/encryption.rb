@@ -1,6 +1,7 @@
 require 'base64'
 require 'openssl'
 require 'zlib'
+require 'yaml'
 
 module Symmetric
 
@@ -14,6 +15,27 @@ module Symmetric
     unless defined? MAGIC_HEADER
       MAGIC_HEADER = '@EnC'
       MAGIC_HEADER_SIZE = MAGIC_HEADER.size
+    end
+
+    # The minimum length for an encrypted string
+    def self.min_encrypted_length
+      @@min_encrypted_length ||= encrypt('1').length
+    end
+
+    # Returns [true|false] a best effort determination as to whether the supplied
+    # string is encrypted or not, without incurring the penalty of actually
+    # decrypting the supplied data
+    #   Parameters:
+    #     encrypted_data: Encrypted string
+    def self.encrypted?(encrypted_data)
+      # Simple checks first
+      return false if (encrypted_data.length < min_encrypted_length) || (!encrypted_data.end_with?("\n"))
+      # For now have to decrypt it fully
+      begin
+        decrypt(encrypted_data) ? true : false
+      rescue
+        false
+      end
     end
 
     # Set the Symmetric Cipher to be used
@@ -57,6 +79,7 @@ module Symmetric
       else
         load_keys(config['symmetric_key_filename'], config['symmetric_iv_filename'], config['private_rsa_key'])
       end
+      true
     end
 
     # Load the symmetric key to use for encrypting and decrypting data

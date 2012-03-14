@@ -2,5 +2,8 @@ require 'symmetric/version'
 require 'symmetric/encryption'
 if defined?(Rails)
   require 'symmetric/railtie'
-  require "symmetric/extensions/active_record/base"
+end
+if defined?(ActiveRecord::Base)
+  require 'symmetric/extensions/active_record/base'
+  require 'symmetric/railties/symmetric_encrypted_validator'
 end

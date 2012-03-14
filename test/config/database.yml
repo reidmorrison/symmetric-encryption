@@ -1,0 +1,7 @@
+test:
+  database: symmetric_encryption_test
+  username: root
+  password:
+  encoding: utf8
+  adapter:  mysql
+  host:     127.0.0.1
