@@ -9,25 +9,9 @@ require 'shoulda'
 require 'active_record'
 require 'symmetric-encryption'
 
-# #TODO Need to supply the model and migrations for this test
-# Adding to existing AR model User
-# Unit Test for Symmetric::Encryption
-#
-
-#ROOT = File.join(File.dirname(__FILE__), '..')
-
-#['/lib', '/db'].each do |folder|
-#  $:.unshift File.join(ROOT, folder)
-#end
-
 ActiveRecord::Base.logger = Logger.new($stderr)
 ActiveRecord::Base.configurations = YAML::load(ERB.new(IO.read('test/config/database.yml')).result)
 ActiveRecord::Base.establish_connection('test')
-
-#ActiveRecord::Base.connection.create_database 'symmetric_encryption_test', :charset => :utf8
-#require 'db/schema'
-
-#The file db/schema.rb contains, for example:
 
 ActiveRecord::Schema.define :version => 0 do
   create_table :users, :force => true do |t|
@@ -43,6 +27,10 @@ class User < ActiveRecord::Base
   validates :encrypted_bank_account_number, :symmetric_encrypted => true
   validates :encrypted_social_security_number, :symmetric_encrypted => true
 end
+
+#
+# Unit Test for attr_encrypted and validation aspects of Symmetric::Encryption
+#
 
 class AttrEncryptedTest < Test::Unit::TestCase
   context 'initialized' do
@@ -66,10 +54,10 @@ class AttrEncryptedTest < Test::Unit::TestCase
 
         setup do
           @bank_account_number = "1234567890"
-          @bank_account_number_encrypted = "QUxoUU8O/mi0o9ykgXNBFg==\n"
+          @bank_account_number_encrypted = "L94ArJeFlJrZp6SYsvoOGA==\n"
 
           @social_security_number = "987654321"
-          @social_security_number_encrypted = "Jj7dKb3B0aUCnqH/YKGvKw==\n"
+          @social_security_number_encrypted = "S+8X1NRrqdfEIQyFHVPuVA==\n"
 
           @user = User.new(
             # Encrypted Attribute

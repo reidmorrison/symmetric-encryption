@@ -1,9 +1,10 @@
 #
-# Test Config
+# Test Config with multiple keys
 #
 ---
 test:
-  # Sample RSA Key, do not use this one as is, generate a new one
+  # Test RSA Key, DO NOT use this RSA key, generate a new one using
+  #    openssl genrsa 2048
   private_rsa_key: |
     -----BEGIN RSA PRIVATE KEY-----
     MIIEpAIBAAKCAQEAxIL9H/jYUGpA38v6PowRSRJEo3aNVXULNM/QNRpx2DTf++KH
@@ -33,11 +34,14 @@ test:
     r1URaMAun2PfAB4g2N/kEZTExgeOGqXjFhvvjdzl97ux2cTyZhaTXg==
     -----END RSA PRIVATE KEY-----
 
-  # Filename containing Symmetric Encryption Key
-  # Note: The file contents must be RSA 2048 bit encrypted
-  #       with the public key derived from the private key above
-  symmetric_key_filename: test/config/test.key
-  symmetric_iv_filename:  test/config/test.iv
+  ciphers:
+    # Current / Newest Symmetric Encryption Key
+    - key_filename: /Users/rmorrison/Sandbox/symmetric-encryption/test/config/test_new.key
+      iv_filename:  /Users/rmorrison/Sandbox/symmetric-encryption/test/config/test_new.iv
+      cipher:       aes-128-cbc
 
-  # Use aes-256-cbc encryption
-  cipher: aes-256-cbc
+    # Previous Symmetric Encryption Key
+    - key_filename: /Users/rmorrison/Sandbox/symmetric-encryption/test/config/test_secondary_1.key
+      iv_filename:  /Users/rmorrison/Sandbox/symmetric-encryption/test/config/test_secondary_1.iv
+      cipher:       aes-128-cbc
+

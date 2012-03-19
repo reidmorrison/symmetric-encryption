@@ -2,25 +2,24 @@
 # Symmetric Encryption for Ruby
 #
 ---
-# Just use test symmetric encryption keys in the development environment
-# No private key required since we are not reading the keys from a file
+# For the development and test environments the test symmetric encryption keys
+# can be placed directly in the source code.
+# And therefore no RSA private key is required
 development: &development_defaults
-  cipher: aes-256-cbc
-  symmetric_key: 1234567890ABCDEF1234567890ABCDEF
-  symmetric_iv: 1234567890ABCDEF
+  key: 1234567890ABCDEF1234567890ABCDEF
+  iv:  1234567890ABCDEF
+  cipher:        aes-128-cbc
 
 test:
   <<: *development_defaults
 
-release: &release_defaults
+production:
   # Since the key to encrypt and decrypt with must NOT be stored along with the
   # source code, we only hold a RSA key that is used to unlock the file
   # containing the actual symmetric encryption key
   #
-  # To generate a new RSA private key:
+  # Sample RSA Key, DO NOT use this RSA key, generate a new one using
   #    openssl genrsa 2048
-
-  # Sample RSA Key, do not use this one as is, generate a new one
   private_rsa_key: |
     -----BEGIN RSA PRIVATE KEY-----
     MIIEpAIBAAKCAQEAxIL9H/jYUGpA38v6PowRSRJEo3aNVXULNM/QNRpx2DTf++KH
@@ -50,17 +49,63 @@ release: &release_defaults
     r1URaMAun2PfAB4g2N/kEZTExgeOGqXjFhvvjdzl97ux2cTyZhaTXg==
     -----END RSA PRIVATE KEY-----
 
-  # Filename containing Symmetric Encryption Key
-  # Note: The file contents must be RSA 2048 bit encrypted
-  #       with the public key derived from the private key above
-  symmetric_key_filename: /etc/rails/.rails.key
-  symmetric_iv_filename: /etc/rails/.rails.iv
+  # List Symmetric Key Ciphers in the order of current / latest first
+  ciphers:
+      # Filename containing Symmetric Encryption Key encrypted using the
+      # RSA public key derived from the private key above
+    - key_filename: /etc/rails/.rails.key
+      iv_filename: /etc/rails/.rails.iv
 
-  # Use aes-256-cbc encryption
-  cipher: aes-256-cbc
+      # Encryption cipher
+      #   Recommended values:
+      #      aes-256-cbc
+      #         256 AES CBC Algorithm. Very strong
+      #         Ruby 1.8.7 MRI Approximately 100,000 encryptions or decryptions per second
+      #         JRuby 1.6.7 with Ruby 1.8.7 Approximately 22,000 encryptions or decryptions per second
+      #      aes-128-cbc
+      #         128 AES CBC Algorithm. Less strong.
+      #         Ruby 1.8.7 MRI Approximately 100,000 encryptions or decryptions per second
+      #         JRuby 1.6.7 with Ruby 1.8.7 Approximately 22,000 encryptions or decryptions per second
+      cipher: aes-256-cbc
 
-hotfix:
-  <<: *release_defaults
+      # FUTURE ENHANCEMENT:
+      #
+      # By adding a version indicator all encrypted data will include
+      # an additional first Byte that includes this version number to
+      # assist with speeding up decryption when adding new encryption keys
+      # and to support old data decryption using older keys
+      #
+      # By not specifying a version, or setting it to 0 will disable version
+      # identification prior to decrypting data
+      # During decryption these Keys will be tried in the order listed in the
+      # configuration file starting with the first in the list
+      # Slower since a decryption attempt is made for every key until the
+      # correct key is located. However, all encrypted data does not require
+      # the 1 Byte version header prefix
+      #
+      # Default: 0
+      #version: 0
 
-production:
-  <<: *release_defaults
+      # FUTURE ENHANCEMENT:
+      #
+      # Set the way the encrypted data is encoded:
+      # base64
+      #   Encrypted data is returned in base64 encoding format
+      #   Symmetric::Encryption.decrypt will also base64 decode any data prior
+      #   to decrypting it
+      # binary
+      #   Encrypted data is returned as raw binary
+      #   Although smaller than base64 it cannot be stored in MySQL text columns
+      #   It can only be held in binary columns such as BINARY or BLOB
+      # Default: base64
+      #encoding: base64
+
+      # OPTIONAL:
+      #
+      # Any previous Symmetric Encryption Keys
+      #
+      # Only used when old data still exists that requires old decryption keys
+      # to be used
+    - key_filename: /etc/rails/.rails_old.key
+      iv_filename:  /etc/rails/.rails_old.iv
+      cipher:                 aes-256-cbc
