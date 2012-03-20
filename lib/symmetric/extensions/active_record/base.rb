@@ -25,21 +25,25 @@ module ActiveRecord #:nodoc:
 
         params.each do |attribute|
           # Generate unencrypted attribute with getter and setter
-          class_eval <<-UNENCRYPTED_GETTER
+          class_eval(<<-UNENCRYPTED, __FILE__, __LINE__ + 1)
+            # Returns the decrypted value for the encrypted attribute
+            # The decrypted value is cached and is only decrypted if the encrypted value has changed
+            # If this method is not called, then the encrypted value is never decrypted
             def #{attribute}
-              @#{attribute} = ::Symmetric::Encryption.decrypt(self.encrypted_#{attribute}) if @#{attribute}.nil? && !self.encrypted_#{attribute}.nil?
+              if @stored_encrypted_#{attribute} != self.encrypted_#{attribute}
+                @#{attribute} = ::Symmetric::Encryption.decrypt(self.encrypted_#{attribute})
+                @stored_encrypted_#{attribute} = self.encrypted_#{attribute}
+              end
               @#{attribute}
             end
-          UNENCRYPTED_GETTER
 
-          # Encrypt value immediately when unencrypted value is set
-          # Unencrypted value is also kept for performance reasons
-          class_eval <<-UNENCRYPTED_SETTER
+            # Set the un-encrypted attribute
+            # Also updates the encrypted field with the encrypted value
             def #{attribute}=(value)
-              self.encrypted_#{attribute} = ::Symmetric::Encryption.encrypt(value#{".to_yaml" if options[:marshal]})
+              self.encrypted_#{attribute} = @stored_encrypted_#{attribute} = ::Symmetric::Encryption.encrypt(value#{".to_yaml" if options[:marshal]})
               @#{attribute} = value
             end
-          UNENCRYPTED_SETTER
+          UNENCRYPTED
 
           encrypted_attributes[attribute.to_sym] = "encrypted_#{attribute}".to_sym
         end
