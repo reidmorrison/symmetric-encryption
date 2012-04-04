@@ -3,7 +3,7 @@ module ActiveRecord #:nodoc:
 
     class << self # Class methods
       # Much lighter weight encryption for Rails attributes matching the
-      # attr_encrypted interface using Symmetry::Encryption
+      # attr_encrypted interface using Symmetric::Encryption
       #
       # The regular attr_encrypted gem uses Encryptor that adds encryption to
       # every Ruby object which is a complete overkill for this simple use-case
@@ -139,9 +139,6 @@ module ActiveRecord #:nodoc:
       end
 
       alias_method_chain :method_missing, :attr_encrypted
-      #Equivalent to:
-      #  alias_method :method_missing_without_attr_encrypted, :attr_encrypted # new, old
-      #  alias_method :attr_encrypted, :method_missing_with_attr_encrypted
 
     end
   end

@@ -24,7 +24,7 @@ class CipherTest < Test::Unit::TestCase
       cipher = Symmetric::Cipher.new(
         :key => '1234567890ABCDEF1234567890ABCDEF'
       )
-      assert_equal "wjzpl29q+tsxyLBWAQsn5g==\n", cipher.encrypt('Hello World')
+      assert_equal "\302<\351\227oj\372\3331\310\260V\001\v'\346", cipher.encrypt('Hello World')
     end
 
     should "throw an exception on bad data" do
@@ -47,7 +47,10 @@ class CipherTest < Test::Unit::TestCase
         :iv  => '1234567890ABCDEF'
       )
       @social_security_number = "987654321"
-      @social_security_number_encrypted = "Qd0qzN6oVuATJQBTf8X6tg==\n"
+      @social_security_number_encrypted = "A\335*\314\336\250V\340\023%\000S\177\305\372\266"
+      @sample_data = [
+        { :text => '555052345', :encrypted => ''}
+      ]
     end
 
     should "default to 'aes-256-cbc'" do
@@ -60,11 +63,6 @@ class CipherTest < Test::Unit::TestCase
 
     should "decrypt string" do
       assert_equal @social_security_number, @cipher.decrypt(@social_security_number_encrypted)
-    end
-
-    should "determine if string is encrypted" do
-      assert_equal true, @cipher.encrypted?(@social_security_number_encrypted)
-      assert_equal false, @cipher.encrypted?(@social_security_number)
     end
 
   end

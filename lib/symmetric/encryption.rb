@@ -16,7 +16,7 @@ module Symmetric
 
     # Set the Primary Symmetric Cipher to be used
     def self.cipher=(cipher)
-      raise "Cipher must be similar to Symmetric::Ciphers" unless cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt) && cipher.respond_to?(:encrypted?)
+      raise "Cipher must be similar to Symmetric::Ciphers" unless cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt)
       @@cipher = cipher
     end
 
@@ -29,7 +29,7 @@ module Symmetric
     def self.secondary_ciphers=(secondary_ciphers)
       raise "secondary_ciphers must be a collection" unless secondary_ciphers.respond_to? :each
       secondary_ciphers.each do |cipher|
-        raise "secondary_ciphers can only consist of Symmetric::Ciphers" unless cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt) && cipher.respond_to?(:encrypted?)
+        raise "secondary_ciphers can only consist of Symmetric::Ciphers" unless cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt)
       end
       @@secondary_ciphers = secondary_ciphers
     end
@@ -55,12 +55,13 @@ module Symmetric
     #
     def self.decrypt(str)
       raise "Call Symmetric::Encryption.load! or Symmetric::Encryption.cipher= prior to encrypting or decrypting data" unless @@cipher
+      binary = ::Base64.decode64(str) if str
       begin
-        @@cipher.decrypt(str)
+        @@cipher.decrypt(binary)
       rescue OpenSSL::Cipher::CipherError => exc
         @@secondary_ciphers.each do |cipher|
           begin
-            return cipher.decrypt(str)
+            return cipher.decrypt(binary)
           rescue OpenSSL::Cipher::CipherError
           end
         end
@@ -74,7 +75,13 @@ module Symmetric
     #  Returns "" if it is a string and it is empty
     def self.encrypt(str)
       raise "Call Symmetric::Encryption.load! or Symmetric::Encryption.cipher= prior to encrypting or decrypting data" unless @@cipher
-      @@cipher.encrypt(str)
+
+      # Encrypt data as a binary string
+      result = @@cipher.encrypt(str)
+
+      # Base 64 Encoding of binary data
+      result = ::Base64.encode64(result) if result
+      result
     end
 
     # Invokes decrypt
@@ -94,14 +101,17 @@ module Symmetric
       end
     end
 
-    # Returns [true|false] a best effort determination as to whether the supplied
-    # string is encrypted or not, without incurring the penalty of actually
-    # decrypting the supplied data
+    # Returns [true|false] as to whether the data could be decrypted
     #   Parameters:
     #     encrypted_data: Encrypted string
     def self.encrypted?(encrypted_data)
       raise "Call Symmetric::Encryption.load! or Symmetric::Encryption.cipher= prior to encrypting or decrypting data" unless @@cipher
-      @@cipher.encrypted?(encrypted_data)
+
+      # First make sure Base64 encoded data still ends with "\n" since it could be used in a key field somewhere
+      return false unless encrypted_data.end_with?("\n")
+
+      # For now have to decrypt it fully
+      !try_decrypt(encrypted_data).nil?
     end
 
     # Load the Encryption Configuration from a YAML file

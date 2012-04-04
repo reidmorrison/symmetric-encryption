@@ -1,6 +1,7 @@
 require 'symmetric/version'
 require 'symmetric/cipher'
 require 'symmetric/encryption'
+require 'symmetric/encrypted_stream'
 if defined?(Rails)
   require 'symmetric/railtie'
 end

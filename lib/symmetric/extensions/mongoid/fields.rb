@@ -9,12 +9,21 @@ module Mongoid
     module ClassMethods
       # Example:
       #
+      #  require 'mongoid'
+      #  require 'symmetric-encryption'
+      #
+      #  # Initialize Mongoid in a standalone environment. In a Rails app this is not required
+      #  Mongoid.logger = Logger.new($stdout)
+      #  Mongoid.load!('config/mongoid.yml')
+      #
+      #  # Initialize Symmetric::Encryption in a standalone environment. In a Rails app this is not required
+      #  Symmetric::Encryption.load!('config/symmetric-encryption.yml', 'test')
+      #
       #  class Person
       #    include Mongoid::Document
-      #    include Symmetric::Encryption::Mongoid
       #
       #    field :name,                             :type => String
-      #    field :encrypted_social_security_number, :type => String, :encrypted => true, :decrypt_as => :social_security_number
+      #    field :encrypted_social_security_number, :type => String, :encrypted => true
       #    field :age,                              :type => Integer
       #
       #  end
@@ -58,10 +67,10 @@ module Mongoid
       # @param [ Symbol ] name The name of the field.
       # @param [ Hash ] options The options to pass to the field.
       #
-      # @option options [ Class ] :type The type of the field.
-      # @option options [ String ] :label The label for the field.
       # @option options [ Boolean ] :encryption If the field contains encrypted data.
       # @option options [ Symbol ] :decrypt_as Name of the getters and setters to generate to access the decrypted value of this field.
+      # @option options [ Class ] :type The type of the field.
+      # @option options [ String ] :label The label for the field.
       # @option options [ Object, Proc ] :default The field's default
       #
       # @return [ Field ] The generated field
