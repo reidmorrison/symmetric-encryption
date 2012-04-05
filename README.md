@@ -50,27 +50,31 @@ names with encrypted_
 * More efficient replacement for attr_encrypted since only ActiveRecord Models
 are extended with encrypted_ behavior, rather than every object in the system
 * Custom validator for ActiveRecord Models
+* Stream based encryption and decryption so that large files can be read or
+  written with encryption
+* Stream based encryption and decryption also supports compression and decompression
+  on the fly
 
 ## Examples
 
 ### Encryption Example
 
-    Symmetric::Encryption.encrypt "Sensitive data"
+    SymmetricEncryption.encrypt "Sensitive data"
 
 ### Decryption Example
 
-    Symmetric::Encryption.decrypt "JqLJOi6dNjWI9kX9lSL1XQ==\n"
+    SymmetricEncryption.decrypt "JqLJOi6dNjWI9kX9lSL1XQ==\n"
 
 ### Validation Example
 
     class MyModel < ActiveRecord::Base
-      validates :encrypted_ssn, :symmetric_encrypted => true
+      validates :encrypted_ssn, :symmetric_encryption => true
     end
 
     m = MyModel.new
     m.valid?
     #  => false
-    m.encrypted_ssn = Symmetric::Encryption.encrypt('123456789')
+    m.encrypted_ssn = SymmetricEncryption.encrypt('123456789')
     m.valid?
     #  => true
 
@@ -85,9 +89,9 @@ For example config/database.yml
       host:     db1w
       database: myapp_production
       username: admin
-      password: <%= Symmetric::Encryption.try_decrypt "JqLJOi6dNjWI9kX9lSL1XQ==\n" %>
+      password: <%= SymmetricEncryption.try_decrypt "JqLJOi6dNjWI9kX9lSL1XQ==\n" %>
 
-Note: Use Symmetric::Encryption.try_decrypt method which will return nil if it
+Note: Use SymmetricEncryption.try_decrypt method which will return nil if it
   fails to decrypt the value, which is essential when the encryption keys differ
   between environments
 
@@ -99,6 +103,32 @@ Note: In order for the above technique to work in other YAML configuration files
 
     cfg = YAML.load(ERB.new(File.new(config_file).read).result)[Rails.env]
     raise("Environment #{Rails.env} not defined in redis.yml") unless cfg
+
+### Large File Encryption
+
+Example: Read and decrypt a line at a time from a file
+
+    SymmetricEncryption::Reader.open('encrypted_file') do |file|
+      file.each_line do |line|
+        puts line
+      end
+    end
+
+Example: Encrypt and write data to a file
+
+    SymmetricEncryption::Writer.open('encrypted_file') do |file|
+      file.write "Hello World\n"
+      file.write "Keep this secret"
+    end
+
+Example: Compress, Encrypt and write data to a file
+
+    SymmetricEncryption::Writer.open('encrypted_compressed.zip', :compress => true) do |file|
+      file.write "Hello World\n"
+      file.write "Compress this\n"
+      file.write "Keep this safe and secure\n"
+    end
+
 
 ### Generating encrypted passwords
 
@@ -236,7 +266,7 @@ startup, run the code below to initialize symmetric-encryption prior to
 attempting to encrypt or decrypt any data
 
     require 'symmetric-encryption'
-    Symmetric::Encryption.load!('config/symmetric-encryption.yml', 'production')
+    SymmetricEncryption.load!('config/symmetric-encryption.yml', 'production')
 
 Parameters:
 
@@ -246,7 +276,7 @@ Parameters:
 To manually generate the symmetric encryption keys, run the code below
 
     require 'symmetric-encryption'
-    Symmetric::Encryption.generate_symmetric_key_files('config/symmetric-encryption.yml', 'production')
+    SymmetricEncryption.generate_symmetric_key_files('config/symmetric-encryption.yml', 'production')
 
 Parameters:
 
@@ -358,8 +388,8 @@ Create a configuration file in config/symmetric-encryption.yml per the following
 Submit an issue ticket to request any of the following features:
 
 * Ability to entirely disable encryption for a specific environment.
-  Symmetric::Encryption.encrypt() would return the supplied data without encrypting it and
-  Symmetric::Encryption.decrypt() would return the supplied data without decrypting it
+  SymmetricEncryption.encrypt() would return the supplied data without encrypting it and
+  SymmetricEncryption.decrypt() would return the supplied data without decrypting it
 
 * Support for automatically compressing data prior to encrypting it when the
   data exceeds some predefined size. And automatically decompressing the data
@@ -371,7 +401,7 @@ Submit an issue ticket to request any of the following features:
 * Create rake task / generator to generate a sample configuration file
   with a new RSA Private key already in it
 
-* Ability to change Symmetric::Encryption configuration options from custom
+* Ability to change SymmetricEncryption configuration options from custom
   Rails initializers, rather than having everything in the config file.
   For example config.symmetric_encryption.cipher = 'aes-128-cbc'
 

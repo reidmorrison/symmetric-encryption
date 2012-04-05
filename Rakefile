@@ -4,20 +4,20 @@ $:.unshift lib unless $:.include?(lib)
 require 'rake/clean'
 require 'rake/testtask'
 require 'date'
-require 'symmetric/version'
+require 'symmetric_encryption/version'
 
 desc "Build gem"
 task :gem  do |t|
   gemspec = Gem::Specification.new do |s|
     s.name        = 'symmetric-encryption'
-    s.version     = Symmetric::VERSION
+    s.version     = SymmetricEncryption::VERSION
     s.platform    = Gem::Platform::RUBY
     s.authors     = ['Reid Morrison']
     s.email       = ['reidmo@gmail.com']
     s.homepage    = 'https://github.com/ClarityServices/symmetric-encryption'
     s.date        = Date.today.to_s
     s.summary     = "Symmetric Encryption for Ruby, and Ruby on Rails"
-    s.description = "Symmetric Encryption is a library to seamlessly enable symmetric encryption in a project, written in Ruby."
+    s.description = "SymmetricEncryption supports encrypting ActiveRecord data, Mongoid data, passwords in configuration files, encrypting and decrypting of large files through streaming"
     s.files       = FileList["./**/*"].exclude('*.gem', 'nbproject').map{|f| f.sub(/^\.\//, '')}
     s.has_rdoc    = true
   end

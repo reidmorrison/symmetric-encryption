@@ -3,3 +3,4 @@ nbproject/*
 *.gem
 .idea/*
 Gemfile.lock
+._test

@@ -10,7 +10,7 @@ module SymmetricEncryption #:nodoc:
     #       config.symmetric_encryption.cipher = 'aes-256-cbc'
     #     end
     #   end
-    #config.symmetric_encryption = ::Symmetric::Config
+    #config.symmetric_encryption = ::SymmetricEncryption::Config
 
     rake_tasks do
       load "symmetric/railties/symmetric_encryption.rake"
