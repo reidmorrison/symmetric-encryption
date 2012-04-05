@@ -46,8 +46,8 @@ module Symmetric
     #   options:
     #     :compress [true|false]
     #          Uses Zlib to decompress the data after it is decrypted
-    #          # In the future, compression will be autodetected if a header is
-    #          # present on the file/stream
+    #          Note: This option is only used if the file does not have a header
+    #                indicating whether it is compressed
     #          Default: false
     #
     #     :version
@@ -73,7 +73,7 @@ module Symmetric
 
       begin
         file = self.new(ios, options)
-        file = Zlib::GzipReader.new(file) if compress
+        file = Zlib::GzipReader.new(file) if file.compressed? || compress
         block.call(file)
       ensure
         file.close if file
