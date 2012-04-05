@@ -1,5 +1,5 @@
-module Symmetric
-  class EncryptionWriter
+module SymmetricEncryption
+  class Writer
     # Write to encrypted files and other IO streams
     #
     # Features:
@@ -10,13 +10,13 @@ module Symmetric
     #   Only the last block in the file will be padded if it is less than the block size
     #
     # # Example: Encrypt and write data to a file
-    # Symmetric::EncryptionWriter.open('test_file') do |file|
+    # SymmetricEncryption::Writer.open('test_file') do |file|
     #   file.write "Hello World\n"
     #   file.write "Keep this secret"
     # end
     #
     # # Example: Compress, Encrypt and write data to a file
-    # Symmetric::EncryptionWriter.open('encrypted_compressed.zip', :compress => true) do |file|
+    # SymmetricEncryption::Writer.open('encrypted_compressed.zip', :compress => true) do |file|
     #   file.write "Hello World\n"
     #   file.write "Compress this\n"
     #   file.write "Keep this safe and secure\n"
@@ -80,8 +80,8 @@ module Symmetric
       @compress = options.fetch(:compress, false)
 
       # Use primary cipher by default, but allow a secondary cipher to be selected for encryption
-      @cipher   = Encryption.cipher(options[:version])
-      raise "Cipher with version:#{options[:version]} not found in any of the configured Symmetric::Encryption ciphers" unless @cipher
+      @cipher   = SymmetricEncryption.cipher(options[:version])
+      raise "Cipher with version:#{options[:version]} not found in any of the configured SymmetricEncryption ciphers" unless @cipher
 
       @stream_cipher = @cipher.send(:openssl_cipher, :encrypt)
 

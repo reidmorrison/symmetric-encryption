@@ -6,8 +6,8 @@ require 'test/unit'
 require 'shoulda'
 require 'symmetric-encryption'
 
-# Use test keys
-Symmetric::Encryption.cipher = Symmetric::Cipher.new(:key => '1234567890ABCDEF1234567890ABCDEF', :iv=> '1234567890ABCDEF')
+# Load Symmetric Encryption keys
+SymmetricEncryption.load!(File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
 
 # Unit Test for Symmetric::EncryptedStream
 #
@@ -21,13 +21,13 @@ class EncryptionWriterTest < Test::Unit::TestCase
       ]
       @data_str = @data.inject('') {|sum,str| sum << str}
       @data_len = @data_str.length
-      @data_encrypted = Symmetric::Encryption.cipher.encrypt(@data_str)
+      @data_encrypted = SymmetricEncryption.cipher.encrypt(@data_str)
       @filename = '._test'
     end
 
     should "encrypt to string stream" do
       stream = StringIO.new
-      file = Symmetric::EncryptionWriter.new(stream)
+      file = SymmetricEncryption::Writer.new(stream)
       written_len = @data.inject(0) {|sum,str| sum + file.write(str)}
       file.close
 
@@ -38,7 +38,7 @@ class EncryptionWriterTest < Test::Unit::TestCase
     should "encrypt to string stream using .open" do
       written_len = 0
       stream = StringIO.new
-      Symmetric::EncryptionWriter.open(stream) do |file|
+      SymmetricEncryption::Writer.open(stream) do |file|
         written_len = @data.inject(0) {|sum,str| sum + file.write(str)}
       end
       assert_equal @data_len, written_len
@@ -46,7 +46,7 @@ class EncryptionWriterTest < Test::Unit::TestCase
 
     should "encrypt to file using .open" do
       written_len = nil
-      Symmetric::EncryptionWriter.open(@filename) do |file|
+      SymmetricEncryption::Writer.open(@filename) do |file|
         written_len = @data.inject(0) {|sum,str| sum + file.write(str)}
       end
       assert_equal @data_len, written_len

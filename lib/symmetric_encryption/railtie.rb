@@ -1,5 +1,5 @@
 # encoding: utf-8
-module Symmetric #:nodoc:
+module SymmetricEncryption #:nodoc:
   class Railtie < Rails::Railtie #:nodoc:
 
     # Exposes Symmetric Encryption's configuration to the Rails application configuration.
@@ -31,7 +31,7 @@ module Symmetric #:nodoc:
     initializer "symmetric-encryption.initialize" , :before=>"active_record.initialize_database" do
       config_file = Rails.root.join("config", "symmetric-encryption.yml")
       if config_file.file?
-        ::Symmetric::Encryption.load!(config_file, Rails.env)
+        ::SymmetricEncryption.load!(config_file, Rails.env)
       else
         puts "\nSymmetric Encryption config not found. Create a config file at: config/symmetric-encryption.yml"
         #           puts "to generate one run: rails generate symmetric-encryption:config\n\n"

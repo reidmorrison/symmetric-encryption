@@ -1,8 +1,4 @@
-require 'base64'
-require 'openssl'
-require 'zlib'
-
-module Symmetric
+module SymmetricEncryption
 
   # Hold all information related to encryption keys
   # as well as encrypt and decrypt data using those keys

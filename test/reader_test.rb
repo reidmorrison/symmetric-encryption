@@ -6,13 +6,13 @@ require 'test/unit'
 require 'shoulda'
 require 'symmetric-encryption'
 
-# Use test keys
-Symmetric::Encryption.cipher = Symmetric::Cipher.new(:key => '1234567890ABCDEF1234567890ABCDEF', :iv=> '1234567890ABCDEF')
+# Load Symmetric Encryption keys
+SymmetricEncryption.load!(File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
 
-# Unit Test for Symmetric::EncryptedStream
+# Unit Test for SymmetricEncrypted::ReaderStream
 #
-class EncryptionReaderTest < Test::Unit::TestCase
-  context 'EncryptionReader' do
+class ReaderTest < Test::Unit::TestCase
+  context 'Reader' do
     setup do
       @data = [
         "Hello World\n",
@@ -21,19 +21,19 @@ class EncryptionReaderTest < Test::Unit::TestCase
       ]
       @data_str = @data.inject('') {|sum,str| sum << str}
       @data_len = @data_str.length
-      @data_encrypted = Symmetric::Encryption.cipher.encrypt(@data_str)
+      @data_encrypted = SymmetricEncryption.cipher.encrypt(@data_str)
       @filename = '._test'
     end
 
     should "decrypt from string stream as a single read" do
       stream = StringIO.new(@data_encrypted)
-      decrypted = Symmetric::EncryptionReader.open(stream) {|file| file.read}
+      decrypted = SymmetricEncryption::Reader.open(stream) {|file| file.read}
       assert_equal @data_str, decrypted
     end
 
     should "decrypt from string stream as a single read, after a partial read" do
       stream = StringIO.new(@data_encrypted)
-      decrypted = Symmetric::EncryptionReader.open(stream) do |file|
+      decrypted = SymmetricEncryption::Reader.open(stream) do |file|
         file.read(10)
         file.read
       end
@@ -43,7 +43,7 @@ class EncryptionReaderTest < Test::Unit::TestCase
     should "decrypt lines from string stream" do
       stream = StringIO.new(@data_encrypted)
       i = 0
-      decrypted = Symmetric::EncryptionReader.open(stream) do |file|
+      decrypted = SymmetricEncryption::Reader.open(stream) do |file|
         file.each_line do |line|
           assert_equal @data[i], line
           i += 1
@@ -54,7 +54,7 @@ class EncryptionReaderTest < Test::Unit::TestCase
     should "decrypt fixed lengths from string stream" do
       stream = StringIO.new(@data_encrypted)
       i = 0
-      Symmetric::EncryptionReader.open(stream) do |file|
+      SymmetricEncryption::Reader.open(stream) do |file|
         index = 0
         [0,10,5,5000].each do |size|
           buf = file.read(size)

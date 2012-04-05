@@ -30,13 +30,13 @@ class MongoidUser
 end
 
 # Load Symmetric Encryption keys
-Symmetric::Encryption.load!(File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
+SymmetricEncryption.load!(File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
 
 #
-# Unit Tests for field encrypted and validation aspects of Symmetric::Encryption
+# Unit Tests for field encrypted and validation aspects of SymmetricEncryption
 #
 class FieldEncryptedTest < Test::Unit::TestCase
-  context 'the Symmetric::Encryption Library' do
+  context 'the SymmetricEncryption Library' do
     setup do
       @bank_account_number = "1234567890"
       @bank_account_number_encrypted = "L94ArJeFlJrZp6SYsvoOGA==\n"

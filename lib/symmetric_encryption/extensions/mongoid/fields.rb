@@ -16,8 +16,8 @@ module Mongoid
       #  Mongoid.logger = Logger.new($stdout)
       #  Mongoid.load!('config/mongoid.yml')
       #
-      #  # Initialize Symmetric::Encryption in a standalone environment. In a Rails app this is not required
-      #  Symmetric::Encryption.load!('config/symmetric-encryption.yml', 'test')
+      #  # Initialize SymmetricEncryption in a standalone environment. In a Rails app this is not required
+      #  SymmetricEncryption.load!('config/symmetric-encryption.yml', 'test')
       #
       #  class Person
       #    include Mongoid::Document
@@ -44,13 +44,13 @@ module Mongoid
       #   puts "Decrypted Social Security Number is: #{person.social_security_number}"
       #
       #   # Or is the same as
-      #   puts "Decrypted Social Security Number is: #{Symmetric::Encryption.decrypt(person.encrypted_social_security_number)}"
+      #   puts "Decrypted Social Security Number is: #{SymmetricEncryption.decrypt(person.encrypted_social_security_number)}"
       #
       #   # Sets the encrypted_social_security_number to encrypted version
       #   person.social_security_number = "123456789"
       #
       #   # Or, is equivalent to:
-      #   person.social_security_number = Symmetric::Encryption.encrypt("123456789")
+      #   person.social_security_number = SymmetricEncryption.encrypt("123456789")
       #
       #
       # Note: Unlike attr_encrypted finders must use the encrypted field name
@@ -78,7 +78,7 @@ module Mongoid
         if options.delete(:encrypted) == true
           decrypt_as = options.delete(:decrypt_as)
           unless decrypt_as
-            raise "Symmetric::Encryption for Mongoid. When encryption is enabled for a field it must either start with 'encrypted_' or the option :decrypt must be supplied" unless field_name.to_s.start_with?('encrypted_')
+            raise "SymmetricEncryption for Mongoid. When encryption is enabled for a field it must either start with 'encrypted_' or the option :decrypt must be supplied" unless field_name.to_s.start_with?('encrypted_')
             decrypt_as = field_name.to_s['encrypted_'.length..-1]
           end
 
@@ -86,7 +86,7 @@ module Mongoid
           underlying_type = options[:type]
           options[:type] = String
 
-          raise "Symmetric::Encryption for Mongoid currently only supports :type => String" unless underlying_type == String
+          raise "SymmetricEncryption for Mongoid currently only supports :type => String" unless underlying_type == String
 
           # #TODO Need to do type conversions. Currently only support String
 
@@ -95,7 +95,7 @@ module Mongoid
             # Set the un-encrypted bank account number
             # Also updates the encrypted field with the encrypted value
             def #{decrypt_as}=(value)
-              @stored_#{field_name} = Symmetric::Encryption.encrypt(value)
+              @stored_#{field_name} = SymmetricEncryption.encrypt(value)
               self.#{field_name} = @stored_#{field_name}
               @#{decrypt_as} = value
             end
@@ -105,7 +105,7 @@ module Mongoid
             # If this method is not called, then the encrypted value is never decrypted
             def #{decrypt_as}
               if @stored_#{field_name} != self.#{field_name}
-                @#{decrypt_as} = Symmetric::Encryption.decrypt(self.#{field_name})
+                @#{decrypt_as} = SymmetricEncryption.decrypt(self.#{field_name})
                 @stored_#{field_name} = self.#{field_name}
               end
               @#{decrypt_as}

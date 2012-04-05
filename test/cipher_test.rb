@@ -4,15 +4,15 @@ $LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
 require 'rubygems'
 require 'test/unit'
 require 'shoulda'
-require 'symmetric/cipher'
+require 'symmetric_encryption/cipher'
 
-# Unit Test for Symmetric::Cipher
+# Unit Test for SymmetricEncryption::Cipher
 #
 class CipherTest < Test::Unit::TestCase
   context 'standalone' do
 
     should "allow setting the cipher" do
-      cipher = Symmetric::Cipher.new(
+      cipher = SymmetricEncryption::Cipher.new(
         :cipher => 'aes-128-cbc',
         :key => '1234567890ABCDEF1234567890ABCDEF',
         :iv  => '1234567890ABCDEF'
@@ -21,14 +21,14 @@ class CipherTest < Test::Unit::TestCase
     end
 
     should "not require an iv" do
-      cipher = Symmetric::Cipher.new(
+      cipher = SymmetricEncryption::Cipher.new(
         :key => '1234567890ABCDEF1234567890ABCDEF'
       )
       assert_equal "\302<\351\227oj\372\3331\310\260V\001\v'\346", cipher.encrypt('Hello World')
     end
 
     should "throw an exception on bad data" do
-      cipher = Symmetric::Cipher.new(
+      cipher = SymmetricEncryption::Cipher.new(
         :cipher => 'aes-128-cbc',
         :key => '1234567890ABCDEF1234567890ABCDEF',
         :iv  => '1234567890ABCDEF'
@@ -42,7 +42,7 @@ class CipherTest < Test::Unit::TestCase
 
   context 'with configuration' do
     setup do
-      @cipher = Symmetric::Cipher.new(
+      @cipher = SymmetricEncryption::Cipher.new(
         :key => '1234567890ABCDEF1234567890ABCDEF',
         :iv  => '1234567890ABCDEF'
       )

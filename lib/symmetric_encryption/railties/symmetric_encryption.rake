@@ -3,7 +3,7 @@ namespace :symmetric_encryption do
   desc 'Decrypt the supplied string. Example: VALUE="_encrypted_string_" rake symmetric_encryption:decrypt'
   task :decrypt => :environment do
     puts "\nEncrypted: #{ENV['VALUE']}"
-    puts "Decrypted: #{Symmetric::Encryption.decrypt(ENV['VALUE'])}\n\n"
+    puts "Decrypted: #{SymmetricEncryption.decrypt(ENV['VALUE'])}\n\n"
   end
 
   desc 'Encrypt a value, such as a password. Example: rake symmetric_encryption:encrypt'
@@ -20,19 +20,19 @@ namespace :symmetric_encryption do
         puts "Passwords do not match, please try again"
       end
     end
-    puts "\nEncrypted: #{Symmetric::Encryption.encrypt(password1)}\n\n"
+    puts "\nEncrypted: #{SymmetricEncryption.encrypt(password1)}\n\n"
   end
 
   desc 'Generate new Symmetric key and initialization vector. Example: RAILS_ENV=production rake symmetric_encryption:generate_symmetric_keys'
   task :generate_symmetric_keys do
-    Symmetric::Encryption.generate_symmetric_key_files
+    SymmetricEncryption.generate_symmetric_key_files
   end
 
   desc 'Generate a random password and display its encrypted form. Example: rake symmetric_encryption:random_password'
   task :random_password => :environment do
-    p = Symmetric::Encryption.random_password
+    p = SymmetricEncryption.random_password
     puts "\nGenerated Password: #{p}"
-    puts "Encrypted: #{Symmetric::Encryption.encrypt(p)}\n\n"
+    puts "Encrypted: #{SymmetricEncryption.encrypt(p)}\n\n"
   end
 
 end

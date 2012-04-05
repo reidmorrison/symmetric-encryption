@@ -27,12 +27,12 @@ class User < ActiveRecord::Base
   attr_encrypted :bank_account_number
   attr_encrypted :social_security_number
 
-  validates :encrypted_bank_account_number, :symmetric_encrypted => true
-  validates :encrypted_social_security_number, :symmetric_encrypted => true
+  validates :encrypted_bank_account_number, :symmetric_encryption => true
+  validates :encrypted_social_security_number, :symmetric_encryption => true
 end
 
 # Load Symmetric Encryption keys
-Symmetric::Encryption.load!(File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
+SymmetricEncryption.load!(File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
 
 # Initialize the database connection
 config_file = File.join(File.dirname(__FILE__), 'config', 'database.yml')
@@ -44,10 +44,10 @@ raise("Environment 'test' not defined in test/config/database.yml") unless cfg
 User.establish_connection(cfg)
 
 #
-# Unit Test for attr_encrypted and validation aspects of Symmetric::Encryption
+# Unit Test for attr_encrypted and validation aspects of SymmetricEncryption
 #
 class AttrEncryptedTest < Test::Unit::TestCase
-  context 'the Symmetric::Encryption Library' do
+  context 'the SymmetricEncryption Library' do
 
     setup do
       @bank_account_number = "1234567890"
@@ -159,8 +159,8 @@ class AttrEncryptedTest < Test::Unit::TestCase
       assert_equal true, @user.valid?
       @user.encrypted_bank_account_number = '123'
       assert_equal false, @user.valid?
-      assert_equal ["must be a value encrypted using Symmetric::Encryption.encrypt"], @user.errors[:encrypted_bank_account_number]
-      @user.encrypted_bank_account_number = Symmetric::Encryption.encrypt('123')
+      assert_equal ["must be a value encrypted using SymmetricEncryption.encrypt"], @user.errors[:encrypted_bank_account_number]
+      @user.encrypted_bank_account_number = SymmetricEncryption.encrypt('123')
       assert_equal true, @user.valid?
       @user.bank_account_number = '123'
       assert_equal true, @user.valid?

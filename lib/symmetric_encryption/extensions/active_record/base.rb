@@ -3,7 +3,7 @@ module ActiveRecord #:nodoc:
 
     class << self # Class methods
       # Much lighter weight encryption for Rails attributes matching the
-      # attr_encrypted interface using Symmetric::Encryption
+      # attr_encrypted interface using SymmetricEncryption
       #
       # The regular attr_encrypted gem uses Encryptor that adds encryption to
       # every Ruby object which is a complete overkill for this simple use-case
@@ -31,7 +31,7 @@ module ActiveRecord #:nodoc:
             # If this method is not called, then the encrypted value is never decrypted
             def #{attribute}
               if @stored_encrypted_#{attribute} != self.encrypted_#{attribute}
-                @#{attribute} = ::Symmetric::Encryption.decrypt(self.encrypted_#{attribute})
+                @#{attribute} = ::SymmetricEncryption.decrypt(self.encrypted_#{attribute})
                 @stored_encrypted_#{attribute} = self.encrypted_#{attribute}
               end
               @#{attribute}
@@ -40,7 +40,7 @@ module ActiveRecord #:nodoc:
             # Set the un-encrypted attribute
             # Also updates the encrypted field with the encrypted value
             def #{attribute}=(value)
-              self.encrypted_#{attribute} = @stored_encrypted_#{attribute} = ::Symmetric::Encryption.encrypt(value#{".to_yaml" if options[:marshal]})
+              self.encrypted_#{attribute} = @stored_encrypted_#{attribute} = ::SymmetricEncryption.encrypt(value#{".to_yaml" if options[:marshal]})
               @#{attribute} = value
             end
           UNENCRYPTED
@@ -129,7 +129,7 @@ module ActiveRecord #:nodoc:
           attribute_names.each_with_index do |attribute, index|
             encrypted_name = "encrypted_#{attribute}"
             if instance_methods.include? encrypted_name #.to_sym in 1.9
-              args[index] = ::Symmetric::Encryption.encrypt(args[index])
+              args[index] = ::SymmetricEncryption.encrypt(args[index])
               attribute_names[index] = encrypted_name
             end
           end

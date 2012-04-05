@@ -1,40 +1,38 @@
-module Symmetric
-  class EncryptionReader
-    # Read from encrypted files and other IO streams
-    #
-    # Features:
-    # * Decryption on the fly whilst reading files
-    # * Large file support by only buffering small amounts of data in memory
-    #
-    # # Example: Read and decrypt a line at a time from a file
-    # Symmetric::EncryptionReader.open('test_file') do |file|
-    #   file.each_line {|line| p line }
-    # end
-    #
-    # # Example: Read and decrypt entire file in memory
-    # # Not recommended for large files
-    # Symmetric::EncryptionReader.open('test_file') {|f| f.read }
-    #
-    # # Example: Reading a limited number of bytes at a time from the file
-    # Symmetric::EncryptionReader.open('test_file') do |file|
-    #   file.read(1)
-    #   file.read(5)
-    #   file.read
-    # end
-    #
-    # # Example: Read and decrypt 5 bytes at a time until the end of file is reached
-    # Symmetric::EncryptionReader.open('test_file') do |file|
-    #   while !file.eof? do
-    #     file.read(5)
-    #   end
-    # end
-    #
-    # # Example: Read, Unencrypt and decompress data in a file
-    # Symmetric::EncryptionReader.open('encrypted_compressed.zip', :compress => true) do |file|
-    #   file.each_line {|line| p line }
-    # end
-
-
+module SymmetricEncryption
+  # Read from encrypted files and other IO streams
+  #
+  # Features:
+  # * Decryption on the fly whilst reading files
+  # * Large file support by only buffering small amounts of data in memory
+  #
+  # # Example: Read and decrypt a line at a time from a file
+  # SymmetricEncryption::Reader.open('test_file') do |file|
+  #   file.each_line {|line| p line }
+  # end
+  #
+  # # Example: Read and decrypt entire file in memory
+  # # Not recommended for large files
+  # SymmetricEncryption::Reader.open('test_file') {|f| f.read }
+  #
+  # # Example: Reading a limited number of bytes at a time from the file
+  # SymmetricEncryption::Reader.open('test_file') do |file|
+  #   file.read(1)
+  #   file.read(5)
+  #   file.read
+  # end
+  #
+  # # Example: Read and decrypt 5 bytes at a time until the end of file is reached
+  # SymmetricEncryption::Reader.open('test_file') do |file|
+  #   while !file.eof? do
+  #     file.read(5)
+  #   end
+  # end
+  #
+  # # Example: Read, Unencrypt and decompress data in a file
+  # SymmetricEncryption::Reader.open('encrypted_compressed.zip', :compress => true) do |file|
+  #   file.each_line {|line| p line }
+  # end
+  class Reader
     # Open a file for reading, or use the supplied IO Stream
     #
     # Parameters:
@@ -64,7 +62,6 @@ module Symmetric
     #          Default: 4096
     #
     # Note: Decryption occurs before decompression
-    #
     def self.open(filename_or_stream, options={}, &block)
       raise "options must be a hash" unless options.respond_to?(:each_pair)
       mode = options.fetch(:mode, 'r')
@@ -89,7 +86,7 @@ module Symmetric
 
       # Read first block and check for the header
       buf = @ios.read(@buffer_size)
-      if buf.start_with?(Symmetric::Encryption::MAGIC_HEADER)
+      if buf.start_with?(SymmetricEncryption::MAGIC_HEADER)
         # Header includes magic header and version byte
         # Remove header and extract flags
         header, flags = buf.slice!(0..MAGIC_HEADER_SIZE).unpack(MAGIC_HEADER_UNPACK)
@@ -100,8 +97,8 @@ module Symmetric
       end
 
       # Use primary cipher by default, but allow a secondary cipher to be selected for encryption
-      @cipher = Encryption.cipher(@version)
-      raise "Cipher with version:#{@version} not found in any of the configured Symmetric::Encryption ciphers" unless @cipher
+      @cipher = SymmetricEncryption.cipher(@version)
+      raise "Cipher with version:#{@version} not found in any of the configured SymmetricEncryption ciphers" unless @cipher
       @stream_cipher = @cipher.send(:openssl_cipher, :decrypt)
 
       # First call to #update should return an empty string anyway
@@ -119,7 +116,7 @@ module Symmetric
     # Returns nil when the header is not present in the stream
     #
     # Note: The file will not be decompressed automatically when compressed.
-    #       To decompress the data automatically call Symmetric::Encryption.open
+    #       To decompress the data automatically call SymmetricEncryption.open
     def compressed?
       @compressed
     end
