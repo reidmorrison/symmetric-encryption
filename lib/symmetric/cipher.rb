@@ -93,12 +93,20 @@ module Symmetric
 
     protected
 
+    # Only for use by Symmetric::EncryptedStream
+    def openssl_cipher(cipher_method)
+      openssl_cipher = ::OpenSSL::Cipher.new(self.cipher)
+      openssl_cipher.send(cipher_method)
+      openssl_cipher.key = @key
+      openssl_cipher.iv = @iv if @iv
+      openssl_cipher
+    end
+
     # Creates a new OpenSSL::Cipher with every call so that this call
     # is thread-safe
     def crypt(cipher_method, string) #:nodoc:
       openssl_cipher = ::OpenSSL::Cipher.new(self.cipher)
       openssl_cipher.send(cipher_method)
-      raise "Encryption.key must be set before calling Encryption encrypt or decrypt" unless @key
       openssl_cipher.key = @key
       openssl_cipher.iv = @iv if @iv
       result = openssl_cipher.update(string)

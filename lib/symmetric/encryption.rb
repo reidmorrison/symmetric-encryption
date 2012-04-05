@@ -21,8 +21,11 @@ module Symmetric
     end
 
     # Returns the Primary Symmetric Cipher being used
-    def self.cipher
-      @@cipher
+    # If a version is supplied, then the cipher matching that version will be
+    # returned or nil if no match was found
+    def self.cipher(version = nil)
+      return @@cipher if version.nil? || (@@cipher.version == version)
+      secondary_ciphers.find {|c| c.version == version}
     end
 
     # Set the Secondary Symmetric Ciphers Array to be used
@@ -182,6 +185,14 @@ module Symmetric
     # Generate a 22 character random password
     def self.random_password
       Base64.encode64(OpenSSL::Cipher.new('aes-128-cbc').random_key)[0..-4]
+    end
+
+    # Binary encrypted data includes this magic header so that we can quickly
+    # identify binary data versus base64 encoded data that does not have this header
+    unless defined? MAGIC_HEADER
+      MAGIC_HEADER = '@EnC'
+      MAGIC_HEADER_SIZE = MAGIC_HEADER.size
+      MAGIC_HEADER_UNPACK = "A#{MAGIC_HEADER_SIZE}v"
     end
 
     protected
