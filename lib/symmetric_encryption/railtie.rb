@@ -28,7 +28,7 @@ module SymmetricEncryption #:nodoc:
     #
     # Loaded before Active Record initializes since database.yml can have encrypted
     # passwords in it
-    initializer "symmetric-encryption.initialize" , :before=>"active_record.initialize_database" do
+    config.before_configuration do
       config_file = Rails.root.join("config", "symmetric-encryption.yml")
       if config_file.file?
         ::SymmetricEncryption.load!(config_file, Rails.env)
