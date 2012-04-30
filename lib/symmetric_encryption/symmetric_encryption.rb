@@ -13,6 +13,14 @@ module SymmetricEncryption
   @@secondary_ciphers = []
 
   # Set the Primary Symmetric Cipher to be used
+  #
+  # Example: For testing purposes the following test cipher can be used:
+  #
+  #   SymmetricEncryption.cipher = SymmetricEncryption::Cipher.new(
+  #     :key    => '1234567890ABCDEF1234567890ABCDEF',
+  #     :iv     => '1234567890ABCDEF',
+  #     :cipher => 'aes-128-cbc'
+  #   )
   def self.cipher=(cipher)
     raise "Cipher must be similar to SymmetricEncryption::Ciphers" unless cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt)
     @@cipher = cipher
@@ -22,6 +30,7 @@ module SymmetricEncryption
   # If a version is supplied, then the cipher matching that version will be
   # returned or nil if no match was found
   def self.cipher(version = 0)
+    raise "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data" unless @@cipher
     return @@cipher if version.nil? || (version == 0) || (@@cipher.version == version)
     secondary_ciphers.find {|c| c.version == version}
   end

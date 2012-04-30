@@ -67,8 +67,7 @@ module SymmetricEncryption
     #
     # require 'fastercsv'
     # begin
-    #   # Must supply :row_sep for FasterCSV otherwise it will attempt to rewind the file etc.
-    #   csv = FasterCSV.new(SymmetricEncryption::Reader.open('csv_encrypted'), :row_sep => "\n")
+    #   csv = FasterCSV.new(SymmetricEncryption::Reader.open('csv_encrypted'))
     #   csv.each {|row| p row}
     # ensure
     #   csv.close if csv
@@ -92,29 +91,8 @@ module SymmetricEncryption
     def initialize(ios,options={})
       @ios         = ios
       @buffer_size = options.fetch(:buffer_size, 4096).to_i
-      @compressed  = nil
-      @read_buffer = ''
-
-      # Read first block and check for the header
-      buf = @ios.read(@buffer_size)
-      if buf.start_with?(SymmetricEncryption::MAGIC_HEADER)
-        # Header includes magic header and version byte
-        # Remove header and extract flags
-        header, flags = buf.slice!(0..MAGIC_HEADER_SIZE+1).unpack(MAGIC_HEADER_UNPACK)
-        @compressed = (flags & 0b1000_0000_0000_0000) != 0
-        @version = @compressed ? flags - 0b1000_0000_0000_0000 : flags
-      else
-        @version = options[:version]
-      end
-
-      # Use primary cipher by default, but allow a secondary cipher to be selected for encryption
-      @cipher = SymmetricEncryption.cipher(@version)
-      raise "Cipher with version:#{@version} not found in any of the configured SymmetricEncryption ciphers" unless @cipher
-      @stream_cipher = @cipher.send(:openssl_cipher, :decrypt)
-
-      # First call to #update should return an empty string anyway
-      @read_buffer << @stream_cipher.update(buf)
-      @read_buffer << @stream_cipher.final if @ios.eof?
+      @version = options[:version]
+      read_header
     end
 
     # Returns whether the stream being read is compressed
@@ -186,6 +164,7 @@ module SymmetricEncryption
           data << @stream_cipher.final
         end
       end
+      @pos += data.length
       data
     end
 
@@ -209,6 +188,7 @@ module SymmetricEncryption
       end
       index ||= -1
       data = @read_buffer.slice!(0..index)
+      @pos += data.length
       return nil if data.length == 0 && eof?
       data
     end
@@ -231,20 +211,44 @@ module SymmetricEncryption
       (@read_buffer.size == 0) && @ios.eof?
     end
 
-    # Return the approximate offset in bytes of the current input stream
-    # Since the encrypted data size does not match the unencrypted size
-    # this value cannot be guaranteed. Especially if compression is turned on
+    # Return the number of bytes read so far from the input stream
     def pos
-      @ios.pos - @read_buffer.size
+      @pos
     end
 
     # Rewind back to the beginning of the file
     def rewind
       @read_buffer = ''
       @ios.rewind
+      read_header
     end
 
     private
+
+    # Read the header from the file if present
+    def read_header
+      @compressed  = nil
+      @pos = 0
+
+      # Read first block and check for the header
+      buf = @ios.read(@buffer_size)
+      if buf.start_with?(MAGIC_HEADER)
+        # Header includes magic header and version byte
+        # Remove header and extract flags
+        header, flags = buf.slice!(0..MAGIC_HEADER_SIZE+1).unpack(MAGIC_HEADER_UNPACK)
+        @compressed = (flags & 0b1000_0000_0000_0000) != 0
+        @version = @compressed ? flags - 0b1000_0000_0000_0000 : flags
+      end
+
+      # Use primary cipher by default, but allow a secondary cipher to be selected for encryption
+      @cipher = SymmetricEncryption.cipher(@version)
+      raise "Cipher with version:#{@version.inspect} not found in any of the configured SymmetricEncryption ciphers" unless @cipher
+      @stream_cipher = @cipher.send(:openssl_cipher, :decrypt)
+
+      # First call to #update should return an empty string anyway
+      @read_buffer = @stream_cipher.update(buf)
+      @read_buffer << @stream_cipher.final if @ios.eof?
+    end
 
     # Read a block of data and append the decrypted data in the read buffer
     def read_block

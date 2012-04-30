@@ -98,6 +98,16 @@ class ReaderTest < Test::Unit::TestCase
               end
             end
           end
+
+          should "support rewind" do
+            decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
+              file.read
+              file.rewind
+              file.read
+            end
+            assert_equal @data_str, decrypted
+          end
+
         end
       end
 
