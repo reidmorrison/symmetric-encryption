@@ -21,8 +21,8 @@ module SymmetricEncryption
   # Returns the Primary Symmetric Cipher being used
   # If a version is supplied, then the cipher matching that version will be
   # returned or nil if no match was found
-  def self.cipher(version = nil)
-    return @@cipher if version.nil? || (@@cipher.version == version)
+  def self.cipher(version = 0)
+    return @@cipher if version.nil? || (version == 0) || (@@cipher.version == version)
     secondary_ciphers.find {|c| c.version == version}
   end
 
@@ -190,7 +190,7 @@ module SymmetricEncryption
   unless defined? MAGIC_HEADER
     MAGIC_HEADER = '@EnC'
     MAGIC_HEADER_SIZE = MAGIC_HEADER.size
-    MAGIC_HEADER_UNPACK = "A#{MAGIC_HEADER_SIZE}v"
+    MAGIC_HEADER_UNPACK = "a#{MAGIC_HEADER_SIZE}v"
   end
 
   protected

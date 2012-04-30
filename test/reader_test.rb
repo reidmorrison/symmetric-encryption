@@ -22,7 +22,6 @@ class ReaderTest < Test::Unit::TestCase
       @data_str = @data.inject('') {|sum,str| sum << str}
       @data_len = @data_str.length
       @data_encrypted = SymmetricEncryption.cipher.encrypt(@data_str)
-      @filename = '._test'
     end
 
     should "decrypt from string stream as a single read" do
@@ -68,9 +67,40 @@ class ReaderTest < Test::Unit::TestCase
       end
     end
 
-    should "decrypt from file" do
+    context "reading from file" do
+      # With and without header
+      [false, true].each do |header|
+        context "with#{'out' unless header} header" do
+          setup do
+            @filename = '._test'
+            @options = { :header => header }
+            # Create encrypted file
+            SymmetricEncryption::Writer.open(@filename, @options) do |file|
+              @data.inject(0) {|sum,str| sum + file.write(str)}
+            end
+          end
+
+          teardown do
+            File.delete(@filename) if File.exist?(@filename)
+          end
+
+          should "decrypt from file in a single read" do
+            decrypted = SymmetricEncryption::Reader.open(@filename) {|file| file.read}
+            assert_equal @data_str, decrypted
+          end
+
+          should "decrypt from file a line at a time" do
+            decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
+              i = 0
+              file.each_line do |line|
+                assert_equal @data[i], line
+                i += 1
+              end
+            end
+          end
+        end
+      end
 
     end
   end
-
 end

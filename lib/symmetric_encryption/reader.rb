@@ -4,34 +4,6 @@ module SymmetricEncryption
   # Features:
   # * Decryption on the fly whilst reading files
   # * Large file support by only buffering small amounts of data in memory
-  #
-  # # Example: Read and decrypt a line at a time from a file
-  # SymmetricEncryption::Reader.open('test_file') do |file|
-  #   file.each_line {|line| p line }
-  # end
-  #
-  # # Example: Read and decrypt entire file in memory
-  # # Not recommended for large files
-  # SymmetricEncryption::Reader.open('test_file') {|f| f.read }
-  #
-  # # Example: Reading a limited number of bytes at a time from the file
-  # SymmetricEncryption::Reader.open('test_file') do |file|
-  #   file.read(1)
-  #   file.read(5)
-  #   file.read
-  # end
-  #
-  # # Example: Read and decrypt 5 bytes at a time until the end of file is reached
-  # SymmetricEncryption::Reader.open('test_file') do |file|
-  #   while !file.eof? do
-  #     file.read(5)
-  #   end
-  # end
-  #
-  # # Example: Read, Unencrypt and decompress data in a file
-  # SymmetricEncryption::Reader.open('encrypted_compressed.zip', :compress => true) do |file|
-  #   file.each_line {|line| p line }
-  # end
   class Reader
     # Open a file for reading, or use the supplied IO Stream
     #
@@ -62,6 +34,45 @@ module SymmetricEncryption
     #          Default: 4096
     #
     # Note: Decryption occurs before decompression
+    #
+    # # Example: Read and decrypt a line at a time from a file
+    # SymmetricEncryption::Reader.open('test_file') do |file|
+    #   file.each_line {|line| p line }
+    # end
+    #
+    # # Example: Read and decrypt entire file in memory
+    # # Not recommended for large files
+    # SymmetricEncryption::Reader.open('test_file') {|f| f.read }
+    #
+    # # Example: Reading a limited number of bytes at a time from the file
+    # SymmetricEncryption::Reader.open('test_file') do |file|
+    #   file.read(1)
+    #   file.read(5)
+    #   file.read
+    # end
+    #
+    # # Example: Read and decrypt 5 bytes at a time until the end of file is reached
+    # SymmetricEncryption::Reader.open('test_file') do |file|
+    #   while !file.eof? do
+    #     file.read(5)
+    #   end
+    # end
+    #
+    # # Example: Read, Unencrypt and decompress data in a file
+    # SymmetricEncryption::Reader.open('encrypted_compressed.zip', :compress => true) do |file|
+    #   file.each_line {|line| p line }
+    # end
+    #
+    # # Example: Reading from a CSV file
+    #
+    # require 'fastercsv'
+    # begin
+    #   # Must supply :row_sep for FasterCSV otherwise it will attempt to rewind the file etc.
+    #   csv = FasterCSV.new(SymmetricEncryption::Reader.open('csv_encrypted'), :row_sep => "\n")
+    #   csv.each {|row| p row}
+    # ensure
+    #   csv.close if csv
+    # end
     def self.open(filename_or_stream, options={}, &block)
       raise "options must be a hash" unless options.respond_to?(:each_pair)
       mode = options.fetch(:mode, 'r')
@@ -71,9 +82,9 @@ module SymmetricEncryption
       begin
         file = self.new(ios, options)
         file = Zlib::GzipReader.new(file) if file.compressed? || compress
-        block.call(file)
+        block ? block.call(file) : file
       ensure
-        file.close if file
+        file.close if block && file
       end
     end
 
@@ -89,8 +100,8 @@ module SymmetricEncryption
       if buf.start_with?(SymmetricEncryption::MAGIC_HEADER)
         # Header includes magic header and version byte
         # Remove header and extract flags
-        header, flags = buf.slice!(0..MAGIC_HEADER_SIZE).unpack(MAGIC_HEADER_UNPACK)
-        @compressed = flags & 0b1000_0000_0000_0000
+        header, flags = buf.slice!(0..MAGIC_HEADER_SIZE+1).unpack(MAGIC_HEADER_UNPACK)
+        @compressed = (flags & 0b1000_0000_0000_0000) != 0
         @version = @compressed ? flags - 0b1000_0000_0000_0000 : flags
       else
         @version = options[:version]
@@ -179,15 +190,27 @@ module SymmetricEncryption
     end
 
     # Reads a single decrypted line from the file up to and including the optional sep_string.
-    # Returns nil on eof
+    # Raises EOFError on eof
     # The stream must be opened for reading or an IOError will be raised.
     def readline(sep_string = "\n")
+      gets(sep_string) || raise(EOFError.new("End of file reached when trying to read a line"))
+    end
+
+    # Reads a single decrypted line from the file up to and including the optional sep_string.
+    # A sep_string of nil reads the entire contents of the file
+    # Returns nil on eof
+    # The stream must be opened for reading or an IOError will be raised.
+    def gets(sep_string)
+      return read if sep_string.nil?
+
       # Read more data until we get the sep_string
       while (index = @read_buffer.index(sep_string)).nil? && !@ios.eof?
         read_block
       end
       index ||= -1
-      @read_buffer.slice!(0..index)
+      data = @read_buffer.slice!(0..index)
+      return nil if data.length == 0 && eof?
+      data
     end
 
     # ios.each(sep_string="\n") {|line| block } => ios
@@ -196,7 +219,7 @@ module SymmetricEncryption
     # ios must be opened for reading or an IOError will be raised.
     def each_line(sep_string = "\n")
       while !eof?
-        yield readline(sep_string)
+        yield gets(sep_string)
       end
       self
     end
@@ -206,6 +229,19 @@ module SymmetricEncryption
     # Returns whether the end of file has been reached for this stream
     def eof?
       (@read_buffer.size == 0) && @ios.eof?
+    end
+
+    # Return the approximate offset in bytes of the current input stream
+    # Since the encrypted data size does not match the unencrypted size
+    # this value cannot be guaranteed. Especially if compression is turned on
+    def pos
+      @ios.pos - @read_buffer.size
+    end
+
+    # Rewind back to the beginning of the file
+    def rewind
+      @read_buffer = ''
+      @ios.rewind
     end
 
     private

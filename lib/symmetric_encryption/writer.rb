@@ -1,29 +1,13 @@
 module SymmetricEncryption
+  # Write to encrypted files and other IO streams
+  #
+  # Features:
+  # * Encryption on the fly whilst writing files.
+  # * Large file support by only buffering small amounts of data in memory
+  # * Underlying buffering to ensure that encrypted data fits
+  #   into the Symmetric Encryption Cipher block size
+  #   Only the last block in the file will be padded if it is less than the block size
   class Writer
-    # Write to encrypted files and other IO streams
-    #
-    # Features:
-    # * Encryption on the fly whilst writing files.
-    # * Large file support by only buffering small amounts of data in memory
-    # * Underlying buffering to ensure that encrypted data fits
-    #   into the Symmetric Encryption Cipher block size
-    #   Only the last block in the file will be padded if it is less than the block size
-    #
-    # # Example: Encrypt and write data to a file
-    # SymmetricEncryption::Writer.open('test_file') do |file|
-    #   file.write "Hello World\n"
-    #   file.write "Keep this secret"
-    # end
-    #
-    # # Example: Compress, Encrypt and write data to a file
-    # SymmetricEncryption::Writer.open('encrypted_compressed.zip', :compress => true) do |file|
-    #   file.write "Hello World\n"
-    #   file.write "Compress this\n"
-    #   file.write "Keep this safe and secure\n"
-    # end
-    #
-
-
     # Open a file for writing, or use the supplied IO Stream
     #
     # Parameters:
@@ -57,6 +41,29 @@ module SymmetricEncryption
     #
     # Note: Compression occurs before encryption
     #
+    #
+    # # Example: Encrypt and write data to a file
+    # SymmetricEncryption::Writer.open('test_file') do |file|
+    #   file.write "Hello World\n"
+    #   file.write "Keep this secret"
+    # end
+    #
+    # # Example: Compress, Encrypt and write data to a file
+    # SymmetricEncryption::Writer.open('encrypted_compressed.zip', :compress => true) do |file|
+    #   file.write "Hello World\n"
+    #   file.write "Compress this\n"
+    #   file.write "Keep this safe and secure\n"
+    # end
+    #
+    # # Example: Writing to a CSV file
+    #  require 'fastercsv'
+    #  begin
+    #    # Must supply :row_sep for FasterCSV otherwise it will attempt to read from and then rewind the file
+    #    csv = FasterCSV.new(SymmetricEncryption::Writer.open('csv_encrypted'), :row_sep => "\n")
+    #    csv << [1,2,3,4,5]
+    #  ensure
+    #    csv.close if csv
+    #  end
     def self.open(filename_or_stream, options={}, &block)
       raise "options must be a hash" unless options.respond_to?(:each_pair)
       mode = options.fetch(:mode, 'w')
@@ -66,9 +73,9 @@ module SymmetricEncryption
       begin
         file = self.new(ios, options)
         file = Zlib::GzipWriter.new(file) if compress
-        block.call(file)
+        block ? block.call(file) : file
       ensure
-        file.close if file
+        file.close if block && file
       end
     end
 
@@ -112,6 +119,16 @@ module SymmetricEncryption
       partial = @stream_cipher.update(data.to_s)
       @ios.write(partial) if partial.length > 0
       data.length
+    end
+
+    # Write to the IO Stream as encrypted data
+    # Returns self
+    #
+    # Example:
+    #   file << "Hello.\n" << "This is Jack"
+    def <<(data)
+      write(data)
+      self
     end
 
     private

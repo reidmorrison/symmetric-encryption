@@ -25,6 +25,10 @@ class EncryptionWriterTest < Test::Unit::TestCase
       @filename = '._test'
     end
 
+    teardown do
+      File.delete(@filename) if File.exist?(@filename)
+    end
+
     should "encrypt to string stream" do
       stream = StringIO.new
       file = SymmetricEncryption::Writer.new(stream)
