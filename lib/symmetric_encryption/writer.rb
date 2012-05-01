@@ -29,7 +29,7 @@ module SymmetricEncryption
     #          The header contains:
     #             Version of the encryption key used to encrypt the file
     #             Indicator if the data was compressed
-    #          Default: false
+    #          Default: true
     #
     #     :version
     #          Version of the encryption key to use when encrypting
@@ -82,7 +82,7 @@ module SymmetricEncryption
     # Encrypt data before writing to the supplied stream
     def initialize(ios,options={})
       @ios      = ios
-      header    = options.fetch(:header, false)
+      header    = options.fetch(:header, true)
       # Compress is only used at this point for setting the flag in the header
       @compress = options.fetch(:compress, false)
 
