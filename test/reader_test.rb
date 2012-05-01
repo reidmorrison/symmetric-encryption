@@ -69,13 +69,12 @@ class ReaderTest < Test::Unit::TestCase
 
     context "reading from file" do
       # With and without header
-      [false, true].each do |header|
-        context "with#{'out' unless header} header" do
+      [{:header => false}, {:header => true}, {:header => true, :compress => true}].each do |options|
+        context "with#{'out' unless options[:header]} header" do
           setup do
             @filename = '._test'
-            @options = { :header => header }
             # Create encrypted file
-            SymmetricEncryption::Writer.open(@filename, @options) do |file|
+            SymmetricEncryption::Writer.open(@filename, options) do |file|
               @data.inject(0) {|sum,str| sum + file.write(str)}
             end
           end

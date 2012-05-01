@@ -223,6 +223,50 @@ module SymmetricEncryption
       read_header
     end
 
+    # Seeks to a given offset (Integer) in the stream according to the value of whence:
+    #  IO::SEEK_CUR  | Seeks to _amount_ plus current position
+    #  --------------+----------------------------------------------------
+    #  IO::SEEK_END  | Seeks to _amount_ plus end of stream (you probably
+    #                | want a negative value for _amount_)
+    #  --------------+----------------------------------------------------
+    #  IO::SEEK_SET  | Seeks to the absolute location given by _amount_
+    #
+    # WARNING: IO::SEEK_SET will jump to the beginning of the file and
+    #          then re-read upto the point specified
+    # WARNING: IO::SEEK_END will read the entire file and then again
+    #          upto the point specified
+    def seek(amount, whence=IO::SEEK_SET)
+      offset = 0
+      case whence
+      when IO::SEEK_SET
+        offset = amount
+        rewind
+      when IO::SEEK_CUR
+        if amount >= 0
+          offset = amount
+        else
+          offset = @pos + amount
+          rewind
+        end
+      when IO::SEEK_END
+        rewind
+        # Read and decrypt entire file a block at a time to get its total
+        # unencrypted size
+        size = 0
+        while !eof
+          read_block
+          size += @read_buffer.size
+          @read_buffer = ''
+        end
+        rewind
+        offset = size + amount
+      else
+        raise "unknown whence:#{whence} supplied to seek()"
+      end
+      read(offset) if offset > 0
+      0
+    end
+
     private
 
     # Read the header from the file if present
