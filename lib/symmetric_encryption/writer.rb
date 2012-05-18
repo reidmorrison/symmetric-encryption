@@ -131,6 +131,14 @@ module SymmetricEncryption
       self
     end
 
+    # Flush the output stream
+    # Does not flush internal buffers since encryption requires all data to
+    # be written following the encryption block size
+    #  Needed by XLS gem
+    def flush
+      @ios.flush
+    end
+
     private
 
     # Write the Encryption header if this is the first write

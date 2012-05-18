@@ -131,6 +131,18 @@ module SymmetricEncryption
       @ios.close if close_child_stream
     end
 
+    # Flush the read stream
+    #  Needed by XLS gem
+    def flush
+      @ios.flush
+    end
+
+    # Return the size of the file rounded up to the nearest encryption block size
+    #  Needed by XLS gem
+    def size
+      @ios.size
+    end
+
     # Read from the stream and return the decrypted data
     # See IOS#read
     #
