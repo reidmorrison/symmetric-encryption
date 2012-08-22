@@ -128,7 +128,7 @@ module ActiveRecord #:nodoc:
           attribute_names = match.captures.last.split('_and_')
           attribute_names.each_with_index do |attribute, index|
             encrypted_name = "encrypted_#{attribute}"
-            if instance_methods.include? encrypted_name #.to_sym in 1.9
+            if method_defined? encrypted_name.to_sym
               args[index] = ::SymmetricEncryption.encrypt(args[index])
               attribute_names[index] = encrypted_name
             end
