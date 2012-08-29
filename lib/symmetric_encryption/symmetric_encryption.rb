@@ -65,13 +65,19 @@ module SymmetricEncryption
   #
   def self.decrypt(str)
     raise "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data" unless @@cipher
-    binary = ::Base64.decode64(str) if str
+
+    # Decode data first based on encoding setting
+    case @@cipher.encoding
+    when :base64, :base64strict
+      str = ::Base64.decode64(str) if str
+    end
+
     begin
-      @@cipher.decrypt(binary)
+      @@cipher.decrypt(str)
     rescue OpenSSL::Cipher::CipherError => exc
       @@secondary_ciphers.each do |cipher|
         begin
-          return cipher.decrypt(binary)
+          return cipher.decrypt(str)
         rescue OpenSSL::Cipher::CipherError
         end
       end
@@ -87,11 +93,18 @@ module SymmetricEncryption
     raise "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data" unless @@cipher
 
     # Encrypt data as a binary string
-    result = @@cipher.encrypt(str)
-
-    # Base 64 Encoding of binary data
-    result = ::Base64.encode64(result) if result
-    result
+    if result = @@cipher.encrypt(str)
+      # Now encode data based on encoding setting
+      case @@cipher.encoding
+      when :base64
+        # Base 64 Encoding of binary data
+        ::Base64.encode64(result)
+      when :base64strict
+        ::Base64.encode64(result).gsub(/\n/, '')
+      else
+        result
+      end
+    end
   end
 
   # Invokes decrypt
@@ -117,11 +130,9 @@ module SymmetricEncryption
   def self.encrypted?(encrypted_data)
     raise "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data" unless @@cipher
 
-    # First make sure Base64 encoded data still ends with "\n" since it could be used in a key field somewhere
-    return false unless encrypted_data.end_with?("\n")
-
     # For now have to decrypt it fully
-    !try_decrypt(encrypted_data).nil?
+    result = try_decrypt(encrypted_data)
+    !(result.nil? || result == '')
   end
 
   # Load the Encryption Configuration from a YAML file
@@ -142,11 +153,7 @@ module SymmetricEncryption
     else
       private_rsa_key = config[:private_rsa_key]
       @@cipher, *@@secondary_ciphers = config[:ciphers].collect do |cipher_conf|
-        cipher_from_encrypted_files(
-          private_rsa_key,
-          cipher_conf[:cipher],
-          cipher_conf[:key_filename],
-          cipher_conf[:iv_filename])
+        cipher_from_encrypted_files(private_rsa_key, cipher_conf)
       end
     end
 
@@ -164,7 +171,7 @@ module SymmetricEncryption
   #   and initilization vector .iv
   #       which is encrypted with the above Public key
   #
-  # Warning: Existing files will be overwritten
+  # Existing key files will be renamed if present
   def self.generate_symmetric_key_files(filename=nil, environment=nil)
     config = read_config(filename, environment)
     cipher_cfg = config[:ciphers].first
@@ -239,6 +246,7 @@ module SymmetricEncryption
           :cipher       => cipher_cfg['cipher'] || default_cipher,
           :key_filename => key_filename,
           :iv_filename  => iv_filename,
+          :encoding     => cipher_cfg['encoding']
         }
       end
 
@@ -271,18 +279,34 @@ module SymmetricEncryption
   #   iv_filename
   #     Optional. Name of file containing symmetric key initialization vector
   #     encrypted using the public key matching the supplied private_key
-  def self.cipher_from_encrypted_files(private_rsa_key, cipher, key_filename, iv_filename = nil)
+  def self.cipher_from_encrypted_files(private_rsa_key, cipher_conf)
     # Load Encrypted Symmetric keys
-    encrypted_key = File.read(key_filename)
-    encrypted_iv = File.read(iv_filename) if iv_filename
+    key_filename =  cipher_conf[:key_filename]
+    encrypted_key = begin
+      File.read(key_filename)
+    rescue Errno::ENOENT
+      puts "\nSymmetric Encryption key file: '#{key_filename}' not found or readable."
+      puts "To generate the keys for the first time run: rails generate symmetric_encryption:new_keys\n\n"
+      return
+    end
+
+    iv_filename =  cipher_conf[:iv_filename]
+    encrypted_iv = begin
+      File.read(iv_filename) if iv_filename
+    rescue Errno::ENOENT
+      puts "\nSymmetric Encryption initialization vector file: '#{iv_filename}' not found or readable."
+      puts "To generate the keys for the first time run: rails generate symmetric_encryption:new_keys\n\n"
+      return
+    end
 
     # Decrypt Symmetric Keys
     rsa = OpenSSL::PKey::RSA.new(private_rsa_key)
     iv = rsa.private_decrypt(encrypted_iv) if iv_filename
     Cipher.new(
-      :key    => rsa.private_decrypt(encrypted_key),
-      :iv     => iv,
-      :cipher => cipher
+      :key      => rsa.private_decrypt(encrypted_key),
+      :iv       => iv,
+      :cipher   => cipher_conf[:cipher],
+      :encoding => cipher_conf[:encoding]
     )
   end
 

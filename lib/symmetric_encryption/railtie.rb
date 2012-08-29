@@ -7,10 +7,14 @@ module SymmetricEncryption #:nodoc:
     # @example Set up configuration in the Rails app.
     #   module MyApplication
     #     class Application < Rails::Application
-    #       config.symmetric_encryption.cipher = 'aes-256-cbc'
+    #       config.symmetric_encryption.cipher = SymmetricEncryption::Cipher.new(
+    #         :key    => '1234567890ABCDEF1234567890ABCDEF',
+    #         :iv     => '1234567890ABCDEF',
+    #         :cipher => 'aes-128-cbc'
+    #       )
     #     end
     #   end
-    #config.symmetric_encryption = ::SymmetricEncryption::Config
+    config.symmetric_encryption = ::SymmetricEncryption
 
     rake_tasks do
       load "symmetric_encryption/railties/symmetric_encryption.rake"
@@ -33,8 +37,8 @@ module SymmetricEncryption #:nodoc:
       if config_file.file?
         ::SymmetricEncryption.load!(config_file, Rails.env)
       else
-        puts "\nSymmetric Encryption config not found. Create a config file at: config/symmetric-encryption.yml"
-        #           puts "to generate one run: rails generate symmetric-encryption:config\n\n"
+        puts "\nSymmetric Encryption config not found."
+        puts "To generate one for the first time: rails generate symmetric_encryption:config\n\n"
       end
     end
 

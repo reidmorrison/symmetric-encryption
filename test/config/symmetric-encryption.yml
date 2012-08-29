@@ -39,9 +39,13 @@ test:
     - key_filename: /Users/rmorrison/Sandbox/symmetric-encryption/test/config/test_new.key
       iv_filename:  /Users/rmorrison/Sandbox/symmetric-encryption/test/config/test_new.iv
       cipher:       aes-128-cbc
+      # Base64 encode encrypted data without newlines
+      encoding:     base64strict
 
     # Previous Symmetric Encryption Key
     - key_filename: /Users/rmorrison/Sandbox/symmetric-encryption/test/config/test_secondary_1.key
       iv_filename:  /Users/rmorrison/Sandbox/symmetric-encryption/test/config/test_secondary_1.iv
       cipher:       aes-128-cbc
+      # Base64 encode encrypted data without newlines
+      encoding:     base64
 

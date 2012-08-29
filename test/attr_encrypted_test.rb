@@ -51,10 +51,10 @@ class AttrEncryptedTest < Test::Unit::TestCase
 
     setup do
       @bank_account_number = "1234567890"
-      @bank_account_number_encrypted = "L94ArJeFlJrZp6SYsvoOGA==\n"
+      @bank_account_number_encrypted = "L94ArJeFlJrZp6SYsvoOGA=="
 
       @social_security_number = "987654321"
-      @social_security_number_encrypted = "S+8X1NRrqdfEIQyFHVPuVA==\n"
+      @social_security_number_encrypted = "S+8X1NRrqdfEIQyFHVPuVA=="
 
       @user = User.new(
         # Encrypted Attribute

@@ -23,11 +23,6 @@ namespace :symmetric_encryption do
     puts "\nEncrypted: #{SymmetricEncryption.encrypt(password1)}\n\n"
   end
 
-  desc 'Generate new Symmetric key and initialization vector. Example: RAILS_ENV=production rake symmetric_encryption:generate_symmetric_keys'
-  task :generate_symmetric_keys do
-    SymmetricEncryption.generate_symmetric_key_files
-  end
-
   desc 'Generate a random password and display its encrypted form. Example: rake symmetric_encryption:random_password'
   task :random_password => :environment do
     p = SymmetricEncryption.random_password

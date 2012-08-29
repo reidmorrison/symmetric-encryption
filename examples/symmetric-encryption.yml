@@ -68,6 +68,21 @@ production:
       #         JRuby 1.6.7 with Ruby 1.8.7 Approximately 22,000 encryptions or decryptions per second
       cipher: aes-256-cbc
 
+      # Set the way the encrypted data is encoded:
+      # base64
+      #   Encrypted data is returned in base64 encoding format
+      #   Symmetric::Encryption.decrypt will also base64 decode any data prior
+      #   to decrypting it
+      # base64strict
+      #   As base64 except that does not contain any newlines
+      #   This is the recommended setting
+      # none
+      #   Encrypted data is returned as raw binary
+      #   Although smaller than base64 it cannot be stored in MySQL text columns
+      #   It can only be held in binary columns such as BINARY or BLOB
+      # Default: base64
+      encoding: base64strict
+
       # FUTURE ENHANCEMENT:
       #
       # By adding a version indicator all encrypted data will include
@@ -86,20 +101,6 @@ production:
       # Default: 0
       #version: 0
 
-      # FUTURE ENHANCEMENT:
-      #
-      # Set the way the encrypted data is encoded:
-      # base64
-      #   Encrypted data is returned in base64 encoding format
-      #   Symmetric::Encryption.decrypt will also base64 decode any data prior
-      #   to decrypting it
-      # binary
-      #   Encrypted data is returned as raw binary
-      #   Although smaller than base64 it cannot be stored in MySQL text columns
-      #   It can only be held in binary columns such as BINARY or BLOB
-      # Default: base64
-      #encoding: base64
-
       # OPTIONAL:
       #
       # Any previous Symmetric Encryption Keys
@@ -108,4 +109,5 @@ production:
       # to be used
     - key_filename: /etc/rails/.rails_old.key
       iv_filename:  /etc/rails/.rails_old.iv
-      cipher:                 aes-256-cbc
+      cipher:       aes-256-cbc
+      encoding:     base64strict

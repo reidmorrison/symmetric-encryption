@@ -7,10 +7,11 @@ module SymmetricEncryption
   # threads at the same time without needing an instance of Cipher per thread
   class Cipher
     # Cipher to use for encryption and decryption
-    attr_reader :cipher, :version
+    attr_reader :cipher, :version, :version
+    attr_accessor :encoding
 
-    # Future Use:
-    # attr_accessor :encoding, :version
+    # Available encodings
+    ENCODINGS = [:none, :base64, :base64strict]
 
     # Generate a new Symmetric Key pair
     #
@@ -43,6 +44,9 @@ module SymmetricEncryption
       @iv = parms[:iv]
       @cipher = parms[:cipher] || 'aes-256-cbc'
       @version = parms[:version]
+      @encoding = (parms[:encoding] || :base64).to_sym
+
+      raise("Invalid Encoding: #{@encoding}") unless ENCODINGS.include?(@encoding)
     end
 
     # AES Symmetric Encryption of supplied string

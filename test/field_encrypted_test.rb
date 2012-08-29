@@ -39,19 +39,19 @@ class FieldEncryptedTest < Test::Unit::TestCase
   context 'the SymmetricEncryption Library' do
     setup do
       @bank_account_number = "1234567890"
-      @bank_account_number_encrypted = "L94ArJeFlJrZp6SYsvoOGA==\n"
+      @bank_account_number_encrypted = "L94ArJeFlJrZp6SYsvoOGA=="
 
       @social_security_number = "987654321"
-      @social_security_number_encrypted = "S+8X1NRrqdfEIQyFHVPuVA==\n"
+      @social_security_number_encrypted = "S+8X1NRrqdfEIQyFHVPuVA=="
 
       @integer = 32768
-      @integer_encrypted = "FA3smFQEKqB/ITv+A0xACg==\n"
+      @integer_encrypted = "FA3smFQEKqB/ITv+A0xACg=="
 
       @float = 0.9867
-      @float_encrypted = "z7Pwt2JDp74d+u0IXFAdrQ==\n"
+      @float_encrypted = "z7Pwt2JDp74d+u0IXFAdrQ=="
 
       @date = Date.parse('20120320')
-      @date_encrypted = "WTkSPHo5ApSSHBJMxxWt2A==\n"
+      @date_encrypted = "WTkSPHo5ApSSHBJMxxWt2A=="
 
       # #TODO Intercept passing in attributes to create etc.
       @user = MongoidUser.new(
