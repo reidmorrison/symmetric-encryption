@@ -143,11 +143,11 @@ Note: Passwords must be encrypted in the environment in which they will be used.
 ### Add to an existing Rails project
 Add the following line to Gemfile
 
-  gem 'symmetric-encryption'
+    gem 'symmetric-encryption'
 
 Install the Gem with bundler
 
-  bundle install
+    bundle install
 
 ## Rails Configuration
 
@@ -160,7 +160,7 @@ modified as needed.
 
 Generate the configuration file:
 
-  rails generate symmetric_encryption:config /etc/rails/keys
+    rails generate symmetric_encryption:config /etc/rails/keys
 
 Note: Ignore the warning about "Symmetric Encryption config not found" since it is
 being generated
@@ -224,7 +224,7 @@ SymmetricEncryption can also be used in non-Rails environment.
 
 Install SymmetricEncryption
 
-  gem install symmetric-encryption
+    gem install symmetric-encryption
 
 Manually create a symmetric-encryption.yml configuration file based on the
 one supplied in examples/symmetric-encryption.yml.
