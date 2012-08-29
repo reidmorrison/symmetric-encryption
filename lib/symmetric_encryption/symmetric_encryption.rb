@@ -145,6 +145,7 @@ module SymmetricEncryption
   #    Default: Rails.env
   def self.load!(filename=nil, environment=nil)
     config = read_config(filename, environment)
+    generate_symmetric_key_files
 
     # Check for hard coded key, iv and cipher
     if config[:key]
