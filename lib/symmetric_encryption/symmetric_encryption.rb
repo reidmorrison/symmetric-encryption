@@ -160,9 +160,6 @@ module SymmetricEncryption
     true
   end
 
-  # Future: Generate private key in config file generator
-  #new_key = OpenSSL::PKey::RSA.generate(2048)
-
   # Generate new random symmetric keys for use with this Encryption library
   #
   # Note: Only the current Encryption key settings are used
@@ -308,6 +305,12 @@ module SymmetricEncryption
       :cipher   => cipher_conf[:cipher],
       :encoding => cipher_conf[:encoding]
     )
+  end
+
+  # With Ruby 1.9 strings have encodings
+  if defined?(Encoding)
+    BINARY_ENCODING = Encoding.find("binary")
+    UTF8_ENCODING = Encoding.find("UTF-8")
   end
 
 end

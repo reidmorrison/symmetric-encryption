@@ -1,0 +1,9 @@
+test:
+  sessions:
+    default:
+      hosts:
+        - localhost:27017
+      # All Dates and Times should be returned in UTC, not the local timezone
+      use_utc: true
+      persist_in_safe_mode: true
+      database: symmetric_encryption_test

@@ -129,6 +129,18 @@ Example: Compress, Encrypt and write data to a file
       file.write "Keep this safe and secure\n"
     end
 
+### Standalone test
+
+Before generating keys we can use SymmetricEncryption in a standalone test environment:
+
+    # Use test encryption keys
+    SymmetricEncryption.cipher = SymmetricEncryption::Cipher.new(
+      :key    => '1234567890ABCDEF1234567890ABCDEF',
+      :iv     => '1234567890ABCDEF',
+      :cipher => 'aes-128-cbc'
+    )
+    encrypted = SymmetricEncryption.encrypt('hello world')
+    puts SymmetricEncryption.decrypt(encrypted)
 
 ### Generating encrypted passwords
 

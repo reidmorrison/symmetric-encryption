@@ -6,13 +6,15 @@ require 'logger'
 require 'erb'
 require 'test/unit'
 require 'shoulda'
-# Since we want both the AR and Mongoid extensions loaded we need to require them first
+# Since we want both the Mongoid extensions loaded we need to require it first
 require 'active_record'
 require 'mongoid'
 require 'symmetric-encryption'
+require 'symmetric_encryption/extensions/mongoid/fields'
 
 Mongoid.logger = Logger.new($stdout)
-Mongoid.load!("test/config/mongoid.yml")
+filename = defined?(Mongoid::VERSION) ? "test/config/mongoid_v3.yml" : "test/config/mongoid_v2.yml"
+Mongoid.load!(filename)
 
 class MongoidUser
   include Mongoid::Document

@@ -36,7 +36,9 @@ class EncryptionWriterTest < Test::Unit::TestCase
       file.close
 
       assert_equal @data_len, written_len
-      assert_equal @data_encrypted, stream.string
+      result = stream.string
+      result.force_encoding('binary') if defined?(Encoding)
+      assert_equal @data_encrypted, result
     end
 
     should "encrypt to string stream using .open" do
@@ -54,7 +56,7 @@ class EncryptionWriterTest < Test::Unit::TestCase
         written_len = @data.inject(0) {|sum,str| sum + file.write(str)}
       end
       assert_equal @data_len, written_len
-      assert_equal @data_encrypted, File.read(@filename)
+      assert_equal @data_encrypted, File.open(@filename, 'rb') {|f| f.read }
     end
   end
 end

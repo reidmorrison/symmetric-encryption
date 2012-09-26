@@ -74,7 +74,7 @@ module SymmetricEncryption
     # end
     def self.open(filename_or_stream, options={}, &block)
       raise "options must be a hash" unless options.respond_to?(:each_pair)
-      mode = options.fetch(:mode, 'r')
+      mode = options.fetch(:mode, 'rb')
       compress = options.fetch(:compress, false)
       ios = filename_or_stream.is_a?(String) ? ::File.open(filename_or_stream, mode) : filename_or_stream
 

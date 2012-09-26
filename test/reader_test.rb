@@ -69,8 +69,8 @@ class ReaderTest < Test::Unit::TestCase
 
     context "reading from file" do
       # With and without header
-      [{:header => false}, {:header => true}, {:header => true, :compress => true}].each do |options|
-        context "with#{'out' unless options[:header]} header" do
+      [{:header => false}, {:compress => false}, {:compress => true}].each_with_index do |options, i|
+        context "with#{'out' unless options[:header]} header #{i}" do
           setup do
             @filename = '._test'
             # Create encrypted file
