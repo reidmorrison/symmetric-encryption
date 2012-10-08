@@ -1,9 +1,12 @@
+require 'zlib'
 require 'symmetric_encryption/version'
 require 'symmetric_encryption/cipher'
 require 'symmetric_encryption/symmetric_encryption'
-require 'symmetric_encryption/reader'
-require 'symmetric_encryption/writer'
-require 'zlib'
+
+module SymmetricEncryption
+  autoload :Reader, 'symmetric_encryption/reader'
+  autoload :Writer, 'symmetric_encryption/writer'
+end
 if defined?(Rails)
   require 'symmetric_encryption/railtie'
 end
