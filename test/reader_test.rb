@@ -1,6 +1,7 @@
 # Allow examples to be run in-place without requiring a gem install
 $LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
 
+require 'stringio'
 require 'rubygems'
 require 'test/unit'
 require 'shoulda'

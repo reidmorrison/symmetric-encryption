@@ -1,0 +1,2 @@
+rvm use ruby-1.9.3-p194
+export RACK_ENV=test
