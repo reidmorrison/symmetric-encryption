@@ -18,7 +18,7 @@ release:
   # source code, we only hold a RSA key that is used to unlock the file
   # containing the actual symmetric encryption key
   private_rsa_key: |
-<%= OpenSSL::PKey::RSA.generate(2048).to_s.collect { |line| "    #{line}" }.join('') %>
+<%= OpenSSL::PKey::RSA.generate(2048).to_s.each_line.collect { |line| "    #{line}" }.join('') %>
 
   # List Symmetric Key files in the order of current / latest first
   ciphers:
@@ -36,7 +36,7 @@ production:
   # source code, we only hold a RSA key that is used to unlock the file
   # containing the actual symmetric encryption key
   private_rsa_key: |
-<%= OpenSSL::PKey::RSA.generate(2048).to_s.collect { |line| "    #{line}" }.join('') %>
+<%= OpenSSL::PKey::RSA.generate(2048).to_s.each_line.collect { |line| "    #{line}" }.join('') %>
 
   # List Symmetric Key files in the order of current / latest first
   ciphers:
