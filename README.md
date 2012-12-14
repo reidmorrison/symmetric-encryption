@@ -59,37 +59,95 @@ are extended with encrypted_ behavior, rather than every object in the system
 
 ### Encryption Example
 
-    SymmetricEncryption.encrypt "Sensitive data"
+```ruby
+SymmetricEncryption.encrypt "Sensitive data"
+```
 
 ### Decryption Example
 
-    SymmetricEncryption.decrypt "JqLJOi6dNjWI9kX9lSL1XQ==\n"
+```ruby
+SymmetricEncryption.decrypt "JqLJOi6dNjWI9kX9lSL1XQ==\n"
+```
+
+### ActiveRecord Example
+
+```ruby
+class User < ActiveRecord::Base
+  # Requires table users to have a column called encrypted_bank_account_number
+  attr_encrypted :bank_account_number
+
+  # Requires table users to have a column called encrypted_social_security_number
+  attr_encrypted :social_security_number
+
+  validates :encrypted_bank_account_number, :symmetric_encryption => true
+  validates :encrypted_social_security_number, :symmetric_encryption => true
+end
+
+# Create a new user instance assigning a bank account number
+user = User.new
+user.bank_account_number = '12345'
+
+# Saves the bank_account_number in the column encrypted_bank_account_number in
+# encrypted form
+user.save!
+
+# Short example using create
+User.create(:bank_account_number => '12345')
+```
+
+### Mongoid Example
+
+To encrypt a field in a Mongoid document, just add ":encrypted => true" at the end
+of the field specifier. The field name must currently begin with "encrypted_"
+
+```ruby
+# User model in Mongoid
+class User
+  include Mongoid::Document
+
+  field :name,                             :type => String
+  field :encrypted_bank_account_number,    :type => String,  :encrypted => true
+  field :encrypted_social_security_number, :type => String,  :encrypted => true
+end
+
+# Create a new user document
+User.create(:bank_account_number => '12345')
+
+# When finding a document, always use the encrypted form of the field name
+user = User.where(:encrypted_bank_account_number => SymmetricEncryption.encrypt('12345')).first
+
+# Fields can be accessed using their unencrypted names
+puts user.bank_account_number
+```
 
 ### Validation Example
 
-    class MyModel < ActiveRecord::Base
-      validates :encrypted_ssn, :symmetric_encryption => true
-    end
+```ruby
+class MyModel < ActiveRecord::Base
+  validates :encrypted_ssn, :symmetric_encryption => true
+end
 
-    m = MyModel.new
-    m.valid?
-    #  => false
-    m.encrypted_ssn = SymmetricEncryption.encrypt('123456789')
-    m.valid?
-    #  => true
-
+m = MyModel.new
+m.valid?
+#  => false
+m.encrypted_ssn = SymmetricEncryption.encrypt('123456789')
+m.valid?
+#  => true
+```
 ### Encrypting Passwords in configuration files
 
 Passwords can be encrypted in any YAML configuration file.
 
 For example config/database.yml
 
-    production:
-      adapter:  mysql
-      host:     db1w
-      database: myapp_production
-      username: admin
-      password: <%= SymmetricEncryption.try_decrypt "JqLJOi6dNjWI9kX9lSL1XQ==\n" %>
+```yaml
+production:
+  adapter:  mysql
+  host:     db1w
+  database: myapp_production
+  username: admin
+  password: <%= SymmetricEncryption.try_decrypt "JqLJOi6dNjWI9kX9lSL1XQ==\n" %>
+```
 
 Note: Use SymmetricEncryption.try_decrypt method which will return nil if it
   fails to decrypt the value, which is essential when the encryption keys differ
@@ -108,39 +166,47 @@ Note: In order for the above technique to work in other YAML configuration files
 
 Example: Read and decrypt a line at a time from a file
 
-    SymmetricEncryption::Reader.open('encrypted_file') do |file|
-      file.each_line do |line|
-        puts line
-      end
-    end
+```ruby
+SymmetricEncryption::Reader.open('encrypted_file') do |file|
+  file.each_line do |line|
+	 puts line
+  end
+end
+```
 
 Example: Encrypt and write data to a file
 
-    SymmetricEncryption::Writer.open('encrypted_file') do |file|
-      file.write "Hello World\n"
-      file.write "Keep this secret"
-    end
+```ruby
+SymmetricEncryption::Writer.open('encrypted_file') do |file|
+  file.write "Hello World\n"
+  file.write "Keep this secret"
+end
+```
 
 Example: Compress, Encrypt and write data to a file
 
-    SymmetricEncryption::Writer.open('encrypted_compressed.zip', :compress => true) do |file|
-      file.write "Hello World\n"
-      file.write "Compress this\n"
-      file.write "Keep this safe and secure\n"
-    end
+```ruby
+SymmetricEncryption::Writer.open('encrypted_compressed.zip', :compress => true) do |file|
+  file.write "Hello World\n"
+  file.write "Compress this\n"
+  file.write "Keep this safe and secure\n"
+end
+```
 
 ### Standalone test
 
 Before generating keys we can use SymmetricEncryption in a standalone test environment:
 
-    # Use test encryption keys
-    SymmetricEncryption.cipher = SymmetricEncryption::Cipher.new(
-      :key    => '1234567890ABCDEF1234567890ABCDEF',
-      :iv     => '1234567890ABCDEF',
-      :cipher => 'aes-128-cbc'
-    )
-    encrypted = SymmetricEncryption.encrypt('hello world')
-    puts SymmetricEncryption.decrypt(encrypted)
+```ruby
+# Use test encryption keys
+SymmetricEncryption.cipher = SymmetricEncryption::Cipher.new(
+  :key    => '1234567890ABCDEF1234567890ABCDEF',
+  :iv     => '1234567890ABCDEF',
+  :cipher => 'aes-128-cbc'
+)
+encrypted = SymmetricEncryption.encrypt('hello world')
+puts SymmetricEncryption.decrypt(encrypted)
+```
 
 ### Generating encrypted passwords
 
@@ -155,7 +221,9 @@ Note: Passwords must be encrypted in the environment in which they will be used.
 ### Add to an existing Rails project
 Add the following line to Gemfile
 
-    gem 'symmetric-encryption'
+```ruby
+gem 'symmetric-encryption'
+```
 
 Install the Gem with bundler
 
@@ -244,8 +312,10 @@ one supplied in examples/symmetric-encryption.yml.
 At application startup, run the code below to initialize symmetric-encryption prior to
 attempting to encrypt or decrypt any data
 
-    require 'symmetric-encryption'
-    SymmetricEncryption.load!('config/symmetric-encryption.yml', 'production')
+```ruby
+require 'symmetric-encryption'
+SymmetricEncryption.load!('config/symmetric-encryption.yml', 'production')
+```
 
 Parameters:
 
@@ -254,8 +324,10 @@ Parameters:
 
 To manually generate the symmetric encryption keys, run the code below
 
-    require 'symmetric-encryption'
-    SymmetricEncryption.generate_symmetric_key_files('config/symmetric-encryption.yml', 'production')
+```ruby
+require 'symmetric-encryption'
+SymmetricEncryption.generate_symmetric_key_files('config/symmetric-encryption.yml', 'production')
+```
 
 Parameters:
 
@@ -280,87 +352,89 @@ use the same RSA Private key for gaining access to the Symmetric Encryption Keys
 
 Create a configuration file in config/symmetric-encryption.yml per the following example:
 
-    #
-    # Symmetric Encryption for Ruby
-    #
-    ---
-    # For the development and test environments the test symmetric encryption keys
-    # can be placed directly in the source code.
-    # And therefore no RSA private key is required
-    development: &development_defaults
-      key:    1234567890ABCDEF1234567890ABCDEF
-      iv:     1234567890ABCDEF
-      cipher: aes-128-cbc
+```yaml
+#
+# Symmetric Encryption for Ruby
+#
+---
+# For the development and test environments the test symmetric encryption keys
+# can be placed directly in the source code.
+# And therefore no RSA private key is required
+development: &development_defaults
+  key:    1234567890ABCDEF1234567890ABCDEF
+  iv:     1234567890ABCDEF
+  cipher: aes-128-cbc
 
-    test:
-      <<: *development_defaults
+test:
+  <<: *development_defaults
 
-    production:
-      # Since the key to encrypt and decrypt with must NOT be stored along with the
-      # source code, we only hold a RSA key that is used to unlock the file
-      # containing the actual symmetric encryption key
-      #
-      # Sample RSA Key, DO NOT use this RSA key, generate a new one using
-      #    openssl genrsa 2048
-      private_rsa_key: |
-        -----BEGIN RSA PRIVATE KEY-----
-        MIIEpAIBAAKCAQEAxIL9H/jYUGpA38v6PowRSRJEo3aNVXULNM/QNRpx2DTf++KH
-        6DcuFTFcNSSSxG9n4y7tKi755be8N0uwCCuOzvXqfWmXYjbLwK3Ib2vm0btpHyvA
-        qxgqeJOOCxKdW/cUFLWn0tACUcEjVCNfWEGaFyvkOUuR7Ub9KfhbW9cZO3BxZMUf
-        IPGlHl/gWyf484sXygd+S7cpDTRRzo9RjG74DwfE0MFGf9a1fTkxnSgeOJ6asTOy
-        fp9tEToUlbglKaYGpOGHYQ9TV5ZsyJ9jRUyb4SP5wK2eK6dHTxTcHvT03kD90Hv4
-        WeKIXv3WOjkwNEyMdpnJJfSDb5oquQvCNi7ZSQIDAQABAoIBAQCbzR7TUoBugU+e
-        ICLvpC2wOYOh9kRoFLwlyv3QnH7WZFWRZzFJszYeJ1xr5etXQtyjCnmOkGAg+WOI
-        k8GlOKOpAuA/PpB/leJFiYL4lBwU/PmDdTT0cdx6bMKZlNCeMW8CXGQKiFDOcMqJ
-        0uGtH5YD+RChPIEeFsJxnC8SyZ9/t2ra7XnMGiCZvRXIUDSEIIsRx/mOymJ7bL+h
-        Lbp46IfXf6ZuIzwzoIk0JReV/r+wdmkAVDkrrMkCmVS4/X1wN/Tiik9/yvbsh/CL
-        ztC55eSIEjATkWxnXfPASZN6oUfQPEveGH3HzNjdncjH/Ho8FaNMIAfFpBhhLPi9
-        nG5sbH+BAoGBAOdoUyVoAA/QUa3/FkQaa7Ajjehe5MR5k6VtaGtcxrLiBjrNR7x+
-        nqlZlGvWDMiCz49dgj+G1Qk1bbYrZLRX/Hjeqy5dZOGLMfgf9eKUmS1rDwAzBMcj
-        M9jnnJEBx8HIlNzaR6wzp3GMd0rrccs660A8URvzkgo9qNbvMLq9vyUtAoGBANll
-        SY1Iv9uaIz8klTXU9YzYtsfUmgXzw7K8StPdbEbo8F1J3JPJB4D7QHF0ObIaSWuf
-        suZqLsvWlYGuJeyX2ntlBN82ORfvUdOrdrbDlmPyj4PfFVl0AK3U3Ai374DNrjKR
-        hF6YFm4TLDaJhUjeV5C43kbE1N2FAMS9LYtPJ44NAoGAFDGHZ/E+aCLerddfwwun
-        MBS6MnftcLPHTZ1RimTrNfsBXipBw1ItWEvn5s0kCm9X24PmdNK4TnhqHYaF4DL5
-        ZjbQK1idEA2Mi8GGPIKJJ2x7P6I0HYiV4qy7fe/w1ZlCXE90B7PuPbtrQY9wO7Ll
-        ipJ45X6I1PnyfOcckn8yafUCgYACtPAlgjJhWZn2v03cTbqA9nHQKyV/zXkyUIXd
-        /XPLrjrP7ouAi5A8WuSChR/yx8ECRgrEM65Be3qBEtoGCB4AS1G0NcigM6qhKBFi
-        VS0aMXr3+V8argcUIwJaWW/x+p2go48yXlJpLHPweeXe8mXEt4iM+QZte6p2yKQ4
-        h9PGQQKBgQCqSydmXBnXGIVTp2sH/2GnpxLYnDBpcJE0tM8bJ42HEQQgRThIChsn
-        PnGA91G9MVikYapgI0VYBHQOTsz8rTIUzsKwXG+TIaK+W84nxH5y6jUkjqwxZmAz
-        r1URaMAun2PfAB4g2N/kEZTExgeOGqXjFhvvjdzl97ux2cTyZhaTXg==
-        -----END RSA PRIVATE KEY-----
+production:
+  # Since the key to encrypt and decrypt with must NOT be stored along with the
+  # source code, we only hold a RSA key that is used to unlock the file
+  # containing the actual symmetric encryption key
+  #
+  # Sample RSA Key, DO NOT use this RSA key, generate a new one using
+  #    openssl genrsa 2048
+  private_rsa_key: |
+	 -----BEGIN RSA PRIVATE KEY-----
+	 MIIEpAIBAAKCAQEAxIL9H/jYUGpA38v6PowRSRJEo3aNVXULNM/QNRpx2DTf++KH
+	 6DcuFTFcNSSSxG9n4y7tKi755be8N0uwCCuOzvXqfWmXYjbLwK3Ib2vm0btpHyvA
+	 qxgqeJOOCxKdW/cUFLWn0tACUcEjVCNfWEGaFyvkOUuR7Ub9KfhbW9cZO3BxZMUf
+	 IPGlHl/gWyf484sXygd+S7cpDTRRzo9RjG74DwfE0MFGf9a1fTkxnSgeOJ6asTOy
+	 fp9tEToUlbglKaYGpOGHYQ9TV5ZsyJ9jRUyb4SP5wK2eK6dHTxTcHvT03kD90Hv4
+	 WeKIXv3WOjkwNEyMdpnJJfSDb5oquQvCNi7ZSQIDAQABAoIBAQCbzR7TUoBugU+e
+	 ICLvpC2wOYOh9kRoFLwlyv3QnH7WZFWRZzFJszYeJ1xr5etXQtyjCnmOkGAg+WOI
+	 k8GlOKOpAuA/PpB/leJFiYL4lBwU/PmDdTT0cdx6bMKZlNCeMW8CXGQKiFDOcMqJ
+	 0uGtH5YD+RChPIEeFsJxnC8SyZ9/t2ra7XnMGiCZvRXIUDSEIIsRx/mOymJ7bL+h
+	 Lbp46IfXf6ZuIzwzoIk0JReV/r+wdmkAVDkrrMkCmVS4/X1wN/Tiik9/yvbsh/CL
+	 ztC55eSIEjATkWxnXfPASZN6oUfQPEveGH3HzNjdncjH/Ho8FaNMIAfFpBhhLPi9
+	 nG5sbH+BAoGBAOdoUyVoAA/QUa3/FkQaa7Ajjehe5MR5k6VtaGtcxrLiBjrNR7x+
+	 nqlZlGvWDMiCz49dgj+G1Qk1bbYrZLRX/Hjeqy5dZOGLMfgf9eKUmS1rDwAzBMcj
+	 M9jnnJEBx8HIlNzaR6wzp3GMd0rrccs660A8URvzkgo9qNbvMLq9vyUtAoGBANll
+	 SY1Iv9uaIz8klTXU9YzYtsfUmgXzw7K8StPdbEbo8F1J3JPJB4D7QHF0ObIaSWuf
+	 suZqLsvWlYGuJeyX2ntlBN82ORfvUdOrdrbDlmPyj4PfFVl0AK3U3Ai374DNrjKR
+	 hF6YFm4TLDaJhUjeV5C43kbE1N2FAMS9LYtPJ44NAoGAFDGHZ/E+aCLerddfwwun
+	 MBS6MnftcLPHTZ1RimTrNfsBXipBw1ItWEvn5s0kCm9X24PmdNK4TnhqHYaF4DL5
+	 ZjbQK1idEA2Mi8GGPIKJJ2x7P6I0HYiV4qy7fe/w1ZlCXE90B7PuPbtrQY9wO7Ll
+	 ipJ45X6I1PnyfOcckn8yafUCgYACtPAlgjJhWZn2v03cTbqA9nHQKyV/zXkyUIXd
+	 /XPLrjrP7ouAi5A8WuSChR/yx8ECRgrEM65Be3qBEtoGCB4AS1G0NcigM6qhKBFi
+	 VS0aMXr3+V8argcUIwJaWW/x+p2go48yXlJpLHPweeXe8mXEt4iM+QZte6p2yKQ4
+	 h9PGQQKBgQCqSydmXBnXGIVTp2sH/2GnpxLYnDBpcJE0tM8bJ42HEQQgRThIChsn
+	 PnGA91G9MVikYapgI0VYBHQOTsz8rTIUzsKwXG+TIaK+W84nxH5y6jUkjqwxZmAz
+	 r1URaMAun2PfAB4g2N/kEZTExgeOGqXjFhvvjdzl97ux2cTyZhaTXg==
+	 -----END RSA PRIVATE KEY-----
 
-      # List Symmetric Key files in the order of current / latest first
-      ciphers:
-        -
-          # Filename containing Symmetric Encryption Key encrypted using the
-          # RSA public key derived from the private key above
-          key_filename: /etc/rails/.rails.key
-          iv_filename:  /etc/rails/.rails.iv
+  # List Symmetric Key files in the order of current / latest first
+  ciphers:
+	 -
+		# Filename containing Symmetric Encryption Key encrypted using the
+		# RSA public key derived from the private key above
+		key_filename: /etc/rails/.rails.key
+		iv_filename:  /etc/rails/.rails.iv
 
-          # Encryption cipher
-          #   Recommended values:
-          #      aes-256-cbc
-          #         256 AES CBC Algorithm. Very strong
-          #         Ruby 1.8.7 MRI Approximately 100,000 encryptions or decryptions per second
-          #         JRuby 1.6.7 with Ruby 1.8.7 Approximately 22,000 encryptions or decryptions per second
-          #      aes-128-cbc
-          #         128 AES CBC Algorithm. Less strong.
-          #         Ruby 1.8.7 MRI Approximately 100,000 encryptions or decryptions per second
-          #         JRuby 1.6.7 with Ruby 1.8.7 Approximately 22,000 encryptions or decryptions per second
-          cipher: aes-256-cbc
+		# Encryption cipher
+		#   Recommended values:
+		#      aes-256-cbc
+		#         256 AES CBC Algorithm. Very strong
+		#         Ruby 1.8.7 MRI Approximately 100,000 encryptions or decryptions per second
+		#         JRuby 1.6.7 with Ruby 1.8.7 Approximately 22,000 encryptions or decryptions per second
+		#      aes-128-cbc
+		#         128 AES CBC Algorithm. Less strong.
+		#         Ruby 1.8.7 MRI Approximately 100,000 encryptions or decryptions per second
+		#         JRuby 1.6.7 with Ruby 1.8.7 Approximately 22,000 encryptions or decryptions per second
+		cipher: aes-256-cbc
 
-        -
-          # OPTIONAL:
-          #
-          # Any previous Symmetric Encryption Keys
-          #
-          # Only used when old data still exists that requires old decryption keys
-          # to be used
-          key_filename: /etc/rails/.rails_old.key
-          iv_filename:  /etc/rails/.rails_old.iv
-          cipher:       aes-256-cbc
+	 -
+		# OPTIONAL:
+		#
+		# Any previous Symmetric Encryption Keys
+		#
+		# Only used when old data still exists that requires old decryption keys
+		# to be used
+		key_filename: /etc/rails/.rails_old.key
+		iv_filename:  /etc/rails/.rails_old.iv
+		cipher:       aes-256-cbc
+```
 
 ## Future Enhancements
 

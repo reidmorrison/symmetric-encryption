@@ -19,7 +19,7 @@ task :gem  do |t|
     s.date        = Date.today.to_s
     s.summary     = "Symmetric Encryption for Ruby, and Ruby on Rails"
     s.description = "SymmetricEncryption supports encrypting ActiveRecord data, Mongoid data, passwords in configuration files, encrypting and decrypting of large files through streaming"
-    s.files       = FileList["./**/*"].exclude('*.gem', 'nbproject').map{|f| f.sub(/^\.\//, '')}
+    s.files       = FileList["./**/*"].exclude(/.gem$/, /.log$/,/^nbproject/).map{|f| f.sub(/^\.\//, '')}
     s.has_rdoc    = true
   end
   Gem::Builder.new(gemspec).build
