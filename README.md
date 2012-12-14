@@ -141,6 +141,7 @@ Passwords can be encrypted in any YAML configuration file.
 For example config/database.yml
 
 ```yaml
+---
 production:
   adapter:  mysql
   host:     db1w
@@ -156,11 +157,13 @@ Note: Use SymmetricEncryption.try_decrypt method which will return nil if it
 Note: In order for the above technique to work in other YAML configuration files
   the YAML file must be processed using ERB prior to passing to YAML. For example
 
+```ruby
     config_file = Rails.root.join('config', 'redis.yml')
     raise "redis config not found. Create a config file at: config/redis.yml" unless config_file.file?
 
     cfg = YAML.load(ERB.new(File.new(config_file).read).result)[Rails.env]
     raise("Environment #{Rails.env} not defined in redis.yml") unless cfg
+```
 
 ### Large File Encryption
 
@@ -208,10 +211,21 @@ encrypted = SymmetricEncryption.encrypt('hello world')
 puts SymmetricEncryption.decrypt(encrypted)
 ```
 
-### Generating encrypted passwords
+### Rake Tasks
 
-The following rake task can be used to generate encrypted passwords for the
-specified environment
+For PCI compliance developers should not be the ones creating or encrypting
+passwords. The following rake tasks can be used by system administrators to
+generate and encrypt passwords for databases, or external web calls.
+It is safe to pass the encrypted password for say MySQL to the developers
+who can then put it in the config files which are kept in source control.
+
+Generate a random password and display its encrypted form:
+
+    rake symmetric_encryption:random_password
+
+Encrypt a known value, such as a password:
+
+    rake symmetric_encryption:encrypt
 
 Note: Passwords must be encrypted in the environment in which they will be used.
   Since each environment should have its own symmetric encryption keys
