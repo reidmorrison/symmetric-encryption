@@ -1,7 +1,5 @@
 test:
-  database: symmetric_encryption_test
-  username: root
-  password:
-  encoding: utf8
-  adapter:  mysql
-  host:     127.0.0.1
+  adapter:  sqlite3
+  database: test/test_db.sqlite3
+  pool:     5
+  timeout:  5000

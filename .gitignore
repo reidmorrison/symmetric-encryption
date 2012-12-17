@@ -3,4 +3,5 @@ nbproject/*
 *.gem
 .idea/*
 Gemfile.lock
-._test
+test.rb
+*.sqlite3
