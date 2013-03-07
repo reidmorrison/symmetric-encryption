@@ -27,7 +27,7 @@ created, managed and further secured by System Administrators. This prevents
 developers having or needing to have access to the symmetric encryption keys
 * The Operating System security features limit access to the Symmetric Encryption
 key files to System Administrators and the userid under which the Rails application runs.
-* The files in which the Symmetric Encryption keys are stored are futher
+* The files in which the Symmetric Encryption keys are stored are further
 encrypted using RSA 2048 bit encryption
 
 In order for anyone to decrypt the data being encrypted in the database, they
@@ -37,6 +37,15 @@ by the Operating System
 * The application source code containing the RSA private key to decrypt the above files
 * The userid and password for the database to copy the encrypted data itself,
 or an unsecured copy or export of the database contents
+
+A major feature of symmetric encryption is that it makes the encryption and decryption
+automatically available when the Rails application is started. This includes all
+rake tasks and the Rails console. In this way data can be encrypted or decrypted as
+part of any rake task.
+
+From a security perspective it is important then to properly secure the system so that
+no hacker can switch to and run as the rails user and thereby gain access to the
+encryption and decryption capabilities
 
 ## Features
 

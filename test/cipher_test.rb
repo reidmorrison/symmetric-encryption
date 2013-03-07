@@ -13,16 +13,18 @@ class CipherTest < Test::Unit::TestCase
 
     should "allow setting the cipher" do
       cipher = SymmetricEncryption::Cipher.new(
-        :cipher => 'aes-128-cbc',
-        :key => '1234567890ABCDEF1234567890ABCDEF',
-        :iv  => '1234567890ABCDEF'
+        :cipher   => 'aes-128-cbc',
+        :key      => '1234567890ABCDEF1234567890ABCDEF',
+        :iv       => '1234567890ABCDEF',
+        :encoding => :none
       )
       assert_equal 'aes-128-cbc', cipher.cipher
     end
 
     should "not require an iv" do
       cipher = SymmetricEncryption::Cipher.new(
-        :key => '1234567890ABCDEF1234567890ABCDEF'
+        :key      => '1234567890ABCDEF1234567890ABCDEF',
+        :encoding => :none
       )
       result = "\302<\351\227oj\372\3331\310\260V\001\v'\346"
       # Note: This test fails on JRuby 1.7 RC1 since it's OpenSSL
@@ -35,9 +37,10 @@ class CipherTest < Test::Unit::TestCase
 
     should "throw an exception on bad data" do
       cipher = SymmetricEncryption::Cipher.new(
-        :cipher => 'aes-128-cbc',
-        :key => '1234567890ABCDEF1234567890ABCDEF',
-        :iv  => '1234567890ABCDEF'
+        :cipher   => 'aes-128-cbc',
+        :key      => '1234567890ABCDEF1234567890ABCDEF',
+        :iv       => '1234567890ABCDEF',
+        :encoding => :none
       )
       assert_raise OpenSSL::Cipher::CipherError do
         cipher.decrypt('bad data')
@@ -49,8 +52,9 @@ class CipherTest < Test::Unit::TestCase
   context 'with configuration' do
     setup do
       @cipher = SymmetricEncryption::Cipher.new(
-        :key => '1234567890ABCDEF1234567890ABCDEF',
-        :iv  => '1234567890ABCDEF'
+        :key      => '1234567890ABCDEF1234567890ABCDEF',
+        :iv       => '1234567890ABCDEF',
+        :encoding => :none
       )
       @social_security_number = "987654321"
 

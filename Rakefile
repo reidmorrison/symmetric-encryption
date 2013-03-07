@@ -2,6 +2,7 @@ lib = File.expand_path('../lib/', __FILE__)
 $:.unshift lib unless $:.include?(lib)
 
 require 'rubygems'
+require 'rubygems/package'
 require 'rake/clean'
 require 'rake/testtask'
 require 'date'
@@ -20,9 +21,10 @@ task :gem  do |t|
     s.summary     = "Symmetric Encryption for Ruby, and Ruby on Rails"
     s.description = "SymmetricEncryption supports encrypting ActiveRecord data, Mongoid data, passwords in configuration files, encrypting and decrypting of large files through streaming"
     s.files       = FileList["./**/*"].exclude(/.gem$/, /.log$/,/^nbproject/).map{|f| f.sub(/^\.\//, '')}
+    s.license     = "Apache License V2.0"
     s.has_rdoc    = true
   end
-  Gem::Builder.new(gemspec).build
+  Gem::Package.build gemspec
 end
 
 desc "Run Test Suite"

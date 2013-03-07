@@ -22,7 +22,7 @@ class ReaderTest < Test::Unit::TestCase
       ]
       @data_str = @data.inject('') {|sum,str| sum << str}
       @data_len = @data_str.length
-      @data_encrypted = SymmetricEncryption.cipher.encrypt(@data_str)
+      @data_encrypted = SymmetricEncryption.cipher.encrypt(@data_str, false)
     end
 
     should "decrypt from string stream as a single read" do

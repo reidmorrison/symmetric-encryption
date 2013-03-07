@@ -66,12 +66,7 @@ module SymmetricEncryption
   def self.decrypt(str)
     raise "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data" unless @@cipher
 
-    # Decode data first based on encoding setting
-    case @@cipher.encoding
-    when :base64, :base64strict
-      str = ::Base64.decode64(str) if str
-    end
-
+    # Decode and then decrypt supplied string
     begin
       @@cipher.decrypt(str)
     rescue OpenSSL::Cipher::CipherError => exc
@@ -92,19 +87,8 @@ module SymmetricEncryption
   def self.encrypt(str)
     raise "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data" unless @@cipher
 
-    # Encrypt data as a binary string
-    if result = @@cipher.encrypt(str)
-      # Now encode data based on encoding setting
-      case @@cipher.encoding
-      when :base64
-        # Base 64 Encoding of binary data
-        ::Base64.encode64(result)
-      when :base64strict
-        ::Base64.encode64(result).gsub(/\n/, '')
-      else
-        result
-      end
-    end
+    # Encrypt and then encode the supplied string
+    @@cipher.encrypt(str)
   end
 
   # Invokes decrypt

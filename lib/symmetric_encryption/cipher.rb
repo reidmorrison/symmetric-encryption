@@ -11,7 +11,7 @@ module SymmetricEncryption
     attr_accessor :encoding
 
     # Available encodings
-    ENCODINGS = [:none, :base64, :base64strict]
+    ENCODINGS = [:none, :base64, :base64strict, :base16]
 
     # Generate a new Symmetric Key pair
     #
@@ -51,7 +51,9 @@ module SymmetricEncryption
     #       It is not the default for backward compatibility
     #     :base64
     #       Return as a base64 encoded string
-    #     :binary
+    #     :base16
+    #       Return as a Hex encoded string
+    #     :none
     #       Return as raw binary data string. Note: String can contain embedded nulls
     #     Default: :base64
     #     Recommended: :base64strict
@@ -69,45 +71,53 @@ module SymmetricEncryption
       raise("Invalid Encoding: #{@encoding}") unless ENCODINGS.include?(@encoding)
     end
 
-    # AES Symmetric Encryption of supplied string
+    # Encryption of supplied string
     # The String is encoded to UTF-8 prior to encryption
     #
-    #  Returns result as a Base64 encoded string
+    #  Returns result as an encoded string if encode is true
     #  Returns nil if the supplied str is nil
     #  Returns "" if it is a string and it is empty
     if defined?(Encoding)
-      def encrypt(str)
+      def encrypt(str, encode = true)
         return if str.nil?
         buf = str.to_s.encode(SymmetricEncryption::UTF8_ENCODING)
         return str if buf.empty?
-        crypt(:encrypt, buf)
+        encrypted = crypt(:encrypt, buf)
+        encode ? self.encode(encrypted) : encrypted
       end
     else
-      def encrypt(str)
+      def encrypt(str, encode = true)
         return if str.nil?
         buf = str.to_s
         return str if buf.empty?
-        crypt(:encrypt, buf)
+        encrypted = crypt(:encrypt, buf)
+        encode ? self.encode(encrypted) : encrypted
       end
     end
 
-    # AES Symmetric Decryption of supplied string
-    # The encoding of the supplied string is ignored since it must be binary data
+    # Decryption of supplied string
+    #
+    # Decodes string first if decode is true
+    #
     #  Returns a UTF-8 encoded, decrypted string
     #  Returns nil if the supplied str is nil
     #  Returns "" if it is a string and it is empty
     if defined?(Encoding)
-      def decrypt(str)
-        return if str.nil?
-        buf = str.to_s.force_encoding(SymmetricEncryption::BINARY_ENCODING)
-        return str if buf.empty?
+      def decrypt(str, decode = true)
+        decoded = self.decode(str) if decode
+        return unless decoded
+
+        buf = decoded.to_s.force_encoding(SymmetricEncryption::BINARY_ENCODING)
+        return decoded if buf.empty?
         crypt(:decrypt, buf).force_encoding(SymmetricEncryption::UTF8_ENCODING)
       end
     else
-      def decrypt(str)
-        return if str.nil?
-        buf = str.to_s
-        return str if buf.empty?
+      def decrypt(str, decode = true)
+        decoded = self.decode(str) if decode
+        return unless decoded
+
+        buf = decoded.to_s
+        return decoded if buf.empty?
         crypt(:decrypt, buf)
       end
     end
@@ -121,6 +131,40 @@ module SymmetricEncryption
     # Returns the block size for the configured cipher
     def block_size
       ::OpenSSL::Cipher::Cipher.new(@cipher).block_size
+    end
+
+    # Encode the supplied string using the encoding in this cipher instance
+    # Returns nil if the supplied string is nil
+    # Note: No encryption or decryption is performed
+    def encode(binary_string)
+      return unless binary_string
+
+      # Now encode data based on encoding setting
+      case encoding
+      when :base64
+        ::Base64.encode64(binary_string)
+      when :base64strict
+        ::Base64.encode64(binary_string).gsub(/\n/, '')
+      when :base16
+        binary_string.to_s.unpack('H*').first
+      else
+        binary_string
+      end
+    end
+
+    # Decode the supplied string using the encoding in this cipher instance
+    # Note: No encryption or decryption is performed
+    def decode(encoded_string)
+      return unless encoded_string
+
+      case encoding
+      when :base64, :base64strict
+        ::Base64.decode64(encoded_string)
+      when :base16
+        [encoded_string].pack('H*')
+      else
+        encoded_string
+      end
     end
 
     protected
