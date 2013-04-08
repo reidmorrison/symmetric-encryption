@@ -13,7 +13,7 @@ SymmetricEncryption.load!(File.join(File.dirname(__FILE__), 'config', 'symmetric
 # Unit Test for SymmetricEncrypted::ReaderStream
 #
 class ReaderTest < Test::Unit::TestCase
-  context 'Reader' do
+  context SymmetricEncryption::Reader do
     setup do
       @data = [
         "Hello World\n",
@@ -70,7 +70,7 @@ class ReaderTest < Test::Unit::TestCase
 
     context "reading from file" do
       # With and without header
-      [{:header => false}, {:compress => false}, {:compress => true}].each_with_index do |options, i|
+      [{:header => false}, {:header => false, :random_key => false},  {:compress => false}, {:compress => true}, {:random_key => false}].each_with_index do |options, i|
         context "with#{'out' unless options[:header]} header #{i}" do
           setup do
             @filename = '._test'

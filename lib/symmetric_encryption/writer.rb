@@ -20,7 +20,16 @@ module SymmetricEncryption
     #     :compress [true|false]
     #          Uses Zlib to compress the data before it is encrypted and
     #          written to the file
+    #          If true, it forces header to true.
     #          Default: false
+    #
+    #     :random_key [true|false]
+    #          Generates a new random key and iv for every new file or stream
+    #          If true, it forces header to true. Version below then has no effect
+    #          The Random key and iv will be written to the file/stream in encrypted
+    #          form as part of the header
+    #          The key and iv are both encrypted using the global key
+    #          Default: true
     #
     #     :header [true|false]
     #          Whether to include the magic header that indicates the file
@@ -81,18 +90,22 @@ module SymmetricEncryption
 
     # Encrypt data before writing to the supplied stream
     def initialize(ios,options={})
-      @ios      = ios
-      header    = options.fetch(:header, true)
+      @ios       = ios
+      header     = options.fetch(:header, true)
       # Compress is only used at this point for setting the flag in the header
-      @compress = options.fetch(:compress, false)
+      random_key = options.fetch(:random_key, true)
+      compress   = options.fetch(:compress, false)
+      # Force header if compressed or using random iv, key pair
+      header     = true if compress || random_key
 
-      # Use primary cipher by default, but allow a secondary cipher to be selected for encryption
-      @cipher   = SymmetricEncryption.cipher(options[:version])
+      # Create random cipher or use global primary cipher
+      @cipher = random_key ? SymmetricEncryption::Cipher.random_cipher : SymmetricEncryption.cipher(options[:version])
       raise "Cipher with version:#{options[:version]} not found in any of the configured SymmetricEncryption ciphers" unless @cipher
 
       @stream_cipher = @cipher.send(:openssl_cipher, :encrypt)
 
-      write_header if header
+      # Write the Encryption header including the random iv, key, and cipher
+      @ios.write(@cipher.magic_header(compress, random_key, random_key, random_key)) if header
     end
 
     # Close the IO Stream
@@ -137,20 +150,6 @@ module SymmetricEncryption
     #  Needed by XLS gem
     def flush
       @ios.flush
-    end
-
-    private
-
-    # Write the Encryption header if this is the first write
-    def write_header
-      # Include Header and encryption version indicator
-      flags  = @cipher.version || 0 # Same as 0b0000_0000_0000_0000
-
-      # If the data is to be compressed before being encrypted, set the
-      # compressed bit in the version byte
-      flags |= 0b1000_0000_0000_0000 if @compress
-
-      @ios.write "#{MAGIC_HEADER}#{[flags].pack('v')}"
     end
 
   end

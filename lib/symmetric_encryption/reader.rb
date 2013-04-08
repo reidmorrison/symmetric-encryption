@@ -14,6 +14,17 @@ module SymmetricEncryption
     #     avoid having the stream closed automatically
     #
     #   options:
+    #     :mode
+    #          See File.open for open modes
+    #          Default: 'rb'
+    #
+    #     :buffer_size
+    #          Amount of data to read at a time
+    #          The buffer size must be at least large enough to hold the entire
+    #          magic header if one is present
+    #          Default: 4096
+    #
+    #   The following options are only used if the stream/file has no header
     #     :compress [true|false]
     #          Uses Zlib to decompress the data after it is decrypted
     #          Note: This option is only used if the file does not have a header
@@ -24,14 +35,6 @@ module SymmetricEncryption
     #          Version of the encryption key to use when decrypting and the
     #          file/stream does not include a header at the beginning
     #          Default: Current primary key
-    #
-    #     :mode
-    #          See File.open for open modes
-    #          Default: 'r'
-    #
-    #     :buffer_size
-    #          Amount of data to read at a time
-    #          Default: 4096
     #
     # Note: Decryption occurs before decompression
     #
@@ -74,9 +77,9 @@ module SymmetricEncryption
     # end
     def self.open(filename_or_stream, options={}, &block)
       raise "options must be a hash" unless options.respond_to?(:each_pair)
-      mode = options.fetch(:mode, 'rb')
+      mode     = options.fetch(:mode, 'rb')
       compress = options.fetch(:compress, false)
-      ios = filename_or_stream.is_a?(String) ? ::File.open(filename_or_stream, mode) : filename_or_stream
+      ios      = filename_or_stream.is_a?(String) ? ::File.open(filename_or_stream, mode) : filename_or_stream
 
       begin
         file = self.new(ios, options)
@@ -288,17 +291,9 @@ module SymmetricEncryption
 
       # Read first block and check for the header
       buf = @ios.read(@buffer_size)
-      if buf.start_with?(MAGIC_HEADER)
-        # Header includes magic header and version byte
-        # Remove header and extract flags
-        header, flags = buf.slice!(0..MAGIC_HEADER_SIZE+1).unpack(MAGIC_HEADER_UNPACK)
-        @compressed = (flags & 0b1000_0000_0000_0000) != 0
-        @version = @compressed ? flags - 0b1000_0000_0000_0000 : flags
-      end
 
-      # Use primary cipher by default, but allow a secondary cipher to be selected for encryption
-      @cipher = SymmetricEncryption.cipher(@version)
-      raise "Cipher with version:#{@version.inspect} not found in any of the configured SymmetricEncryption ciphers" unless @cipher
+      # Use cipher specified in header, or global cipher if it has no header
+      @cipher, @compressed = SymmetricEncryption::Cipher.parse_magic_header!(buf)
       @stream_cipher = @cipher.send(:openssl_cipher, :decrypt)
 
       # First call to #update should return an empty string anyway
