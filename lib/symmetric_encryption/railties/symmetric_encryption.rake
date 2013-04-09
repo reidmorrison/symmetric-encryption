@@ -30,4 +30,51 @@ namespace :symmetric_encryption do
     puts "Encrypted: #{SymmetricEncryption.encrypt(p)}\n\n"
   end
 
+  desc 'Decrypt a file. Example: INFILE="encrypted_filename" OUTFILE="filename" rake symmetric_encryption:decrypt_file'
+  task :decrypt_file => :environment do
+    input_filename  = ENV['INFILE']
+    output_filename = ENV['OUTFILE']
+    block_size      = ENV['BLOCKSIZE'] || 65535
+
+    if input_filename && output_filename
+      puts "\nDecrypting file: #{input_filename} and writing to: #{output_filename}\n\n"
+      ::File.open(output_filename, 'wb') do |output_file|
+        SymmetricEncryption::Reader.open(input_filename) do |input_file|
+          while !input_file.eof?
+            output_file.write(input_file.read(block_size))
+          end
+        end
+      end
+      puts "\n#{output_filename} now contains the decrypted contents of #{input_filename}\n\n"
+    else
+      puts "Missing input and/or output filename. Usage:"
+      puts '  INFILE="encrypted_filename" OUTFILE="filename" rake symmetric_encryption:decrypt_file'
+    end
+  end
+
+  desc 'Encrypt a file. Example: INFILE="filename" OUTFILE="encrypted_filename" rake symmetric_encryption:encrypt_file'
+  task :encrypt_file => :environment do
+    input_filename  = ENV['INFILE']
+    output_filename = ENV['OUTFILE']
+    compress        = (ENV['COMPRESS'] != nil)
+    block_size      = ENV['BLOCKSIZE'] || 65535
+
+    if input_filename && output_filename
+      puts "\nEncrypting file: #{input_filename} and writing to: #{output_filename}\n\n"
+      ::File.open(input_filename, 'rb') do |input_file|
+        SymmetricEncryption::Writer.open(output_filename, :compress => compress) do |output_file|
+          while !input_file.eof?
+            output_file.write(input_file.read(block_size))
+          end
+        end
+      end
+      puts "\n#{output_filename} now contains the encrypted #{"and compressed " if compress}contents of #{input_filename}\n\n"
+    else
+      puts "Missing input and/or output filename. Usage:"
+      puts '  INFILE="filename" OUTFILE="encrypted_filename" rake symmetric_encryption:encrypt_file'
+      puts "To compress the file before encrypting:"
+      puts '  COMPRESS=1 INFILE="filename" OUTFILE="encrypted_filename" rake symmetric_encryption:encrypt_file'
+    end
+  end
+
 end

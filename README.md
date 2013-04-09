@@ -239,6 +239,25 @@ Encrypt a known value, such as a password:
 Note: Passwords must be encrypted in the environment in which they will be used.
   Since each environment should have its own symmetric encryption keys
 
+Encrypt a file
+
+    INFILE="Gemfile.lock" OUTFILE="Gemfile.lock.encrypted" rake symmetric_encryption:encrypt_file
+
+Encrypt and compress a file
+
+    INFILE="Gemfile.lock" OUTFILE="Gemfile.lock.encrypted" COMPRESS=1 rake symmetric_encryption:encrypt_file
+
+Decrypt a file encrypted and optionally compressed using symmetric encryption
+
+    INFILE="Gemfile.lock.encrypted" OUTFILE="Gemfile.lock2" rake symmetric_encryption:decrypt_file
+
+When decrypting a compressed file it is not necessary to specify whether the file was compressed
+since the header embedded in the file will indicate whether it was compressed
+
+The file header also contains a random key and iv used to encrypt the files contents.
+The key and iv is encrypted with the global encryption key being used by the symmetric
+encryption installation.
+
 ## Installation
 
 ### Add to an existing Rails project
