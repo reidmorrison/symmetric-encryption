@@ -30,6 +30,7 @@ release:
       cipher:       aes-256-cbc
       # Base64 encode encrypted data without newlines
       encoding:     :base64strict
+      version:      1
 
 production:
   # Since the key to encrypt and decrypt with must NOT be stored along with the
@@ -48,3 +49,4 @@ production:
       cipher:       aes-256-cbc
       # Base64 encode encrypted data without newlines
       encoding:     :base64strict
+      version:      1

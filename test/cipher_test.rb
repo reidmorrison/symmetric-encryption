@@ -6,6 +6,9 @@ require 'test/unit'
 require 'shoulda'
 require 'symmetric_encryption'
 
+# Load Symmetric Encryption keys
+SymmetricEncryption.load!(File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
+
 # Unit Test for SymmetricEncryption::Cipher
 #
 class CipherTest < Test::Unit::TestCase
@@ -91,18 +94,10 @@ class CipherTest < Test::Unit::TestCase
     end
 
     context "magic header" do
-      setup do
-        @before = SymmetricEncryption.cipher
-        SymmetricEncryption.cipher = @cipher
-      end
-
-      teardown do
-        SymmetricEncryption.cipher = @before
-      end
 
       should "create and parse magic header" do
         random_cipher = SymmetricEncryption::Cipher.random_cipher
-        header = random_cipher.magic_header(compressed=true, include_iv=true, include_key=true, include_cipher=true, encryption_cipher=@cipher)
+        header = random_cipher.magic_header(compressed=true, include_iv=true, include_key=true, include_cipher=true)
         cipher, compressed = SymmetricEncryption::Cipher.parse_magic_header!(header)
         assert_equal true, compressed
         assert_equal random_cipher.cipher, cipher.cipher, "Ciphers differ"

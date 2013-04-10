@@ -30,6 +30,9 @@ module SymmetricEncryption
     #          form as part of the header
     #          The key and iv are both encrypted using the global key
     #          Default: true
+    #          Recommended: true. Setting to false will eventually expose the
+    #            encryption key since too much data will be encrypted using the
+    #            same encryption key
     #
     #     :header [true|false]
     #          Whether to include the magic header that indicates the file
@@ -41,7 +44,11 @@ module SymmetricEncryption
     #          Default: true
     #
     #     :version
-    #          Version of the encryption key to use when encrypting
+    #          When random_key is true, the version of the encryption key to use
+    #          when encrypting the header portion of the file
+    #
+    #          When random_key is false, the version of the encryption key to use
+    #          to encrypt the entire file
     #          Default: Current primary key
     #
     #     :mode

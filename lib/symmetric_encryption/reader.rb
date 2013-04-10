@@ -94,7 +94,7 @@ module SymmetricEncryption
     def initialize(ios,options={})
       @ios         = ios
       @buffer_size = options.fetch(:buffer_size, 4096).to_i
-      @version = options[:version]
+      @version     = options[:version]
       read_header
     end
 
@@ -293,7 +293,11 @@ module SymmetricEncryption
       buf = @ios.read(@buffer_size)
 
       # Use cipher specified in header, or global cipher if it has no header
-      @cipher, @compressed = SymmetricEncryption::Cipher.parse_magic_header!(buf)
+      @cipher, @compressed = SymmetricEncryption::Cipher.parse_magic_header!(buf, @version)
+
+      # Use supplied version if cipher could not be detected due to missing header
+      @cipher ||= SymmetricEncryption.cipher(@version)
+
       @stream_cipher = @cipher.send(:openssl_cipher, :decrypt)
 
       # First call to #update should return an empty string anyway

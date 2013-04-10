@@ -17,10 +17,36 @@ class SymmetricEncryptionTest < Test::Unit::TestCase
     context 'configuration' do
       setup do
         @config = SymmetricEncryption.send(:read_config, File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
+        assert @cipher_v1 = @config[:ciphers][0]
+        assert @cipher_v0 = @config[:ciphers][1]
       end
 
-      should "match config file" do
-        assert_equal @config[:ciphers][0][:cipher], SymmetricEncryption.cipher.cipher
+      should "match config file for first cipher" do
+        cipher = SymmetricEncryption.cipher
+        assert_equal @cipher_v1[:cipher], cipher.cipher
+        assert_equal @cipher_v1[:version], cipher.version
+        assert_equal false, SymmetricEncryption.secondary_ciphers.include?(cipher)
+      end
+
+      should "match config file for v1 cipher" do
+        cipher = SymmetricEncryption.cipher(1)
+        assert @cipher_v1[:cipher]
+        assert @cipher_v1[:version]
+        assert_equal @cipher_v1[:cipher], cipher.cipher
+        assert_equal @cipher_v1[:version], cipher.version
+        assert_equal false, SymmetricEncryption.secondary_ciphers.include?(cipher)
+      end
+
+      should "match config file for v0 cipher" do
+        cipher = SymmetricEncryption.cipher(0)
+        assert @cipher_v0[:cipher]
+        assert @cipher_v0[:version]
+        assert_equal @cipher_v0[:cipher], cipher.cipher
+        assert_equal @cipher_v0[:version], cipher.version
+        assert_equal true, SymmetricEncryption.secondary_ciphers.include?(cipher)
+      end
+
+      should 'read ciphers from config file' do
       end
     end
 

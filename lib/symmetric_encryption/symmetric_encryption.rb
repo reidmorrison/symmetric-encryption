@@ -22,17 +22,18 @@ module SymmetricEncryption
   #     :cipher => 'aes-128-cbc'
   #   )
   def self.cipher=(cipher)
-    raise "Cipher must be similar to SymmetricEncryption::Ciphers" unless cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt)
+    raise "Cipher must be similar to SymmetricEncryption::Ciphers" unless cipher.nil? || (cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt))
     @@cipher = cipher
   end
 
   # Returns the Primary Symmetric Cipher being used
-  # If a version is supplied, then the cipher matching that version will be
-  # returned or nil if no match was found
-  def self.cipher(version = 0)
+  # If a version is supplied
+  #   Returns the primary cipher if no match was found and version == 0
+  #   Returns nil if no match was found and version != 0
+  def self.cipher(version = nil)
     raise "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data" unless @@cipher
-    return @@cipher if version.nil? || (version == 0) || (@@cipher.version == version)
-    secondary_ciphers.find {|c| c.version == version}
+    return @@cipher if version.nil? || (@@cipher.version == version)
+    secondary_ciphers.find {|c| c.version == version} || (@@cipher if version == 0)
   end
 
   # Set the Secondary Symmetric Ciphers Array to be used
@@ -227,7 +228,8 @@ module SymmetricEncryption
           :cipher       => cipher_cfg['cipher'] || default_cipher,
           :key_filename => key_filename,
           :iv_filename  => iv_filename,
-          :encoding     => cipher_cfg['encoding']
+          :encoding     => cipher_cfg['encoding'],
+          :version      => cipher_cfg['version']
         }
       end
 
@@ -287,7 +289,8 @@ module SymmetricEncryption
       :key      => rsa.private_decrypt(encrypted_key),
       :iv       => iv,
       :cipher   => cipher_conf[:cipher],
-      :encoding => cipher_conf[:encoding]
+      :encoding => cipher_conf[:encoding],
+      :version  => cipher_conf[:version]
     )
   end
 

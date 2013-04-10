@@ -70,7 +70,7 @@ class ReaderTest < Test::Unit::TestCase
 
     context "reading from file" do
       # With and without header
-      [{:header => false}, {:header => false, :random_key => false},  {:compress => false}, {:compress => true}, {:random_key => false}].each_with_index do |options, i|
+      [{:header => false, :version => 1}, {:header => false, :random_key => false, :version => 1},  {:compress => false}, {:compress => true}, {:random_key => false}].each_with_index do |options, i|
         context "with#{'out' unless options[:header]} header #{i}" do
           setup do
             @filename = '._test'
@@ -112,5 +112,70 @@ class ReaderTest < Test::Unit::TestCase
       end
 
     end
+
+    context "reading from files with previous keys" do
+      setup do
+        @filename = '._test'
+        # Create encrypted file with old encryption key
+        SymmetricEncryption::Writer.open(@filename, :version => 0) do |file|
+          @data.inject(0) {|sum,str| sum + file.write(str)}
+        end
+      end
+
+      teardown do
+        File.delete(@filename) if File.exist?(@filename)
+      end
+
+      should "decrypt from file in a single read" do
+        decrypted = SymmetricEncryption::Reader.open(@filename) {|file| file.read}
+        assert_equal @data_str, decrypted
+      end
+
+      should "decrypt from file a line at a time" do
+        decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
+          i = 0
+          file.each_line do |line|
+            assert_equal @data[i], line
+            i += 1
+          end
+        end
+      end
+
+      should "support rewind" do
+        decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
+          file.read
+          file.rewind
+          file.read
+        end
+        assert_equal @data_str, decrypted
+      end
+    end
+
+    context "reading from files with previous keys without a header" do
+      setup do
+        @filename = '._test'
+        # Create encrypted file with old encryption key
+        SymmetricEncryption::Writer.open(@filename, :version => 0, :header => false, :random_key => false) do |file|
+          @data.inject(0) {|sum,str| sum + file.write(str)}
+        end
+      end
+
+      teardown do
+        File.delete(@filename) if File.exist?(@filename)
+      end
+
+      should "decrypt from file in a single read" do
+        decrypted = SymmetricEncryption::Reader.open(@filename, :version => 0) {|file| file.read}
+        assert_equal @data_str, decrypted
+      end
+
+      should "decrypt from file in a single read with different version" do
+        # Should fail since file was encrypted using version 0 key
+        assert_raise OpenSSL::Cipher::CipherError do
+          SymmetricEncryption::Reader.open(@filename, :version => 1) {|file| file.read}
+        end
+      end
+    end
+
   end
 end

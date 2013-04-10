@@ -41,6 +41,7 @@ test:
       cipher:       aes-128-cbc
       # Base64 encode encrypted data without newlines
       encoding:     base64strict
+      version:      1
 
     # Previous Symmetric Encryption Key
     - key_filename: /Users/rmorrison/Sandbox/symmetric-encryption/test/config/test_secondary_1.key
@@ -48,4 +49,5 @@ test:
       cipher:       aes-128-cbc
       # Base64 encode encrypted data without newlines
       encoding:     base64
+      version:      0
 

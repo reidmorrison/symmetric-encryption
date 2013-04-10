@@ -12,6 +12,9 @@ in configuration files have to be encrypted
 This Gem helps achieve compliance by supporting encryption of data in a simple
 and consistent way
 
+Symmetric Encryption uses OpenSSL to encrypt and decrypt data, and can therefore
+expose all the encryption algorithms supported by OpenSSL.
+
 ## Security
 
 Many solutions that encrypt data require the encryption keys to be stored in the

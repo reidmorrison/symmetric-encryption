@@ -202,9 +202,20 @@ module SymmetricEncryption
     #
     # The supplied buffer will be updated directly and will have the header
     # portion removed
-    def self.parse_magic_header!(buffer)
+    #
+    # Parameters
+    #   buffer
+    #     String to extract the header from if present
+    #
+    #   default_version
+    #     If no header is present, this is the default value for the version
+    #     of the cipher to use
+    #
+    #   default_compressed
+    #     If no header is present, this is the default value for the compression
+    def self.parse_magic_header!(buffer, default_version=nil, default_compressed=false)
       buffer.force_encoding(SymmetricEncryption::BINARY_ENCODING)
-      return [SymmetricEncryption.cipher, false] unless buffer.start_with?(MAGIC_HEADER)
+      return [SymmetricEncryption.cipher(default_version), default_compressed] unless buffer.start_with?(MAGIC_HEADER)
 
       # Header includes magic header and version byte
       # Remove header and extract flags
@@ -269,8 +280,13 @@ module SymmetricEncryption
       # Ruby V2 named parameters would be perfect here
 
       # Encryption version indicator if available
-      flags  = version || 0 # Same as 0b0000_0000_0000_0000
-      flags = encryption_cipher.version || 0 if (include_iv || include_key) && encryption_cipher
+      flags = version || 0 # Same as 0b0000_0000_0000_0000
+
+      # Replace version with cipher used to encrypt Random IV and Key
+      if include_iv || include_key
+        encryption_cipher ||= SymmetricEncryption.cipher
+        flags = (encryption_cipher.version || 0)
+      end
 
       # If the data is to be compressed before being encrypted, set the
       # compressed bit in the flags word
@@ -280,13 +296,11 @@ module SymmetricEncryption
       flags |= 0b0001_0000_0000_0000 if include_cipher
       header = "#{MAGIC_HEADER}#{[flags].pack('v')}".force_encoding(SymmetricEncryption::BINARY_ENCODING)
       if @iv && include_iv
-        encryption_cipher ||= SymmetricEncryption.cipher
         encrypted = encryption_cipher.crypt(:encrypt, @iv).force_encoding(SymmetricEncryption::BINARY_ENCODING)
         header << [encrypted.length].pack('v').force_encoding(SymmetricEncryption::BINARY_ENCODING)
         header << encrypted
       end
       if include_key
-        encryption_cipher ||= SymmetricEncryption.cipher
         encrypted = encryption_cipher.crypt(:encrypt, @key).force_encoding(SymmetricEncryption::BINARY_ENCODING)
         header << [encrypted.length].pack('v').force_encoding(SymmetricEncryption::BINARY_ENCODING)
         header << encrypted
