@@ -231,7 +231,7 @@ module SymmetricEncryption
 
       if include_iv
         len = buffer.slice!(0..1).unpack('v').first
-        iv  = decryption_cipher.send(:crypt, :decrypt, buffer.slice!(0..len-1))
+        iv  = buffer.slice!(0..len-1)
       end
       if include_key
         len = buffer.slice!(0..1).unpack('v').first
@@ -296,9 +296,8 @@ module SymmetricEncryption
       flags |= 0b0001_0000_0000_0000 if include_cipher
       header = "#{MAGIC_HEADER}#{[flags].pack('v')}".force_encoding(SymmetricEncryption::BINARY_ENCODING)
       if @iv && include_iv
-        encrypted = encryption_cipher.crypt(:encrypt, @iv).force_encoding(SymmetricEncryption::BINARY_ENCODING)
-        header << [encrypted.length].pack('v').force_encoding(SymmetricEncryption::BINARY_ENCODING)
-        header << encrypted
+        header << [@iv.length].pack('v')
+        header << @iv
       end
       if include_key
         encrypted = encryption_cipher.crypt(:encrypt, @key).force_encoding(SymmetricEncryption::BINARY_ENCODING)
