@@ -106,7 +106,7 @@ class CipherTest < Test::Unit::TestCase
 
         string = "Hellow World"
         # Test Encryption
-        assert_equal random_cipher.encrypt(string, false), cipher.encrypt(string, false), "Encrypted values differ"
+        assert_equal random_cipher.encrypt(string, false, false), cipher.encrypt(string, false, false), "Encrypted values differ"
       end
     end
 

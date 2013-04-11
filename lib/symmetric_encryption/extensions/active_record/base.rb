@@ -2,26 +2,49 @@ module ActiveRecord #:nodoc:
   class Base
 
     class << self # Class methods
-      # Much lighter weight encryption for Rails attributes matching the
-      # attr_encrypted interface using SymmetricEncryption
+      # Drop in replacement for attr_encrypted gem, except that it uses
+      # SymmetricEncryption for managing the encryption key
       #
-      # The regular attr_encrypted gem uses Encryptor that adds encryption to
-      # every Ruby object which is a complete overkill for this simple use-case
-      #
-      # Params:
-      # * symbolic names of each method to create which has a corresponding
+      # Parameters:
+      # * Symbolic names of each method to create which has a corresponding
       #   method already defined in rails starting with: encrypted_
-      # * Followed by an option hash:
-      #      :marshal => Whether this element should be converted to YAML before encryption
-      #                  true or false
-      #                  Default: false
+      # * Followed by an optional hash:
+      #     :marshal [true|false]
+      #       Whether this element should be converted to YAML before encryption
+      #       Default: false
       #
+      #     :random_iv [true|false]
+      #       Whether the encypted value should use a random IV every time the
+      #       field is encrypted.
+      #       It is recommended to set this to true where feasible. If the encrypted
+      #       value could be used as part of a SQL where clause, or as part
+      #       of any lookup, then it must be false.
+      #       Setting random_iv to true will result in a different encrypted output for
+      #       the same input string.
+      #       Note: Only set to true if the field will never be used as part of
+      #         the where clause in an SQL query.
+      #       Note: When random_iv is true it will add a 8 byte header, plus the bytes
+      #         to store the random IV in every returned encrypted string, prior to the
+      #         encoding if any.
+      #       Default: false
+      #       Highly Recommended where feasible: true
+      #
+      #     :compress [true|false]
+      #       Whether to compress str before encryption
+      #       Should only be used for large strings since compression overhead and
+      #       the overhead of adding the 'magic' header may exceed any benefits of
+      #       compression
+      #       Note: Adds a 6 byte header prior to encoding, only if :random_iv is false
+      #       Default: false
       def attr_encrypted(*params)
         # Ensure ActiveRecord has created all its methods first
         # Ignore failures since the table may not yet actually exist
         define_attribute_methods rescue nil
 
         options = params.last.is_a?(Hash) ? params.pop : {}
+        random_iv = options.fetch(:random_iv, false)
+        compress  = options.fetch(:compress, false)
+        marshal   = options.fetch(:marshal, false)
 
         params.each do |attribute|
           # Generate unencrypted attribute with getter and setter
@@ -40,7 +63,7 @@ module ActiveRecord #:nodoc:
             # Set the un-encrypted attribute
             # Also updates the encrypted field with the encrypted value
             def #{attribute}=(value)
-              self.encrypted_#{attribute} = @stored_encrypted_#{attribute} = ::SymmetricEncryption.encrypt(value#{".to_yaml" if options[:marshal]})
+              self.encrypted_#{attribute} = @stored_encrypted_#{attribute} = ::SymmetricEncryption.encrypt(value#{".to_yaml" if marshal},#{random_iv},#{compress})
               @#{attribute} = value
             end
           UNENCRYPTED

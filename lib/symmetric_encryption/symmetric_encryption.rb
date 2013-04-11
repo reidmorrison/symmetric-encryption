@@ -85,11 +85,40 @@ module SymmetricEncryption
   #  Returns result as a Base64 encoded string
   #  Returns nil if the supplied str is nil
   #  Returns "" if it is a string and it is empty
-  def self.encrypt(str)
+  #
+  # Parameters
+  #   str [String]
+  #     String to be encrypted. If str is not a string, #to_s will be called on it
+  #     to convert it to a string
+  #
+  #   random_iv [true|false]
+  #     Whether the encypted value should use a random IV every time the
+  #     field is encrypted.
+  #     It is recommended to set this to true where feasible. If the encrypted
+  #     value could be used as part of a SQL where clause, or as part
+  #     of any lookup, then it must be false.
+  #     Setting random_iv to true will result in a different encrypted output for
+  #     the same input string.
+  #     Note: Only set to true if the field will never be used as part of
+  #       the where clause in an SQL query.
+  #     Note: When random_iv is true it will add a 8 byte header, plus the bytes
+  #       to store the random IV in every returned encrypted string, prior to the
+  #       encoding if any.
+  #     Default: false
+  #     Highly Recommended where feasible: true
+  #
+  #   compress [true|false]
+  #     Whether to compress str before encryption
+  #     Should only be used for large strings since compression overhead and
+  #     the overhead of adding the 'magic' header may exceed any benefits of
+  #     compression
+  #     Note: Adds a 6 byte header prior to encoding, only if :random_iv is false
+  #     Default: false
+  def self.encrypt(str, random_iv=false, compress=false)
     raise "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data" unless @@cipher
 
     # Encrypt and then encode the supplied string
-    @@cipher.encrypt(str)
+    @@cipher.encrypt(str, random_iv, compress)
   end
 
   # Invokes decrypt

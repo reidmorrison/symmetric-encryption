@@ -293,7 +293,16 @@ module SymmetricEncryption
       buf = @ios.read(@buffer_size)
 
       # Use cipher specified in header, or global cipher if it has no header
-      @cipher, @compressed = SymmetricEncryption::Cipher.parse_magic_header!(buf, @version)
+      @compressed, iv, key, cipher_name, decryption_cipher = SymmetricEncryption::Cipher.parse_magic_header!(buf, @version)
+      @cipher = if iv || key || cipher_name
+        SymmetricEncryption::Cipher.new(
+          :iv     => iv,
+          :key    => key || decryption_cipher.send(:key),
+          :cipher => cipher_name || decryption_cipher.cipher
+        )
+      else
+        decryption_cipher
+      end
 
       # Use supplied version if cipher could not be detected due to missing header
       @cipher ||= SymmetricEncryption.cipher(@version)
