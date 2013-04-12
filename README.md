@@ -50,22 +50,53 @@ From a security perspective it is important then to properly secure the system s
 no hacker can switch to and run as the rails user and thereby gain access to the
 encryption and decryption capabilities
 
+## Limitations
+
+By default symmetric encryption uses the same initialization vector (IV) and
+encryption key to encrypt data using the SymmetricEncryption.encrypt call.
+This technique is required in cases where the encrypted data is used as a key
+to lookup for example a Social Security Number, since for the same input data it
+must always return the same encrypted result. The drawback is that this
+technique is not considered secure when encypting large amounts of data.
+
+For non-key fields, such as storing encrypted raw responses,
+use the :random_iv => true option where possible so that a
+randomly generated IV is used and included in every encrypted string.
+
+The Symmetric Encryption streaming interface SymmetricEncryption::Writer avoids this
+problem by using a random IV and key in every file/stream by default.
+The random IV and key are stored in the header of the output stream so that it
+is available when reading back the encrypted file/stream.
+
+The ActiveRecord attr_encrypted method supports the :random_iv => true option.
+Similarly for Mongoid the :random_iv => true option can be added.
+
+Note that encrypting the same input string with the same key and :random_iv => true
+option will result in different encrypted output every time it is encrypted.
+
 ## Features
 
 * Encryption of passwords in configuration files
 * Encryption of ActiveRecord model attributes by prefixing attributes / column
 names with encrypted_
+* Encryption of Mongoid model fields by adding :encrypted => true to field
+  definitions
 * Externalization of symmetric encryption keys so that they are not in the
   source code, or the source code control system
-* Drop in replacement for attr_encrypted. Just remove the attr_encrypted gem
-* Compatible with the default Encryption algorithm in attr_encrypted
-* More efficient replacement for attr_encrypted since only ActiveRecord Models
-are extended with encrypted_ behavior, rather than every object in the system
-* Custom validator for ActiveRecord Models
+* Validator for ActiveRecord Models to ensure fields contain encrypted data
 * Stream based encryption and decryption so that large files can be read or
-  written with encryption
+  written with encryption, along with a random key and IV for every file
 * Stream based encryption and decryption also supports compression and decompression
   on the fly
+* When :compress => true option is specified Symmetric Encryption will transparently
+  compress the data prior to decryption. When decrypting compressed data Symmetric
+  Encryption will transparently decompress the data after decryption based on the
+  header stored in the encrypted data
+* Uses built-in support in Ruby for OpenSSL and Zlib for high performance and
+  maximum portability without introducing any additional dependencies
+* Drop in replacement for attr_encrypted. Just remove the attr_encrypted gem
+* For maximum security supports fully random keys and initialization vectors
+  extracted from the entire encryption key space
 
 ## Examples
 
@@ -215,9 +246,9 @@ Before generating keys we can use SymmetricEncryption in a standalone test envir
 ```ruby
 # Use test encryption keys
 SymmetricEncryption.cipher = SymmetricEncryption::Cipher.new(
-  :key    => '1234567890ABCDEF1234567890ABCDEF',
-  :iv     => '1234567890ABCDEF',
-  :cipher => 'aes-128-cbc'
+  :key         => '1234567890ABCDEF1234567890ABCDEF',
+  :iv          => '1234567890ABCDEF',
+  :cipher_name => 'aes-128-cbc'
 )
 encrypted = SymmetricEncryption.encrypt('hello world')
 puts SymmetricEncryption.decrypt(encrypted)
@@ -408,7 +439,7 @@ Create a configuration file in config/symmetric-encryption.yml per the following
 development: &development_defaults
   key:    1234567890ABCDEF1234567890ABCDEF
   iv:     1234567890ABCDEF
-  cipher: aes-128-cbc
+  cipher_name: aes-128-cbc
 
 test:
   <<: *development_defaults
@@ -457,7 +488,7 @@ production:
 		key_filename: /etc/rails/.rails.key
 		iv_filename:  /etc/rails/.rails.iv
 
-		# Encryption cipher
+		# Encryption cipher_name
 		#   Recommended values:
 		#      aes-256-cbc
 		#         256 AES CBC Algorithm. Very strong
@@ -467,7 +498,7 @@ production:
 		#         128 AES CBC Algorithm. Less strong.
 		#         Ruby 1.8.7 MRI Approximately 100,000 encryptions or decryptions per second
 		#         JRuby 1.6.7 with Ruby 1.8.7 Approximately 22,000 encryptions or decryptions per second
-		cipher: aes-256-cbc
+		cipher_name:  aes-256-cbc
 
 	 -
 		# OPTIONAL:
@@ -478,27 +509,48 @@ production:
 		# to be used
 		key_filename: /etc/rails/.rails_old.key
 		iv_filename:  /etc/rails/.rails_old.iv
-		cipher:       aes-256-cbc
+		cipher_name:  aes-256-cbc
 ```
 
-## Future Enhancements
+## New features in V1.1 and V2
 
 * Ability to randomly generate a new initialization vector (iv) with every
-  encryption and put the iv in the encrypted data as its header
+  encryption and put the iv in the encrypted data as its header, without having
+  to use SymmetricEncryption::Writer
 
 * With file encryption randomly generate a new key and initialization vector (iv) with every
   file encryption and put the key and iv in the encrypted data as its header which
   is encrypted using the global key and iv
 
-Submit an issue ticket to request any of the following features:
+* Support for compression via SymmetricEncryption.encrypt, attr_encrypted and Mongoid
+  fields
 
-* Ability to entirely disable encryption for a specific environment.
-  SymmetricEncryption.encrypt() would return the supplied data without encrypting it and
-  SymmetricEncryption.decrypt() would return the supplied data without decrypting it
+* SymmetricEncryption.encrypt has two additional optional parameters:
+```
+   random_iv [true|false]
+     Whether the encypted value should use a random IV every time the
+     field is encrypted.
+     It is recommended to set this to true where feasible. If the encrypted
+     value could be used as part of a SQL where clause, or as part
+     of any lookup, then it must be false.
+     Setting random_iv to true will result in a different encrypted output for
+     the same input string.
+     Note: Only set to true if the field will never be used as part of
+       the where clause in an SQL query.
+     Note: When random_iv is true it will add a 8 byte header, plus the bytes
+       to store the random IV in every returned encrypted string, prior to the
+       encoding if any.
+     Default: false
+     Highly Recommended where feasible: true
 
-* Support for automatically compressing data prior to encrypting it when the
-  data exceeds some predefined size. And automatically decompressing the data
-  during decryption
+   compress [true|false]
+     Whether to compress str before encryption
+     Should only be used for large strings since compression overhead and
+     the overhead of adding the 'magic' header may exceed any benefits of
+     compression
+     Note: Adds a 6 byte header prior to encoding, only if :random_iv is false
+     Default: false
+```
 
 Meta
 ----

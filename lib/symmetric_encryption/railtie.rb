@@ -10,7 +10,7 @@ module SymmetricEncryption #:nodoc:
     #       config.symmetric_encryption.cipher = SymmetricEncryption::Cipher.new(
     #         :key    => '1234567890ABCDEF1234567890ABCDEF',
     #         :iv     => '1234567890ABCDEF',
-    #         :cipher => 'aes-128-cbc'
+    #         :cipher_name => 'aes-128-cbc'
     #       )
     #     end
     #   end
@@ -26,9 +26,9 @@ module SymmetricEncryption #:nodoc:
     # @example symmetric-encryption.yml
     #
     #   development:
-    #     cipher: aes-256-cbc
-    #     symmetric_key: 1234567890ABCDEF1234567890ABCDEF
-    #     symmetric_iv: 1234567890ABCDEF
+    #     cipher_name: aes-256-cbc
+    #     key:         1234567890ABCDEF1234567890ABCDEF
+    #     iv:          1234567890ABCDEF
     #
     # Loaded before Active Record initializes since database.yml can have encrypted
     # passwords in it

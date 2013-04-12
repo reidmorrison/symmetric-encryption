@@ -101,6 +101,7 @@ module SymmetricEncryption
       header     = options.fetch(:header, true)
       # Compress is only used at this point for setting the flag in the header
       random_key = options.fetch(:random_key, true)
+      random_iv  = options.fetch(:random_iv, true)
       compress   = options.fetch(:compress, false)
       # Force header if compressed or using random iv, key pair
       header     = true if compress || random_key
@@ -112,7 +113,12 @@ module SymmetricEncryption
       @stream_cipher = @cipher.send(:openssl_cipher, :encrypt)
 
       # Write the Encryption header including the random iv, key, and cipher
-      @ios.write(@cipher.magic_header(compress, random_key, random_key, random_key)) if header
+      if header || random_key || random_iv || compress
+        @ios.write(@cipher.magic_header(compress,
+            random_key ? @cipher.send(:key) : nil,
+            random_iv  ? @cipher.send(:iv) : nil,
+            (random_key || random_iv) ? @cipher.cipher : nil))
+      end
     end
 
     # Close the IO Stream

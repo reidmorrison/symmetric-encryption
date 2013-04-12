@@ -7,35 +7,38 @@ module SymmetricEncryption
   # threads at the same time without needing an instance of Cipher per thread
   class Cipher
     # Cipher to use for encryption and decryption
-    attr_reader :cipher, :version
+    attr_reader :cipher_name, :version
     attr_accessor :encoding
 
     # Available encodings
     ENCODINGS = [:none, :base64, :base64strict, :base16]
 
+    # Backward compatibility
+    alias_method :cipher, :cipher_name
+
     # Generate a new Symmetric Key pair
     #
     # Returns a hash containing a new random symmetric_key pair
     # consisting of a :key and :iv.
-    # The cipher is also included for compatibility with the Cipher initializer
-    def self.random_key_pair(cipher = 'aes-256-cbc', generate_iv = true)
-      openssl_cipher = ::OpenSSL::Cipher.new(cipher)
+    # The cipher_name is also included for compatibility with the Cipher initializer
+    def self.random_key_pair(cipher_name = 'aes-256-cbc', generate_iv = true)
+      openssl_cipher = ::OpenSSL::Cipher.new(cipher_name)
       openssl_cipher.encrypt
 
       {
         :key    => openssl_cipher.random_key,
         :iv     => generate_iv ? openssl_cipher.random_iv : nil,
-        :cipher => cipher
+        :cipher_name => cipher_name
       }
     end
 
     # Returns a new Cipher with a random key and iv
     #
-    # The cipher and encoding used are from the global encryption cipher
+    # The cipher_name and encoding used are from the global encryption cipher_name
     #
-    def self.random_cipher(cipher=nil, encoding=nil)
+    def self.random_cipher(cipher_name=nil, encoding=nil)
       global_cipher = SymmetricEncryption.cipher
-      options = random_key_pair(cipher || global_cipher.cipher)
+      options = random_key_pair(cipher_name || global_cipher.cipher_name)
       options[:encoding] = encoding || global_cipher.encoding
       new(options)
     end
@@ -50,7 +53,7 @@ module SymmetricEncryption
     #     Optional. The Initialization Vector to use with Symmetric Key
     #     Highly Recommended as it is the input into the CBC algorithm
     #
-    #   :cipher [String]
+    #   :cipher_name [String]
     #     Optional. Encryption Cipher to use
     #     Default: aes-256-cbc
     #
@@ -76,7 +79,7 @@ module SymmetricEncryption
     def initialize(parms={})
       raise "Missing mandatory parameter :key" unless @key = parms[:key]
       @iv = parms[:iv]
-      @cipher = parms[:cipher] || 'aes-256-cbc'
+      @cipher_name = parms[:cipher_name] || parms[:cipher] || 'aes-256-cbc'
       @version = parms[:version]
       raise "Cipher version has a maximum of 255. #{@version} is too high" if @version.to_i > 255
       @encoding = (parms[:encoding] || :base64).to_sym
@@ -150,15 +153,15 @@ module SymmetricEncryption
       end
     end
 
-    # Return a new random key using the configured cipher
+    # Return a new random key using the configured cipher_name
     # Useful for generating new symmetric keys
     def random_key
-      ::OpenSSL::Cipher::Cipher.new(@cipher).random_key
+      ::OpenSSL::Cipher::Cipher.new(@cipher_name).random_key
     end
 
-    # Returns the block size for the configured cipher
+    # Returns the block size for the configured cipher_name
     def block_size
-      ::OpenSSL::Cipher::Cipher.new(@cipher).block_size
+      ::OpenSSL::Cipher::Cipher.new(@cipher_name).block_size
     end
 
     # Returns UTF8 encoded string after encoding the supplied Binary string
@@ -201,12 +204,13 @@ module SymmetricEncryption
       end
     end
 
-    # Returns an Array with the first element being Symmetric Cipher that must
-    # be used to decrypt the data. The second element indicates whether the data
-    # must be decompressed after decryption
-    #
-    # If the buffer does not start with the Magic Header the global cipher will
-    # be returned
+    # Returns an Array of the following values extracted from header or nil
+    # if any value was not specified in the header
+    #   compressed [true|false]
+    #   iv [String]
+    #   key [String]
+    #   cipher_name [String}
+    #   decryption_cipher [SymmetricEncryption::Cipher]
     #
     # The supplied buffer will be updated directly and will have the header
     # portion removed
@@ -223,8 +227,7 @@ module SymmetricEncryption
     #     If no header is present, this is the default value for the compression
     def self.parse_magic_header!(buffer, default_version=nil, default_compressed=false)
       buffer.force_encoding(SymmetricEncryption::BINARY_ENCODING)
-      return [SymmetricEncryption.cipher(default_version), default_compressed] unless buffer.start_with?(MAGIC_HEADER)
-      return [compressed, iv, key, cipher_name] unless buffer.start_with?(MAGIC_HEADER)
+      return [default_compressed, iv, key, cipher_name, SymmetricEncryption.cipher(default_version)] unless buffer.start_with?(MAGIC_HEADER)
 
       # Header includes magic header and version byte
       # Remove header and extract flags
@@ -272,15 +275,9 @@ module SymmetricEncryption
     #     Default: nil : Exclude key from header
     #
     #   cipher_name
-    #     Includes the cipher used. For example 'aes-256-cbc'
-    #     The cipher string to to put in the header
-    #     Default: nil : Exclude cipher name from header
-    #
-    #  encryption_cipher
-    #    Encryption cipher to use when encrypting the iv and key.
-    #    When supplied, the version is set to it's version so that decryption
-    #    knows which cipher to use
-    #    Default: Global cipher: SymmetricEncryption.cipher
+    #     Includes the cipher_name used. For example 'aes-256-cbc'
+    #     The cipher_name string to to put in the header
+    #     Default: nil : Exclude cipher_name name from header
     def magic_header(compressed=false, iv=nil, key=nil, cipher_name=nil)
       # Ruby V2 named parameters would be perfect here
 
@@ -326,7 +323,7 @@ module SymmetricEncryption
     #
     # See #encrypt to encrypt and encode the result as a string
     def binary_encrypt(string, random_iv=false, compress=false)
-      openssl_cipher = ::OpenSSL::Cipher.new(self.cipher)
+      openssl_cipher = ::OpenSSL::Cipher.new(self.cipher_name)
       openssl_cipher.encrypt
       openssl_cipher.key = @key
       result = if random_iv || compress
@@ -359,7 +356,7 @@ module SymmetricEncryption
       if str.start_with?(MAGIC_HEADER)
         str = str.dup
         compressed, iv, key, cipher_name = self.class.parse_magic_header!(str)
-        openssl_cipher = ::OpenSSL::Cipher.new(cipher_name || self.cipher)
+        openssl_cipher = ::OpenSSL::Cipher.new(cipher_name || self.cipher_name)
         openssl_cipher.decrypt
         openssl_cipher.key = key || @key
         iv ||= @iv
@@ -368,7 +365,7 @@ module SymmetricEncryption
         result << openssl_cipher.final
         compressed ? Zlib::Inflate.inflate(result) : result
       else
-        openssl_cipher = ::OpenSSL::Cipher.new(self.cipher)
+        openssl_cipher = ::OpenSSL::Cipher.new(self.cipher_name)
         openssl_cipher.decrypt
         openssl_cipher.key = @key
         openssl_cipher.iv = @iv if @iv
@@ -381,7 +378,7 @@ module SymmetricEncryption
 
     # Only for use by SymmetricEncryption::Reader and SymmetricEncryption::Writer
     def openssl_cipher(cipher_method)
-      openssl_cipher = ::OpenSSL::Cipher.new(self.cipher)
+      openssl_cipher = ::OpenSSL::Cipher.new(self.cipher_name)
       openssl_cipher.send(cipher_method)
       openssl_cipher.key = @key
       openssl_cipher.iv = @iv if @iv

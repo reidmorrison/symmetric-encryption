@@ -5,10 +5,11 @@
 # For the development and test environments the test symmetric encryption keys
 # can be placed directly in the source code.
 # And therefore no RSA private key is required
-development: &development_defaults
-  key:       1234567890ABCDEF1234567890ABCDEF
-  iv:        1234567890ABCDEF
-  cipher:    aes-128-cbc
+development:   &development_defaults
+  key:         1234567890ABCDEF1234567890ABCDEF
+  iv:          1234567890ABCDEF
+  cipher_name: aes-128-cbc
+  encoding:    :base64strict
 
 test:
   <<: *development_defaults
@@ -27,7 +28,7 @@ release:
       # RSA public key derived from the private key above
       key_filename: <%= File.join(key_path, "#{app_name}_release.key") %>
       iv_filename:  <%= File.join(key_path, "#{app_name}_release.iv") %>
-      cipher:       aes-256-cbc
+      cipher_name:  aes-256-cbc
       # Base64 encode encrypted data without newlines
       encoding:     :base64strict
       version:      1
@@ -46,7 +47,7 @@ production:
       # RSA public key derived from the private key above
       key_filename: <%= File.join(key_path, "#{app_name}_production.key") %>
       iv_filename:  <%= File.join(key_path, "#{app_name}_production.iv") %>
-      cipher:       aes-256-cbc
+      cipher_name:  aes-256-cbc
       # Base64 encode encrypted data without newlines
       encoding:     :base64strict
       version:      1

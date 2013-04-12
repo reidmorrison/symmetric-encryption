@@ -298,7 +298,7 @@ module SymmetricEncryption
         SymmetricEncryption::Cipher.new(
           :iv     => iv,
           :key    => key || decryption_cipher.send(:key),
-          :cipher => cipher_name || decryption_cipher.cipher
+          :cipher_name => cipher_name || decryption_cipher.cipher_name
         )
       else
         decryption_cipher

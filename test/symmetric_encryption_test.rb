@@ -23,25 +23,25 @@ class SymmetricEncryptionTest < Test::Unit::TestCase
 
       should "match config file for first cipher" do
         cipher = SymmetricEncryption.cipher
-        assert_equal @cipher_v1[:cipher], cipher.cipher
+        assert_equal @cipher_v1[:cipher_name], cipher.cipher_name
         assert_equal @cipher_v1[:version], cipher.version
         assert_equal false, SymmetricEncryption.secondary_ciphers.include?(cipher)
       end
 
       should "match config file for v1 cipher" do
         cipher = SymmetricEncryption.cipher(1)
-        assert @cipher_v1[:cipher]
+        assert @cipher_v1[:cipher_name]
         assert @cipher_v1[:version]
-        assert_equal @cipher_v1[:cipher], cipher.cipher
+        assert_equal @cipher_v1[:cipher_name], cipher.cipher_name
         assert_equal @cipher_v1[:version], cipher.version
         assert_equal false, SymmetricEncryption.secondary_ciphers.include?(cipher)
       end
 
       should "match config file for v0 cipher" do
         cipher = SymmetricEncryption.cipher(0)
-        assert @cipher_v0[:cipher]
+        assert @cipher_v0[:cipher_name]
         assert @cipher_v0[:version]
-        assert_equal @cipher_v0[:cipher], cipher.cipher
+        assert_equal @cipher_v0[:cipher_name], cipher.cipher_name
         assert_equal @cipher_v0[:version], cipher.version
         assert_equal true, SymmetricEncryption.secondary_ciphers.include?(cipher)
       end
@@ -92,6 +92,26 @@ class SymmetricEncryptionTest < Test::Unit::TestCase
         should "decrypt with secondary key when first one fails" do
           assert_equal @social_security_number, SymmetricEncryption.decrypt(@social_security_number_encrypted_with_secondary_1)
         end
+      end
+    end
+
+    context "random iv" do
+      setup do
+          @social_security_number = "987654321"
+      end
+
+      should "encrypt and then decrypt using random iv" do
+        # Encrypt with random iv
+        assert encrypted = SymmetricEncryption.encrypt(@social_security_number, true)
+        assert_equal true, SymmetricEncryption.encrypted?(encrypted)
+        assert_equal @social_security_number, SymmetricEncryption.decrypt(encrypted)
+      end
+
+      should "encrypt and then decrypt using random iv" do
+        # Encrypt with random iv and compress
+        assert encrypted = SymmetricEncryption.encrypt(@social_security_number, true, true)
+        assert_equal true, SymmetricEncryption.encrypted?(encrypted)
+        assert_equal @social_security_number, SymmetricEncryption.decrypt(encrypted)
       end
     end
 

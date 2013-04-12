@@ -14,14 +14,14 @@ SymmetricEncryption.load!(File.join(File.dirname(__FILE__), 'config', 'symmetric
 class CipherTest < Test::Unit::TestCase
   context 'standalone' do
 
-    should "allow setting the cipher" do
+    should "allow setting the cipher_name" do
       cipher = SymmetricEncryption::Cipher.new(
-        :cipher   => 'aes-128-cbc',
+        :cipher_name   => 'aes-128-cbc',
         :key      => '1234567890ABCDEF1234567890ABCDEF',
         :iv       => '1234567890ABCDEF',
         :encoding => :none
       )
-      assert_equal 'aes-128-cbc', cipher.cipher
+      assert_equal 'aes-128-cbc', cipher.cipher_name
     end
 
     should "not require an iv" do
@@ -40,7 +40,7 @@ class CipherTest < Test::Unit::TestCase
 
     should "throw an exception on bad data" do
       cipher = SymmetricEncryption::Cipher.new(
-        :cipher   => 'aes-128-cbc',
+        :cipher_name   => 'aes-128-cbc',
         :key      => '1234567890ABCDEF1234567890ABCDEF',
         :iv       => '1234567890ABCDEF',
         :encoding => :none
@@ -70,7 +70,7 @@ class CipherTest < Test::Unit::TestCase
     end
 
     should "default to 'aes-256-cbc'" do
-      assert_equal 'aes-256-cbc', @cipher.cipher
+      assert_equal 'aes-256-cbc', @cipher.cipher_name
     end
 
     should "encrypt simple string" do
@@ -97,12 +97,12 @@ class CipherTest < Test::Unit::TestCase
 
       should "create and parse magic header" do
         random_cipher = SymmetricEncryption::Cipher.random_cipher
-        header = random_cipher.magic_header(compressed=true, include_iv=true, include_key=true, include_cipher=true)
-        cipher, compressed = SymmetricEncryption::Cipher.parse_magic_header!(header)
+        header = random_cipher.magic_header(compressed=true, random_cipher.send(:iv), random_cipher.send(:key), random_cipher.cipher_name)
+        compressed, iv, key, cipher_name, decryption_cipher = SymmetricEncryption::Cipher.parse_magic_header!(header)
         assert_equal true, compressed
-        assert_equal random_cipher.cipher, cipher.cipher, "Ciphers differ"
-        assert_equal random_cipher.send(:key), cipher.send(:key), "Keys differ"
-        assert_equal random_cipher.send(:iv), cipher.send(:iv), "IVs differ"
+        assert_equal random_cipher.cipher_name, cipher.cipher_name, "Ciphers differ"
+        assert_equal random_cipher.send(:key), key, "Keys differ"
+        assert_equal random_cipher.send(:iv), iv, "IVs differ"
 
         string = "Hellow World"
         # Test Encryption
