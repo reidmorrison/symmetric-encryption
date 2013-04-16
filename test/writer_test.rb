@@ -22,7 +22,7 @@ class WriterTest < Test::Unit::TestCase
       ]
       @data_str = @data.inject('') {|sum,str| sum << str}
       @data_len = @data_str.length
-      @data_encrypted = SymmetricEncryption.cipher.encrypt(@data_str, false, false)
+      @data_encrypted = SymmetricEncryption.cipher.binary_encrypt(@data_str, false, false)
       @filename = '._test'
     end
 
@@ -32,7 +32,7 @@ class WriterTest < Test::Unit::TestCase
 
     should "encrypt to string stream" do
       stream = StringIO.new
-      file = SymmetricEncryption::Writer.new(stream, :header => false, :random_key => false)
+      file = SymmetricEncryption::Writer.new(stream, :header => false, :random_key => false, :random_iv => false)
       written_len = @data.inject(0) {|sum,str| sum + file.write(str)}
       file.close
 
@@ -53,7 +53,7 @@ class WriterTest < Test::Unit::TestCase
 
     should "encrypt to file using .open" do
       written_len = nil
-      SymmetricEncryption::Writer.open(@filename, :header => false, :random_key => false) do |file|
+      SymmetricEncryption::Writer.open(@filename, :header => false, :random_key => false, :random_iv => false) do |file|
         written_len = @data.inject(0) {|sum,str| sum + file.write(str)}
       end
       assert_equal @data_len, written_len

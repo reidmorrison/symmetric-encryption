@@ -26,21 +26,10 @@ module SymmetricEncryption
       openssl_cipher.encrypt
 
       {
-        :key    => openssl_cipher.random_key,
-        :iv     => generate_iv ? openssl_cipher.random_iv : nil,
+        :key         => openssl_cipher.random_key,
+        :iv          => generate_iv ? openssl_cipher.random_iv : nil,
         :cipher_name => cipher_name
       }
-    end
-
-    # Returns a new Cipher with a random key and iv
-    #
-    # The cipher_name and encoding used are from the global encryption cipher_name
-    #
-    def self.random_cipher(cipher_name=nil, encoding=nil)
-      global_cipher = SymmetricEncryption.cipher
-      options = random_key_pair(cipher_name || global_cipher.cipher_name)
-      options[:encoding] = encoding || global_cipher.encoding
-      new(options)
     end
 
     # Create a Symmetric::Key for encryption and decryption purposes
@@ -227,7 +216,7 @@ module SymmetricEncryption
     #     If no header is present, this is the default value for the compression
     def self.parse_magic_header!(buffer, default_version=nil, default_compressed=false)
       buffer.force_encoding(SymmetricEncryption::BINARY_ENCODING)
-      return [default_compressed, iv, key, cipher_name, SymmetricEncryption.cipher(default_version)] unless buffer.start_with?(MAGIC_HEADER)
+      return [default_compressed, nil, nil, nil, SymmetricEncryption.cipher(default_version)] unless buffer.start_with?(MAGIC_HEADER)
 
       # Header includes magic header and version byte
       # Remove header and extract flags
@@ -236,6 +225,8 @@ module SymmetricEncryption
       include_iv    = (flags & 0b0100_0000_0000_0000) != 0
       include_key   = (flags & 0b0010_0000_0000_0000) != 0
       include_cipher= (flags & 0b0001_0000_0000_0000) != 0
+      # Version of the key to use to decrypt the key if present,
+      # otherwise to decrypt the data following the header
       version       = flags & 0b0000_0000_1111_1111
       decryption_cipher = SymmetricEncryption.cipher(version)
       raise "Cipher with version:#{version.inspect} not found in any of the configured SymmetricEncryption ciphers" unless decryption_cipher
@@ -278,7 +269,7 @@ module SymmetricEncryption
     #     Includes the cipher_name used. For example 'aes-256-cbc'
     #     The cipher_name string to to put in the header
     #     Default: nil : Exclude cipher_name name from header
-    def magic_header(compressed=false, iv=nil, key=nil, cipher_name=nil)
+    def self.magic_header(version, compressed=false, iv=nil, key=nil, cipher_name=nil)
       # Ruby V2 named parameters would be perfect here
 
       # Encryption version indicator if available
@@ -330,7 +321,7 @@ module SymmetricEncryption
         # Random iv and compress both add the magic header
         iv = random_iv ? openssl_cipher.random_iv : @iv
         openssl_cipher.iv = iv if iv
-        magic_header(compress, random_iv ? iv : nil) +
+        self.class.magic_header(version, compress, random_iv ? iv : nil) +
           openssl_cipher.update(compress ? Zlib::Deflate.deflate(string) : string)
       else
         openssl_cipher.iv = @iv if @iv
@@ -374,15 +365,10 @@ module SymmetricEncryption
       end
     end
 
-    protected
-
-    # Only for use by SymmetricEncryption::Reader and SymmetricEncryption::Writer
-    def openssl_cipher(cipher_method)
-      openssl_cipher = ::OpenSSL::Cipher.new(self.cipher_name)
-      openssl_cipher.send(cipher_method)
-      openssl_cipher.key = @key
-      openssl_cipher.iv = @iv if @iv
-      openssl_cipher
+    # Returns [String] object represented as a string
+    # Excluding the key and iv
+    def inspect
+       "#<#{self.class}:0x#{self.__id__.to_s(16)} @cipher_name=#{cipher_name.inspect}, @version=#{version.inspect}, @encoding=#{encoding.inspect}"
     end
 
     private

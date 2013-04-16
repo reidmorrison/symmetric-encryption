@@ -19,6 +19,8 @@ ActiveRecord::Schema.define :version => 0 do
   create_table :users, :force => true do |t|
     t.string :encrypted_bank_account_number
     t.string :encrypted_social_security_number
+    t.string :encrypted_string
+    t.text   :encrypted_long_string
     t.string :name
   end
 end
@@ -26,6 +28,8 @@ end
 class User < ActiveRecord::Base
   attr_encrypted :bank_account_number
   attr_encrypted :social_security_number
+  attr_encrypted :string,      :random_iv => true
+  attr_encrypted :long_string, :random_iv => true, :compress => true
 
   validates :encrypted_bank_account_number, :symmetric_encryption => true
   validates :encrypted_social_security_number, :symmetric_encryption => true
@@ -56,6 +60,9 @@ class AttrEncryptedTest < Test::Unit::TestCase
       @social_security_number = "987654321"
       @social_security_number_encrypted = "S+8X1NRrqdfEIQyFHVPuVA=="
 
+      @string = "A string containing some data to be encrypted with a random initialization vector"
+      @long_string = "A string containing some data to be encrypted with a random initialization vector and compressed since it takes up so much space in plain text form"
+
       @user = User.new(
         # Encrypted Attribute
         :bank_account_number              => @bank_account_number,
@@ -80,6 +87,29 @@ class AttrEncryptedTest < Test::Unit::TestCase
     should "have encrypted values" do
       assert_equal @bank_account_number_encrypted, @user.encrypted_bank_account_number
       assert_equal @social_security_number_encrypted, @user.encrypted_social_security_number
+    end
+
+    should "support same iv" do
+      @user.social_security_number = @social_security_number
+      assert first_value = @user.social_security_number
+      # Assign the same value
+      @user.social_security_number = @social_security_number
+      assert_equal first_value, @user.social_security_number
+    end
+
+    should "support a random iv" do
+      @user.string = @string
+      assert first_value = @user.encrypted_string
+      # Assign the same value
+      @user.string = @string.dup
+      assert_equal true, first_value != @user.encrypted_string
+    end
+
+    should "support a random iv and compress" do
+      @user.string = @long_string
+      @user.long_string = @long_string
+
+      assert_equal true, (@user.encrypted_long_string.length.to_f / @user.encrypted_string.length) < 0.8
     end
 
     should "encrypt" do

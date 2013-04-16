@@ -1,3 +1,5 @@
+require 'openssl'
+
 module SymmetricEncryption
   # Read from encrypted files and other IO streams
   #
@@ -294,20 +296,11 @@ module SymmetricEncryption
 
       # Use cipher specified in header, or global cipher if it has no header
       @compressed, iv, key, cipher_name, decryption_cipher = SymmetricEncryption::Cipher.parse_magic_header!(buf, @version)
-      @cipher = if iv || key || cipher_name
-        SymmetricEncryption::Cipher.new(
-          :iv     => iv,
-          :key    => key || decryption_cipher.send(:key),
-          :cipher_name => cipher_name || decryption_cipher.cipher_name
-        )
-      else
-        decryption_cipher
-      end
 
-      # Use supplied version if cipher could not be detected due to missing header
-      @cipher ||= SymmetricEncryption.cipher(@version)
-
-      @stream_cipher = @cipher.send(:openssl_cipher, :decrypt)
+      @stream_cipher = ::OpenSSL::Cipher.new(cipher_name || decryption_cipher.cipher_name)
+      @stream_cipher.decrypt
+      @stream_cipher.key = key || decryption_cipher.send(:key)
+      @stream_cipher.iv = iv || decryption_cipher.send(:iv)
 
       # First call to #update should return an empty string anyway
       @read_buffer = @stream_cipher.update(buf)

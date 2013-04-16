@@ -22,56 +22,90 @@ class ReaderTest < Test::Unit::TestCase
       ]
       @data_str = @data.inject('') {|sum,str| sum << str}
       @data_len = @data_str.length
-      @data_encrypted = SymmetricEncryption.cipher.encrypt(@data_str, false, false)
+      @data_encrypted_without_header = SymmetricEncryption.cipher.binary_encrypt(@data_str)
+
+      @data_encrypted_with_header = SymmetricEncryption::Cipher.magic_header(
+        SymmetricEncryption.cipher.version,
+        compress = false,
+        SymmetricEncryption.cipher.send(:iv),
+        SymmetricEncryption.cipher.send(:key),
+        SymmetricEncryption.cipher.cipher_name)
+      @data_encrypted_with_header << SymmetricEncryption.cipher.binary_encrypt(@data_str)
+
+      # Verify regular decrypt can decrypt this string
+      SymmetricEncryption.cipher.binary_decrypt(@data_encrypted_without_header)
+      SymmetricEncryption.cipher.binary_decrypt(@data_encrypted_with_header)
     end
 
-    should "decrypt from string stream as a single read" do
-      stream = StringIO.new(@data_encrypted)
-      decrypted = SymmetricEncryption::Reader.open(stream) {|file| file.read}
-      assert_equal @data_str, decrypted
-    end
-
-    should "decrypt from string stream as a single read, after a partial read" do
-      stream = StringIO.new(@data_encrypted)
-      decrypted = SymmetricEncryption::Reader.open(stream) do |file|
-        file.read(10)
-        file.read
-      end
-      assert_equal @data_str[10..-1], decrypted
-    end
-
-    should "decrypt lines from string stream" do
-      stream = StringIO.new(@data_encrypted)
-      i = 0
-      decrypted = SymmetricEncryption::Reader.open(stream) do |file|
-        file.each_line do |line|
-          assert_equal @data[i], line
-          i += 1
+    [true, false].each do |header|
+      context header do
+        setup do
+          @data_encrypted = header ? @data_encrypted_with_header : @data_encrypted_without_header
         end
-      end
-    end
 
-    should "decrypt fixed lengths from string stream" do
-      stream = StringIO.new(@data_encrypted)
-      i = 0
-      SymmetricEncryption::Reader.open(stream) do |file|
-        index = 0
-        [0,10,5,5000].each do |size|
-          buf = file.read(size)
-          if size == 0
-            assert_equal '', buf
-          else
-            assert_equal @data_str[index..index+size-1], buf
+        should "decrypt from string stream as a single read" do
+          stream = StringIO.new(@data_encrypted)
+          decrypted = SymmetricEncryption::Reader.open(stream) {|file| file.read}
+          assert_equal @data_str, decrypted
+        end
+
+        should "decrypt from string stream as a single read, after a partial read" do
+          stream = StringIO.new(@data_encrypted)
+          decrypted = SymmetricEncryption::Reader.open(stream) do |file|
+            file.read(10)
+            file.read
           end
-          index += size
+          assert_equal @data_str[10..-1], decrypted
+        end
+
+        should "decrypt lines from string stream" do
+          stream = StringIO.new(@data_encrypted)
+          i = 0
+          decrypted = SymmetricEncryption::Reader.open(stream) do |file|
+            file.each_line do |line|
+              assert_equal @data[i], line
+              i += 1
+            end
+          end
+        end
+
+        should "decrypt fixed lengths from string stream" do
+          stream = StringIO.new(@data_encrypted)
+          i = 0
+          SymmetricEncryption::Reader.open(stream) do |file|
+            index = 0
+            [0,10,5,5000].each do |size|
+              buf = file.read(size)
+              if size == 0
+                assert_equal '', buf
+              else
+                assert_equal @data_str[index..index+size-1], buf
+              end
+              index += size
+            end
+          end
         end
       end
     end
 
     context "reading from file" do
-      # With and without header
-      [{:header => false, :version => 1}, {:header => false, :random_key => false, :version => 1},  {:compress => false}, {:compress => true}, {:random_key => false}].each_with_index do |options, i|
-        context "with#{'out' unless options[:header]} header #{i}" do
+      [
+        # No Header
+        {:header => false, :random_key => false, :random_iv => false},
+        # Default Header with random key and iv
+        {},
+        # Header with no compression ( default anyway )
+        {:compress => false},
+        # Compress and use Random key, iv
+        {:compress => true},
+        # Header but not random key or iv
+        {:random_key => false},
+        # Random iv only
+        {:random_key => false, :random_iv => true},
+        # Random iv only with compression
+        {:random_iv => true, :compress => true},
+      ].each do |options|
+        context "with options: #{options.inspect}" do
           setup do
             @filename = '._test'
             # Create encrypted file

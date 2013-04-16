@@ -96,15 +96,16 @@ class CipherTest < Test::Unit::TestCase
     context "magic header" do
 
       should "create and parse magic header" do
-        random_cipher = SymmetricEncryption::Cipher.random_cipher
-        header = random_cipher.magic_header(compressed=true, random_cipher.send(:iv), random_cipher.send(:key), random_cipher.cipher_name)
+        random_cipher = SymmetricEncryption::Cipher.new(SymmetricEncryption::Cipher.random_key_pair)
+        header = SymmetricEncryption::Cipher.magic_header(1, compressed=true, random_cipher.send(:iv), random_cipher.send(:key), random_cipher.cipher_name)
         compressed, iv, key, cipher_name, decryption_cipher = SymmetricEncryption::Cipher.parse_magic_header!(header)
         assert_equal true, compressed
-        assert_equal random_cipher.cipher_name, cipher.cipher_name, "Ciphers differ"
+        assert_equal random_cipher.cipher_name, cipher_name, "Ciphers differ"
         assert_equal random_cipher.send(:key), key, "Keys differ"
         assert_equal random_cipher.send(:iv), iv, "IVs differ"
 
-        string = "Hellow World"
+        string = "Hello World"
+        cipher = SymmetricEncryption::Cipher.new(:key => key, :iv => iv, :cipher_name => cipher_name)
         # Test Encryption
         assert_equal random_cipher.encrypt(string, false, false), cipher.encrypt(string, false, false), "Encrypted values differ"
       end

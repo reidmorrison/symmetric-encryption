@@ -14,7 +14,7 @@ module ActiveRecord #:nodoc:
       #       Default: false
       #
       #     :random_iv [true|false]
-      #       Whether the encypted value should use a random IV every time the
+      #       Whether the encrypted value should use a random IV every time the
       #       field is encrypted.
       #       It is recommended to set this to true where feasible. If the encrypted
       #       value could be used as part of a SQL where clause, or as part

@@ -188,13 +188,13 @@ module SymmetricEncryption
     cipher_cfg = config[:ciphers].first
     key_filename = cipher_cfg[:key_filename]
     iv_filename = cipher_cfg[:iv_filename]
-    cipher = cipher_cfg[:cipher]
+    cipher_name = cipher_cfg[:cipher_name] || cipher_cfg[:cipher]
 
     raise "The configuration file must contain a 'private_rsa_key' parameter to generate symmetric keys" unless config[:private_rsa_key]
     rsa_key = OpenSSL::PKey::RSA.new(config[:private_rsa_key])
 
     # Generate a new Symmetric Key pair
-    key_pair = SymmetricEncryption::Cipher.random_key_pair(cipher || 'aes-256-cbc', !iv_filename.nil?)
+    key_pair = SymmetricEncryption::Cipher.random_key_pair(cipher_name || 'aes-256-cbc', !iv_filename.nil?)
 
     # Save symmetric key after encrypting it with the private RSA key, backing up existing files if present
     File.rename(key_filename, "#{key_filename}.#{Time.now.to_i}") if File.exist?(key_filename)
@@ -236,15 +236,15 @@ module SymmetricEncryption
     config = YAML.load_file(filename || File.join(Rails.root, "config", "symmetric-encryption.yml"))[environment || Rails.env]
 
     # Default cipher
-    default_cipher = config['cipher'] || 'aes-256-cbc'
+    default_cipher = config['cipher_name'] || config['cipher'] || 'aes-256-cbc'
     cfg = {}
 
     # Hard coded symmetric_key? - Dev / Testing use only!
     if symmetric_key = (config['key'] || config['symmetric_key'])
       raise "SymmetricEncryption Cannot hard code Production encryption keys in #{filename}" if (environment || Rails.env) == 'production'
-      cfg[:key]     = symmetric_key
-      cfg[:iv]      = config['iv'] || config['symmetric_iv']
-      cfg[:cipher]  = default_cipher
+      cfg[:key]          = symmetric_key
+      cfg[:iv]           = config['iv'] || config['symmetric_iv']
+      cfg[:cipher_name]  = default_cipher
 
     elsif ciphers = config['ciphers']
       raise "Missing mandatory config parameter 'private_rsa_key'" unless cfg[:private_rsa_key] = config['private_rsa_key']
@@ -254,7 +254,7 @@ module SymmetricEncryption
         raise "Missing mandatory 'key_filename' for environment:#{environment} in #{filename}" unless key_filename
         iv_filename = cipher_cfg['iv_filename'] || cipher_cfg['symmetric_iv_filename']
         {
-          :cipher       => cipher_cfg['cipher'] || default_cipher,
+          :cipher_name  => cipher_cfg['cipher_name'] || cipher_cfg['cipher'] || default_cipher,
           :key_filename => key_filename,
           :iv_filename  => iv_filename,
           :encoding     => cipher_cfg['encoding'],
@@ -266,7 +266,7 @@ module SymmetricEncryption
       # Migrate old format config
       raise "Missing mandatory config parameter 'private_rsa_key'" unless cfg[:private_rsa_key] = config['private_rsa_key']
       cfg[:ciphers] = [ {
-          :cipher       => default_cipher,
+          :cipher_name  => default_cipher,
           :key_filename => config['symmetric_key_filename'],
           :iv_filename  => config['symmetric_iv_filename'],
         } ]
@@ -281,16 +281,17 @@ module SymmetricEncryption
   # Raises an Exception on failure
   #
   # Parameters:
-  #   cipher
-  #     Encryption cipher for the symmetric encryption key
-  #   private_key
+  #   private_rsa_key
   #     Key used to unlock file containing the actual symmetric key
-  #   key_filename
-  #     Name of file containing symmetric key encrypted using the public
-  #     key matching the supplied private_key
-  #   iv_filename
-  #     Optional. Name of file containing symmetric key initialization vector
-  #     encrypted using the public key matching the supplied private_key
+  #   cipher_conf Hash:
+  #     cipher_name
+  #       Encryption cipher name for the symmetric encryption key
+  #     key_filename
+  #       Name of file containing symmetric key encrypted using the public
+  #       key matching the supplied private_key
+  #     iv_filename
+  #       Optional. Name of file containing symmetric key initialization vector
+  #       encrypted using the public key matching the supplied private_key
   def self.cipher_from_encrypted_files(private_rsa_key, cipher_conf)
     # Load Encrypted Symmetric keys
     key_filename =  cipher_conf[:key_filename]
@@ -315,11 +316,11 @@ module SymmetricEncryption
     rsa = OpenSSL::PKey::RSA.new(private_rsa_key)
     iv = rsa.private_decrypt(encrypted_iv) if iv_filename
     Cipher.new(
-      :key      => rsa.private_decrypt(encrypted_key),
-      :iv       => iv,
-      :cipher   => cipher_conf[:cipher],
-      :encoding => cipher_conf[:encoding],
-      :version  => cipher_conf[:version]
+      :key         => rsa.private_decrypt(encrypted_key),
+      :iv          => iv,
+      :cipher_name => cipher_conf[:cipher_name],
+      :encoding    => cipher_conf[:encoding],
+      :version     => cipher_conf[:version]
     )
   end
 

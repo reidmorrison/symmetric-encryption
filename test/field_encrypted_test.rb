@@ -22,6 +22,8 @@ class MongoidUser
   field :name,                             :type => String
   field :encrypted_bank_account_number,    :type => String,  :encrypted => true
   field :encrypted_social_security_number, :type => String,  :encrypted => true
+  field :encrypted_string,                 :type => String,  :encrypted => true, :random_iv => true
+  field :encrypted_long_string,            :type => String,  :encrypted => true, :random_iv => true, :compress => true
 #  field :encrypted_integer,                :type => Integer, :encrypted => true
 #  field :encrypted_float,                  :type => Float,   :encrypted => true
 #  field :encrypted_date,                   :type => Date,    :encrypted => true
@@ -55,6 +57,9 @@ class FieldEncryptedTest < Test::Unit::TestCase
       @date = Date.parse('20120320')
       @date_encrypted = "WTkSPHo5ApSSHBJMxxWt2A=="
 
+      @string = "A string containing some data to be encrypted with a random initialization vector"
+      @long_string = "A string containing some data to be encrypted with a random initialization vector and compressed since it takes up so much space in plain text form"
+
       # #TODO Intercept passing in attributes to create etc.
       @user = MongoidUser.new(
         :encrypted_bank_account_number    => @bank_account_number_encrypted,
@@ -82,6 +87,29 @@ class FieldEncryptedTest < Test::Unit::TestCase
     should "have encrypted values" do
       assert_equal @bank_account_number_encrypted, @user.encrypted_bank_account_number
       assert_equal @social_security_number_encrypted, @user.encrypted_social_security_number
+    end
+
+    should "support same iv" do
+      @user.social_security_number = @social_security_number
+      assert first_value = @user.social_security_number
+      # Assign the same value
+      @user.social_security_number = @social_security_number
+      assert_equal first_value, @user.social_security_number
+    end
+
+    should "support a random iv" do
+      @user.string = @string
+      assert first_value = @user.encrypted_string
+      # Assign the same value
+      @user.string = @string.dup
+      assert_equal true, first_value != @user.encrypted_string
+    end
+
+    should "support a random iv and compress" do
+      @user.string = @long_string
+      @user.long_string = @long_string
+
+      assert_equal true, (@user.encrypted_long_string.length.to_f / @user.encrypted_string.length) < 0.8
     end
 
     should "encrypt" do

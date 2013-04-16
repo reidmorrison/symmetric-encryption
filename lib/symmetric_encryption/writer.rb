@@ -1,3 +1,5 @@
+require 'openssl'
+
 module SymmetricEncryption
   # Write to encrypted files and other IO streams
   #
@@ -24,12 +26,23 @@ module SymmetricEncryption
     #          Default: false
     #
     #     :random_key [true|false]
-    #          Generates a new random key and iv for every new file or stream
+    #          Generates a new random key for every new file or stream
     #          If true, it forces header to true. Version below then has no effect
-    #          The Random key and iv will be written to the file/stream in encrypted
+    #          The Random key will be written to the file/stream in encrypted
     #          form as part of the header
-    #          The key and iv are both encrypted using the global key
+    #          The key is encrypted using the global key
     #          Default: true
+    #          Recommended: true.
+    #            Setting to false will eventually expose the
+    #            encryption key since too much data will be encrypted using the
+    #            same encryption key
+    #
+    #     :random_iv [true|false]
+    #          Generates a new random iv for every new file or stream
+    #          If true, it forces header to true.
+    #          The Random iv will be written to the file/stream in encrypted
+    #          form as part of the header
+    #          Default: Value supplied above for :random_key
     #          Recommended: true. Setting to false will eventually expose the
     #            encryption key since too much data will be encrypted using the
     #            same encryption key
@@ -49,11 +62,16 @@ module SymmetricEncryption
     #
     #          When random_key is false, the version of the encryption key to use
     #          to encrypt the entire file
-    #          Default: Current primary key
+    #          Default: SymmetricEncryption.cipher
     #
     #     :mode
     #          See File.open for open modes
     #          Default: 'w'
+    #
+    #     :cipher_name
+    #          The name of the cipher to use only if both :random_key and
+    #          :random_iv are true.
+    #          Default: SymmetricEncryption.cipher.cipher_name
     #
     # Note: Compression occurs before encryption
     #
@@ -97,27 +115,49 @@ module SymmetricEncryption
 
     # Encrypt data before writing to the supplied stream
     def initialize(ios,options={})
-      @ios       = ios
-      header     = options.fetch(:header, true)
+      @ios        = ios
+      header      = options.fetch(:header, true)
+      random_key  = options.fetch(:random_key, true)
+      random_iv   = options.fetch(:random_iv, random_key)
+      raise "When :random_key is true, :random_iv must also be true" if random_key && !random_iv
       # Compress is only used at this point for setting the flag in the header
-      random_key = options.fetch(:random_key, true)
-      random_iv  = options.fetch(:random_iv, true)
-      compress   = options.fetch(:compress, false)
-      # Force header if compressed or using random iv, key pair
-      header     = true if compress || random_key
+      compress    = options.fetch(:compress, false)
+      version     = options[:version]
+      cipher_name = options[:cipher_name]
+      raise "Cannot supply a :cipher_name unless both :random_key and :random_iv are true" if cipher_name && !random_key && !random_iv
 
-      # Create random cipher or use global primary cipher
-      @cipher = random_key ? SymmetricEncryption::Cipher.random_cipher : SymmetricEncryption.cipher(options[:version])
-      raise "Cipher with version:#{options[:version]} not found in any of the configured SymmetricEncryption ciphers" unless @cipher
+      # Force header if compressed or using random iv, key
+      header = true if compress || random_key || random_iv
 
-      @stream_cipher = @cipher.send(:openssl_cipher, :encrypt)
+      cipher = nil
+      if random_key
+        # Version of key used to encrypt the random key
+        version = SymmetricEncryption.cipher.version
+      else
+        # Use global key if a new random one is not being generated
+        cipher = SymmetricEncryption.cipher(version)
+        raise "Cipher with version:#{version} not found in any of the configured SymmetricEncryption ciphers" unless cipher
+        # Version of key used to encrypt the data
+        version = cipher.version
+      end
+
+      @stream_cipher = ::OpenSSL::Cipher.new(cipher_name || SymmetricEncryption.cipher.cipher_name)
+      @stream_cipher.encrypt
+
+      key = random_key ? @stream_cipher.random_key : cipher.send(:key)
+      iv = random_iv ? @stream_cipher.random_iv : cipher.send(:iv)
+
+      @stream_cipher.key = key
+      @stream_cipher.iv = iv if iv
 
       # Write the Encryption header including the random iv, key, and cipher
-      if header || random_key || random_iv || compress
-        @ios.write(@cipher.magic_header(compress,
-            random_key ? @cipher.send(:key) : nil,
-            random_iv  ? @cipher.send(:iv) : nil,
-            (random_key || random_iv) ? @cipher.cipher : nil))
+      if header
+        @ios.write(Cipher.magic_header(
+            version,
+            compress,
+            random_iv  ? iv : nil,
+            random_key ? key : nil,
+            cipher_name))
       end
     end
 
