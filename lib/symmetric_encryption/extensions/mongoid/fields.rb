@@ -25,8 +25,7 @@ module Mongoid
       #    field :name,                             :type => String
       #    field :encrypted_social_security_number, :type => String, :encrypted => true
       #    field :age,                              :type => Integer
-      #    field :life_history,                     :type => String, :encrypted => true, :compress => true, :random_iv => true
-      #
+      #    field :encrypted_life_history,           :type => String, :encrypted => true, :compress => true, :random_iv => true
       #  end
       #
       # The above document results in the following document in the Mongo collection 'persons':
@@ -34,6 +33,7 @@ module Mongoid
       #   "name" : "Joe",
       #   "encrypted_social_security_number" : "...",
       #   "age"  : 21
+      #   "encrypted_life_history" : "...",
       # }
       #
       # Symmetric Encryption creates the getters and setters to be able to work with the field

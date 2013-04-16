@@ -122,6 +122,15 @@ class User < ActiveRecord::Base
   # Requires table users to have a column called encrypted_social_security_number
   attr_encrypted :social_security_number
 
+  # Since string and long_string are not used in the where clause of any SQL
+  # queries it is better to ensure that the encrypted value is always different
+  # by encrypting every value with a random Initialization Vector.
+  attr_encrypted :string,      :random_iv => true
+
+  # Long encrypted strings can also be compressed prior to encryption to save
+  # disk space
+  attr_encrypted :long_string, :random_iv => true, :compress => true
+
   validates :encrypted_bank_account_number, :symmetric_encryption => true
   validates :encrypted_social_security_number, :symmetric_encryption => true
 end
@@ -151,6 +160,7 @@ class User
   field :name,                             :type => String
   field :encrypted_bank_account_number,    :type => String,  :encrypted => true
   field :encrypted_social_security_number, :type => String,  :encrypted => true
+  field :encrypted_life_history,           :type => String, :encrypted => true, :compress => true, :random_iv => true
 end
 
 # Create a new user document
