@@ -215,8 +215,8 @@ module SymmetricEncryption
     #   default_compressed
     #     If no header is present, this is the default value for the compression
     def self.parse_magic_header!(buffer, default_version=nil, default_compressed=false)
-      buffer.force_encoding(SymmetricEncryption::BINARY_ENCODING)
-      return [default_compressed, nil, nil, nil, SymmetricEncryption.cipher(default_version)] unless buffer.start_with?(MAGIC_HEADER)
+      buffer.force_encoding(SymmetricEncryption::BINARY_ENCODING) if buffer
+      return [default_compressed, nil, nil, nil, SymmetricEncryption.cipher(default_version)] unless buffer && buffer.start_with?(MAGIC_HEADER)
 
       # Header includes magic header and version byte
       # Remove header and extract flags

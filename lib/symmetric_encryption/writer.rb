@@ -129,19 +129,11 @@ module SymmetricEncryption
       # Force header if compressed or using random iv, key
       header = true if compress || random_key || random_iv
 
-      cipher = nil
-      if random_key
-        # Version of key used to encrypt the random key
-        version = SymmetricEncryption.cipher.version
-      else
-        # Use global key if a new random one is not being generated
-        cipher = SymmetricEncryption.cipher(version)
-        raise "Cipher with version:#{version} not found in any of the configured SymmetricEncryption ciphers" unless cipher
-        # Version of key used to encrypt the data
-        version = cipher.version
-      end
+      # Cipher to encrypt the random_key, or the entire file
+      cipher = SymmetricEncryption.cipher(version)
+      raise "Cipher with version:#{version} not found in any of the configured SymmetricEncryption ciphers" unless cipher
 
-      @stream_cipher = ::OpenSSL::Cipher.new(cipher_name || SymmetricEncryption.cipher.cipher_name)
+      @stream_cipher = ::OpenSSL::Cipher.new(cipher_name || cipher.cipher_name)
       @stream_cipher.encrypt
 
       key = random_key ? @stream_cipher.random_key : cipher.send(:key)
@@ -153,12 +145,13 @@ module SymmetricEncryption
       # Write the Encryption header including the random iv, key, and cipher
       if header
         @ios.write(Cipher.magic_header(
-            version,
+            cipher.version,
             compress,
             random_iv  ? iv : nil,
             random_key ? key : nil,
             cipher_name))
       end
+      @size = 0
     end
 
     # Close the IO Stream
@@ -174,15 +167,21 @@ module SymmetricEncryption
     # rather than creating an instance of Symmetric::EncryptedStream directly to
     # ensure that the encrypted stream is closed before the stream itself is closed
     def close(close_child_stream = true)
-      final = @stream_cipher.final
-      @ios.write(final) if final.length > 0
+      if size > 0
+        final = @stream_cipher.final
+        @ios.write(final) if final.length > 0
+      end
       @ios.close if close_child_stream
     end
 
     # Write to the IO Stream as encrypted data
     # Returns the number of bytes written
     def write(data)
-      partial = @stream_cipher.update(data.to_s)
+      return unless data
+
+      bytes = data.to_s
+      @size += bytes.size
+      partial = @stream_cipher.update(bytes)
       @ios.write(partial) if partial.length > 0
       data.length
     end
@@ -204,6 +203,10 @@ module SymmetricEncryption
     def flush
       @ios.flush
     end
+
+    # Returns [Integer] the number of unencrypted and uncompressed bytes
+    # written to the file so far
+    attr_reader :size
 
   end
 end

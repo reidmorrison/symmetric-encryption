@@ -108,19 +108,58 @@ class ReaderTest < Test::Unit::TestCase
         context "with options: #{options.inspect}" do
           setup do
             @filename = '._test'
+            @empty_encrypted_filename = '._test_empty'
+            @empty_filename = File.join(File.dirname(__FILE__), 'config/empty.csv')
             # Create encrypted file
             SymmetricEncryption::Writer.open(@filename, options) do |file|
               @data.inject(0) {|sum,str| sum + file.write(str)}
+            end
+            SymmetricEncryption::Writer.open(@empty_encrypted_filename, options) do |file|
+              # Leave data portion empty
             end
           end
 
           teardown do
             File.delete(@filename) if File.exist?(@filename)
+            File.delete(@empty_encrypted_filename) if File.exist?(@empty_encrypted_filename)
           end
 
           should "decrypt from file in a single read" do
-            decrypted = SymmetricEncryption::Reader.open(@filename) {|file| file.read}
-            assert_equal @data_str, decrypted
+            assert_equal @data_str, SymmetricEncryption::Reader.open(@filename) {|file| file.read}
+          end
+
+          should "decrypt from empty file" do
+            assert_equal '', SymmetricEncryption::Reader.open(@empty_filename, :version => 0) {|file| file.read}
+          end
+
+          should "decrypt from empty file using read(size)" do
+            ios = SymmetricEncryption::Reader.open(@empty_filename, :version => 0)
+            assert_equal nil, ios.read(4096)
+          end
+
+          should "check if file is empty" do
+            assert_equal false, SymmetricEncryption::Reader.empty?(@filename)
+            assert_equal true, SymmetricEncryption::Reader.empty?(@empty_encrypted_filename)
+            assert_equal true, SymmetricEncryption::Reader.empty?(@empty_filename)
+            assert_raise Errno::ENOENT do
+              assert_equal false, SymmetricEncryption::Reader.empty?('missing_file')
+            end
+          end
+
+          # File with encryption header but no data
+          should "decrypt from empty encrypted file" do
+            if options[:header] == false
+              assert_equal 0, File.size(@empty_encrypted_filename)
+            end
+            assert_equal '', SymmetricEncryption::Reader.open(@empty_encrypted_filename, :version => 0) {|file| file.read}
+          end
+
+          should "decrypt from empty encrypted file using read(size)" do
+            if options[:header] == false
+              assert_equal 0, File.size(@empty_encrypted_filename)
+            end
+            ios = SymmetricEncryption::Reader.open(@empty_encrypted_filename, :version => 0)
+            assert_equal nil, ios.read(4096)
           end
 
           should "decrypt from file a line at a time" do

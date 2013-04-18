@@ -92,6 +92,12 @@ module SymmetricEncryption
       end
     end
 
+    # Returns [true|false] whether the file contains any data
+    # Excludes the header should it have one
+    def self.empty?(filename_or_stream)
+      open(filename_or_stream) {|file| file.eof? }
+    end
+
     # Decrypt data before reading from the supplied stream
     def initialize(ios,options={})
       @ios         = ios
@@ -154,11 +160,13 @@ module SymmetricEncryption
     # Reads at most length bytes from the I/O stream, or to the end of file if
     # length is omitted or is nil. length must be a non-negative integer or nil.
     #
-    # At end of file, it returns nil or "" depending on length.
+    # At end of file, it returns nil if no more data is available, or the last
+    # remaining bytes
     def read(length=nil)
       data = nil
       if length
         return '' if length == 0
+        return nil if @ios.eof? && (@read_buffer.length == 0)
         # Read length bytes
         while (@read_buffer.length < length) && !@ios.eof?
           read_block
@@ -288,7 +296,7 @@ module SymmetricEncryption
 
     # Read the header from the file if present
     def read_header
-      @compressed  = nil
+      @compressed = nil
       @pos = 0
 
       # Read first block and check for the header
@@ -303,8 +311,12 @@ module SymmetricEncryption
       @stream_cipher.iv = iv || decryption_cipher.send(:iv)
 
       # First call to #update should return an empty string anyway
-      @read_buffer = @stream_cipher.update(buf)
-      @read_buffer << @stream_cipher.final if @ios.eof?
+      if buf && buf.length > 0
+        @read_buffer = @stream_cipher.update(buf)
+        @read_buffer << @stream_cipher.final if @ios.eof?
+      else
+        @read_buffer = ''
+      end
     end
 
     # Read a block of data and append the decrypted data in the read buffer
