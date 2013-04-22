@@ -22,8 +22,7 @@ module SymmetricEncryption
     #
     #     :buffer_size
     #          Amount of data to read at a time
-    #          The buffer size must be at least large enough to hold the entire
-    #          magic header if one is present
+    #          Minimum Value 128
     #          Default: 4096
     #
     #   The following options are only used if the stream/file has no header
@@ -85,24 +84,39 @@ module SymmetricEncryption
 
       begin
         file = self.new(ios, options)
-        file = Zlib::GzipReader.new(file) if file.compressed? || compress
+        file = Zlib::GzipReader.new(file) if !file.eof? && (file.compressed? || compress)
         block ? block.call(file) : file
       ensure
         file.close if block && file
       end
     end
 
-    # Returns [true|false] whether the file contains any data
-    # Excludes the header should it have one
+    # Returns [true|false] whether the file or stream contains any data
+    # excluding the header should it have one
     def self.empty?(filename_or_stream)
       open(filename_or_stream) {|file| file.eof? }
     end
 
+    # Returns [true|false] whether the file contains the encryption header
+    def self.header_present?(filename)
+      ::File.open(filename, 'rb') {|file| new(file).header_present?}
+    end
+
+    # After opening a file Returns [true|false] whether the file being
+    # read has an encryption header
+    def header_present?
+      @header_present
+    end
+
     # Decrypt data before reading from the supplied stream
     def initialize(ios,options={})
-      @ios         = ios
-      @buffer_size = options.fetch(:buffer_size, 4096).to_i
-      @version     = options[:version]
+      @ios            = ios
+      @buffer_size    = options.fetch(:buffer_size, 4096).to_i
+      @version        = options[:version]
+      @header_present = false
+
+      raise "Buffer size cannot be smaller than 128" unless @buffer_size >= 128
+
       read_header
     end
 
@@ -204,11 +218,12 @@ module SymmetricEncryption
     # A sep_string of nil reads the entire contents of the file
     # Returns nil on eof
     # The stream must be opened for reading or an IOError will be raised.
-    def gets(sep_string)
-      return read if sep_string.nil?
+    def gets(sep_string,length=nil)
+      return read(length) if sep_string.nil?
 
       # Read more data until we get the sep_string
       while (index = @read_buffer.index(sep_string)).nil? && !@ios.eof?
+        break if length && @read_buffer.length >= length
         read_block
       end
       index ||= -1
@@ -303,7 +318,8 @@ module SymmetricEncryption
       buf = @ios.read(@buffer_size)
 
       # Use cipher specified in header, or global cipher if it has no header
-      @compressed, iv, key, cipher_name, decryption_cipher = SymmetricEncryption::Cipher.parse_magic_header!(buf, @version)
+      @compressed, iv, key, cipher_name, version, decryption_cipher = SymmetricEncryption::Cipher.parse_magic_header!(buf, @version)
+      @header_present = true if iv || key || version
 
       @stream_cipher = ::OpenSSL::Cipher.new(cipher_name || decryption_cipher.cipher_name)
       @stream_cipher.decrypt

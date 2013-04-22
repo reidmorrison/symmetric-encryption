@@ -107,7 +107,7 @@ class SymmetricEncryptionTest < Test::Unit::TestCase
         assert_equal @social_security_number, SymmetricEncryption.decrypt(encrypted)
       end
 
-      should "encrypt and then decrypt using random iv" do
+      should "encrypt and then decrypt using random iv with compression" do
         # Encrypt with random iv and compress
         assert encrypted = SymmetricEncryption.encrypt(@social_security_number, true, true)
         assert_equal true, SymmetricEncryption.encrypted?(encrypted)

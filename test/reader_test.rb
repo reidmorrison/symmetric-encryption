@@ -43,13 +43,13 @@ class ReaderTest < Test::Unit::TestCase
           @data_encrypted = header ? @data_encrypted_with_header : @data_encrypted_without_header
         end
 
-        should "decrypt from string stream as a single read" do
+        should "#read()" do
           stream = StringIO.new(@data_encrypted)
           decrypted = SymmetricEncryption::Reader.open(stream) {|file| file.read}
           assert_equal @data_str, decrypted
         end
 
-        should "decrypt from string stream as a single read, after a partial read" do
+        should "#read(size) followed by #read()" do
           stream = StringIO.new(@data_encrypted)
           decrypted = SymmetricEncryption::Reader.open(stream) do |file|
             file.read(10)
@@ -58,7 +58,7 @@ class ReaderTest < Test::Unit::TestCase
           assert_equal @data_str[10..-1], decrypted
         end
 
-        should "decrypt lines from string stream" do
+        should "#each_line" do
           stream = StringIO.new(@data_encrypted)
           i = 0
           decrypted = SymmetricEncryption::Reader.open(stream) do |file|
@@ -69,7 +69,7 @@ class ReaderTest < Test::Unit::TestCase
           end
         end
 
-        should "decrypt fixed lengths from string stream" do
+        should "#read(size)" do
           stream = StringIO.new(@data_encrypted)
           i = 0
           SymmetricEncryption::Reader.open(stream) do |file|
@@ -88,81 +88,105 @@ class ReaderTest < Test::Unit::TestCase
       end
     end
 
-    context "reading from file" do
-      [
-        # No Header
-        {:header => false, :random_key => false, :random_iv => false},
-        # Default Header with random key and iv
-        {},
-        # Header with no compression ( default anyway )
-        {:compress => false},
-        # Compress and use Random key, iv
-        {:compress => true},
-        # Header but not random key or iv
-        {:random_key => false},
-        # Random iv only
-        {:random_key => false, :random_iv => true},
-        # Random iv only with compression
-        {:random_iv => true, :compress => true},
-      ].each do |options|
-        context "with options: #{options.inspect}" do
+    [
+      # No Header
+      {:header => false, :random_key => false, :random_iv => false},
+      # Default Header with random key and iv
+      {},
+      # Header with no compression ( default anyway )
+      {:compress => false},
+      # Compress and use Random key, iv
+      {:compress => true},
+      # Header but not random key or iv
+      {:random_key => false},
+      # Random iv only
+      {:random_key => false, :random_iv => true},
+      # Random iv only with compression
+      {:random_iv => true, :compress => true},
+    ].each do |options|
+
+      [:data, :empty, :blank].each do |usecase|
+
+        context "read from #{usecase} file with options: #{options.inspect}" do
           setup do
-            @filename = '._test'
-            @empty_encrypted_filename = '._test_empty'
-            @empty_filename = File.join(File.dirname(__FILE__), 'config/empty.csv')
-            # Create encrypted file
-            SymmetricEncryption::Writer.open(@filename, options) do |file|
-              @data.inject(0) {|sum,str| sum + file.write(str)}
+            case usecase
+            when :data
+              # Create encrypted file
+              @eof = false
+              @filename = '._test'
+              @header = (options[:header] != false)
+              SymmetricEncryption::Writer.open(@filename, options) do |file|
+                @data.inject(0) {|sum,str| sum + file.write(str)}
+              end
+            when :empty
+              @data_str = ''
+              @eof = true
+              @filename = '._test_empty'
+              @header = (options[:header] != false)
+              SymmetricEncryption::Writer.open(@filename, options) do |file|
+                # Leave data portion empty
+              end
+            when :blank
+              @data_str = ''
+              @eof = true
+              @filename = File.join(File.dirname(__FILE__), 'config/empty.csv')
+              @header = false
+              assert_equal 0, File.size(@filename)
+            else
+              raise "Unhandled usecase: #{usecase}"
             end
-            SymmetricEncryption::Writer.open(@empty_encrypted_filename, options) do |file|
-              # Leave data portion empty
-            end
+            @data_size = @data_str.length
           end
 
           teardown do
-            File.delete(@filename) if File.exist?(@filename)
-            File.delete(@empty_encrypted_filename) if File.exist?(@empty_encrypted_filename)
+            File.delete(@filename) if File.exist?(@filename) && !@filename.end_with?('empty.csv')
           end
 
-          should "decrypt from file in a single read" do
-            assert_equal @data_str, SymmetricEncryption::Reader.open(@filename) {|file| file.read}
-          end
-
-          should "decrypt from empty file" do
-            assert_equal '', SymmetricEncryption::Reader.open(@empty_filename, :version => 0) {|file| file.read}
-          end
-
-          should "decrypt from empty file using read(size)" do
-            ios = SymmetricEncryption::Reader.open(@empty_filename, :version => 0)
-            assert_equal nil, ios.read(4096)
-          end
-
-          should "check if file is empty" do
-            assert_equal false, SymmetricEncryption::Reader.empty?(@filename)
-            assert_equal true, SymmetricEncryption::Reader.empty?(@empty_encrypted_filename)
-            assert_equal true, SymmetricEncryption::Reader.empty?(@empty_filename)
+          should ".empty?" do
+            assert_equal (@data_size==0), SymmetricEncryption::Reader.empty?(@filename)
             assert_raise Errno::ENOENT do
-              assert_equal false, SymmetricEncryption::Reader.empty?('missing_file')
+              SymmetricEncryption::Reader.empty?('missing_file')
             end
           end
 
-          # File with encryption header but no data
-          should "decrypt from empty encrypted file" do
-            if options[:header] == false
-              assert_equal 0, File.size(@empty_encrypted_filename)
+          should ".header_present?" do
+            assert_equal @header, SymmetricEncryption::Reader.header_present?(@filename)
+            assert_raise Errno::ENOENT do
+              SymmetricEncryption::Reader.header_present?('missing_file')
             end
-            assert_equal '', SymmetricEncryption::Reader.open(@empty_encrypted_filename, :version => 0) {|file| file.read}
           end
 
-          should "decrypt from empty encrypted file using read(size)" do
-            if options[:header] == false
-              assert_equal 0, File.size(@empty_encrypted_filename)
-            end
-            ios = SymmetricEncryption::Reader.open(@empty_encrypted_filename, :version => 0)
-            assert_equal nil, ios.read(4096)
+          should ".open return Zlib::GzipReader when compressed" do
+            file = SymmetricEncryption::Reader.open(@filename)
+            #assert_equal (@header && (options[:compress]||false)), file.is_a?(Zlib::GzipReader)
+            file.close
           end
 
-          should "decrypt from file a line at a time" do
+          should "#read()" do
+            data = nil
+            eof = nil
+            result = SymmetricEncryption::Reader.open(@filename) do |file|
+              eof = file.eof?
+              data = file.read
+            end
+            assert_equal @eof, eof
+            assert_equal @data_str, data
+            assert_equal @data_str, result
+          end
+
+          should "#read(size)" do
+            data = nil
+            eof = nil
+            file = SymmetricEncryption::Reader.open(@filename)
+            eof = file.eof?
+            data = file.read(4096)
+            file.close
+
+            assert_equal @eof, eof
+            assert_equal (@data_size > 0 ? @data_str : nil), data
+          end
+
+          should "#each_line" do
             decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
               i = 0
               file.each_line do |line|
@@ -172,7 +196,7 @@ class ReaderTest < Test::Unit::TestCase
             end
           end
 
-          should "support rewind" do
+          should "#rewind" do
             decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
               file.read
               file.rewind
@@ -181,9 +205,41 @@ class ReaderTest < Test::Unit::TestCase
             assert_equal @data_str, decrypted
           end
 
+          should "#gets(nil,size)" do
+            data = nil
+            eof = nil
+            file = SymmetricEncryption::Reader.open(@filename)
+            eof = file.eof?
+            data = file.gets(nil,4096)
+            file.close
+
+            assert_equal @eof, eof
+            assert_equal (@data_size > 0 ? @data_str : nil), data
+          end
+
+          should "#gets(delim)" do
+            decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
+              i = 0
+              while line = file.gets("\n")
+                assert_equal @data[i], line
+                i += 1
+              end
+              assert_equal (@data_size > 0 ? 3 : 0), i
+            end
+          end
+
+          should "#gets(delim,size)" do
+            decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
+              i = 0
+              while line = file.gets("\n",128)
+                i += 1
+              end
+              assert_equal (@data_size > 0 ? 3 : 0), i
+            end
+          end
+
         end
       end
-
     end
 
     context "reading from files with previous keys" do
