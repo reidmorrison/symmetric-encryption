@@ -108,7 +108,7 @@ module Mongoid
             def #{decrypt_as}=(value)
               @stored_#{field_name} = ::SymmetricEncryption.encrypt(value,#{random_iv},#{compress})
               self.#{field_name} = @stored_#{field_name}
-              @#{decrypt_as} = value
+              @#{decrypt_as} = value.freeze
             end
 
             # Returns the decrypted value for the encrypted field
@@ -116,7 +116,7 @@ module Mongoid
             # If this method is not called, then the encrypted value is never decrypted
             def #{decrypt_as}
               if @stored_#{field_name} != self.#{field_name}
-                @#{decrypt_as} = ::SymmetricEncryption.decrypt(self.#{field_name})
+                @#{decrypt_as} = ::SymmetricEncryption.decrypt(self.#{field_name}).freeze
                 @stored_#{field_name} = self.#{field_name}
               end
               @#{decrypt_as}
