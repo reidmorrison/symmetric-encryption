@@ -113,7 +113,7 @@ class ReaderTest < Test::Unit::TestCase
             when :data
               # Create encrypted file
               @eof = false
-              @filename = '._test'
+              @filename = '_test'
               @header = (options[:header] != false)
               SymmetricEncryption::Writer.open(@filename, options) do |file|
                 @data.inject(0) {|sum,str| sum + file.write(str)}
@@ -121,7 +121,7 @@ class ReaderTest < Test::Unit::TestCase
             when :empty
               @data_str = ''
               @eof = true
-              @filename = '._test_empty'
+              @filename = '_test_empty'
               @header = (options[:header] != false)
               SymmetricEncryption::Writer.open(@filename, options) do |file|
                 # Leave data portion empty
@@ -244,7 +244,7 @@ class ReaderTest < Test::Unit::TestCase
 
     context "reading from files with previous keys" do
       setup do
-        @filename = '._test'
+        @filename = '_test'
         # Create encrypted file with old encryption key
         SymmetricEncryption::Writer.open(@filename, :version => 0) do |file|
           @data.inject(0) {|sum,str| sum + file.write(str)}
@@ -282,7 +282,7 @@ class ReaderTest < Test::Unit::TestCase
 
     context "reading from files with previous keys without a header" do
       setup do
-        @filename = '._test'
+        @filename = '_test'
         # Create encrypted file with old encryption key
         SymmetricEncryption::Writer.open(@filename, :version => 0, :header => false, :random_key => false) do |file|
           @data.inject(0) {|sum,str| sum + file.write(str)}
@@ -290,7 +290,11 @@ class ReaderTest < Test::Unit::TestCase
       end
 
       teardown do
-        File.delete(@filename) if File.exist?(@filename)
+        begin
+          File.delete(@filename) if File.exist?(@filename)
+        rescue Errno::EACCES
+          # Required for Windows
+        end
       end
 
       should "decrypt from file in a single read" do

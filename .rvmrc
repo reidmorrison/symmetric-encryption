@@ -1,2 +1,0 @@
-rvm use ruby@symmetric-encryption --create
-export RACK_ENV=test

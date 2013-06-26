@@ -245,6 +245,7 @@ module SymmetricEncryption
       cfg[:key]          = symmetric_key
       cfg[:iv]           = config['iv'] || config['symmetric_iv']
       cfg[:cipher_name]  = default_cipher
+      cfg[:version]      = config['version']
 
     elsif ciphers = config['ciphers']
       raise "Missing mandatory config parameter 'private_rsa_key'" unless cfg[:private_rsa_key] = config['private_rsa_key']
@@ -296,7 +297,7 @@ module SymmetricEncryption
     # Load Encrypted Symmetric keys
     key_filename =  cipher_conf[:key_filename]
     encrypted_key = begin
-      File.read(key_filename)
+      File.read(key_filename, :open_args => ['rb'])
     rescue Errno::ENOENT
       puts "\nSymmetric Encryption key file: '#{key_filename}' not found or readable."
       puts "To generate the keys for the first time run: rails generate symmetric_encryption:new_keys\n\n"
@@ -305,7 +306,7 @@ module SymmetricEncryption
 
     iv_filename =  cipher_conf[:iv_filename]
     encrypted_iv = begin
-      File.read(iv_filename) if iv_filename
+      File.read(iv_filename, :open_args => ['rb']) if iv_filename
     rescue Errno::ENOENT
       puts "\nSymmetric Encryption initialization vector file: '#{iv_filename}' not found or readable."
       puts "To generate the keys for the first time run: rails generate symmetric_encryption:new_keys\n\n"
