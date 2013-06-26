@@ -54,7 +54,7 @@ module ActiveRecord #:nodoc:
             # If this method is not called, then the encrypted value is never decrypted
             def #{attribute}
               if @stored_encrypted_#{attribute} != self.encrypted_#{attribute}
-                @#{attribute} = ::SymmetricEncryption.decrypt(self.encrypted_#{attribute})
+                @#{attribute} = ::SymmetricEncryption.decrypt(self.encrypted_#{attribute}).freeze
                 @stored_encrypted_#{attribute} = self.encrypted_#{attribute}
               end
               @#{attribute}
@@ -64,7 +64,7 @@ module ActiveRecord #:nodoc:
             # Also updates the encrypted field with the encrypted value
             def #{attribute}=(value)
               self.encrypted_#{attribute} = @stored_encrypted_#{attribute} = ::SymmetricEncryption.encrypt(value#{".to_yaml" if marshal},#{random_iv},#{compress})
-              @#{attribute} = value
+              @#{attribute} = value.freeze
             end
           UNENCRYPTED
 

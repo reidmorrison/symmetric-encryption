@@ -63,11 +63,14 @@ class AttrEncryptedTest < Test::Unit::TestCase
       @string = "A string containing some data to be encrypted with a random initialization vector"
       @long_string = "A string containing some data to be encrypted with a random initialization vector and compressed since it takes up so much space in plain text form"
 
+      @name = 'Joe Bloggs'
+
       @user = User.new(
         # Encrypted Attribute
-        :bank_account_number              => @bank_account_number,
+        :bank_account_number    => @bank_account_number,
         # Encrypted Attribute
-        :social_security_number           => @social_security_number
+        :social_security_number => @social_security_number,
+        :name                   => @name
       )
     end
 
@@ -196,6 +199,54 @@ class AttrEncryptedTest < Test::Unit::TestCase
       assert_equal true, @user.valid?
     end
 
-  end
+    context "with saved user" do
+      setup do
+        @user.save!
+      end
 
+      teardown do
+        @user.destroy
+      end
+
+      should "handle gsub! for non-encrypted_field" do
+        @user.name.gsub!('a', 'v')
+        new_name = @name.gsub('a', 'v')
+        assert_equal new_name, @user.name
+        @user.reload
+        assert_equal new_name, @user.name
+      end
+
+      should "prevent gsub! on non-encrypted value of encrypted_field" do
+        # can't modify frozen String
+        assert_raises RuntimeError do
+          @user.bank_account_number.gsub!('5', '4')
+        end
+      end
+
+      should "revert changes on reload" do
+        new_bank_account_number = '444444444'
+        @user.bank_account_number = new_bank_account_number
+        assert_equal new_bank_account_number, @user.bank_account_number
+
+        # Reload User model from the database
+        @user.reload
+        assert_equal @bank_account_number_encrypted, @user.encrypted_bank_account_number
+        assert_equal @bank_account_number, @user.bank_account_number
+      end
+
+      should "revert changes to encrypted field on reload" do
+        new_bank_account_number = '111111111'
+        new_encrypted_bank_account_number = SymmetricEncryption.encrypt(new_bank_account_number)
+        @user.encrypted_bank_account_number = new_encrypted_bank_account_number
+        assert_equal new_encrypted_bank_account_number, @user.encrypted_bank_account_number
+        assert_equal new_bank_account_number, @user.bank_account_number
+
+        # Reload User model from the database
+        @user.reload
+        assert_equal @bank_account_number_encrypted, @user.encrypted_bank_account_number
+        assert_equal @bank_account_number, @user.bank_account_number
+      end
+    end
+
+  end
 end
