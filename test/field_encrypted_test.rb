@@ -1,16 +1,4 @@
-# Allow examples to be run in-place without requiring a gem install
-$LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
-
-require 'rubygems'
-require 'logger'
-require 'erb'
-require 'test/unit'
-require 'shoulda'
-# Since we want both the Mongoid extensions loaded we need to require it first
-require 'active_record'
-require 'mongoid'
-require 'symmetric-encryption'
-require 'symmetric_encryption/extensions/mongoid/fields'
+require "#{File.dirname(__FILE__)}/test_helper"
 
 Mongoid.logger = Logger.new($stdout)
 filename = defined?(Mongoid::VERSION) ? "test/config/mongoid_v3.yml" : "test/config/mongoid_v2.yml"
@@ -32,9 +20,6 @@ class MongoidUser
   #  validates :encrypted_bank_account_number, :symmetric_encrypted => true
   #  validates :encrypted_social_security_number, :symmetric_encrypted => true
 end
-
-# Load Symmetric Encryption keys
-SymmetricEncryption.load!(File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
 
 #
 # Unit Tests for field encrypted and validation aspects of SymmetricEncryption

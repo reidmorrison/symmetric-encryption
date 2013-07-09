@@ -1,15 +1,4 @@
-# Allow examples to be run in-place without requiring a gem install
-$LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
-
-require 'rubygems'
-require 'logger'
-require 'erb'
-require 'test/unit'
-require 'shoulda'
-# Since we want both the AR and Mongoid extensions loaded we need to require them first
-require 'active_record'
-require 'mongoid'
-require 'symmetric-encryption'
+require "#{File.dirname(__FILE__)}/test_helper"
 
 ActiveRecord::Base.logger = Logger.new($stderr)
 ActiveRecord::Base.configurations = YAML::load(ERB.new(IO.read('test/config/database.yml')).result)
@@ -34,9 +23,6 @@ class User < ActiveRecord::Base
   validates :encrypted_bank_account_number, :symmetric_encryption => true
   validates :encrypted_social_security_number, :symmetric_encryption => true
 end
-
-# Load Symmetric Encryption keys
-SymmetricEncryption.load!(File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
 
 # Initialize the database connection
 config_file = File.join(File.dirname(__FILE__), 'config', 'database.yml')
