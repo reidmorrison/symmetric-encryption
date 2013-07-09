@@ -51,3 +51,24 @@ test:
       encoding:     base64
       version:      0
 
+heroku:
+  # Test RSA Key, DO NOT use this RSA key, generate a new one using
+  #    openssl genrsa 2048
+  private_rsa_key_envvar: TEST_SYM_ENC_KEY_VAR
+
+  ciphers:
+    # Current / Newest Symmetric Encryption Key
+    - key_filename: test/config/test_new.key
+      iv_filename:  test/config/test_new.iv
+      cipher_name:  aes-128-cbc
+      # Base64 encode encrypted data without newlines
+      encoding:     base64strict
+      version:      1
+
+    # Previous Symmetric Encryption Key
+    - key_filename: test/config/test_secondary_1.key
+      iv_filename:  test/config/test_secondary_1.iv
+      cipher_name:  aes-128-cbc
+      # Base64 encode encrypted data without newlines
+      encoding:     base64
+      version:      0

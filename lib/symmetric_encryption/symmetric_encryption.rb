@@ -328,7 +328,11 @@ module SymmetricEncryption
   private
 
   def self.ensure_private_rsa_key yaml_config
-    yaml_config['private_rsa_key'] || raise("Missing mandatory config parameter 'private_rsa_key'")
+    if yaml_config['private_rsa_key_envvar']
+      ENV[yaml_config['private_rsa_key_envvar']] || raise("Env var missing for 'private_rsa_key_envvar' #{yaml_config['private_rsa_key_envvar']}")
+    else
+      yaml_config['private_rsa_key'] || raise("Missing mandatory config parameter 'private_rsa_key'")
+    end
   end
 
   # With Ruby 1.9 strings have encodings
