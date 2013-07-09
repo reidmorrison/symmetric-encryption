@@ -1,6 +1,8 @@
 source 'https://rubygems.org'
 
 group :test do
+  gem "rake"
+
   gem "shoulda"
 
   # Limited to Rails 3.2.x only because of Mongoid dependency below

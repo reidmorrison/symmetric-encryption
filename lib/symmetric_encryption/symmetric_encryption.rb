@@ -248,7 +248,7 @@ module SymmetricEncryption
       cfg[:version]      = config['version']
 
     elsif ciphers = config['ciphers']
-      raise "Missing mandatory config parameter 'private_rsa_key'" unless cfg[:private_rsa_key] = config['private_rsa_key']
+      cfg[:private_rsa_key] = ensure_private_rsa_key config
 
       cfg[:ciphers] = ciphers.collect do |cipher_cfg|
         key_filename = cipher_cfg['key_filename'] || cipher_cfg['symmetric_key_filename']
@@ -265,7 +265,7 @@ module SymmetricEncryption
 
     else
       # Migrate old format config
-      raise "Missing mandatory config parameter 'private_rsa_key'" unless cfg[:private_rsa_key] = config['private_rsa_key']
+      cfg[:private_rsa_key] = ensure_private_rsa_key config
       cfg[:ciphers] = [ {
           :cipher_name  => default_cipher,
           :key_filename => config['symmetric_key_filename'],
@@ -325,10 +325,19 @@ module SymmetricEncryption
     )
   end
 
+  private
+
+  def self.ensure_private_rsa_key yaml_config
+    if yaml_config['private_rsa_key_envvar']
+      ENV[yaml_config['private_rsa_key_envvar']] || raise("Env var missing for 'private_rsa_key_envvar' #{yaml_config['private_rsa_key_envvar']}")
+    else
+      yaml_config['private_rsa_key'] || raise("Missing mandatory config parameter 'private_rsa_key'")
+    end
+  end
+
   # With Ruby 1.9 strings have encodings
   if defined?(Encoding)
     BINARY_ENCODING = Encoding.find("binary")
     UTF8_ENCODING = Encoding.find("UTF-8")
   end
-
 end

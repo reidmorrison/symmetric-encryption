@@ -1,13 +1,4 @@
-# Allow examples to be run in-place without requiring a gem install
-$LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
-
-require 'rubygems'
-require 'test/unit'
-require 'shoulda'
-require 'symmetric_encryption'
-
-# Load Symmetric Encryption keys
-SymmetricEncryption.load!(File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
+require "#{File.dirname(__FILE__)}/test_helper"
 
 # Unit Test for SymmetricEncryption::Cipher
 #
