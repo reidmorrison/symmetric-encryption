@@ -79,7 +79,7 @@ option will result in different encrypted output every time it is encrypted.
 * Encryption of passwords in configuration files
 * Encryption of ActiveRecord model attributes by prefixing attributes / column
 names with encrypted_
-* Encryption of Mongoid model fields by adding :encrypted => true to field
+* Encryption of Mongoid model fields by adding :encrypted option to field
   definitions
 * Externalization of symmetric encryption keys so that they are not in the
   source code, or the source code control system
@@ -160,7 +160,7 @@ class User
   field :name,                             :type => String
   field :encrypted_bank_account_number,    :type => String,  :encrypted => true
   field :encrypted_social_security_number, :type => String,  :encrypted => true
-  field :encrypted_life_history,           :type => String, :encrypted => true, :compress => true, :random_iv => true
+  field :encrypted_life_history,           :type => String,  :encrypted => {:compress => true, :random_iv => true}
 end
 
 # Create a new user document

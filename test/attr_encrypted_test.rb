@@ -5,11 +5,12 @@ require 'rubygems'
 require 'logger'
 require 'erb'
 require 'test/unit'
-require 'shoulda'
 # Since we want both the AR and Mongoid extensions loaded we need to require them first
 require 'active_record'
 require 'mongoid'
 require 'symmetric-encryption'
+# Should redefines Proc#bind so must include after Rails
+require 'shoulda'
 
 ActiveRecord::Base.logger = Logger.new($stderr)
 ActiveRecord::Base.configurations = YAML::load(ERB.new(IO.read('test/config/database.yml')).result)

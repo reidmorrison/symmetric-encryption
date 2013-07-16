@@ -1,11 +1,10 @@
 source 'https://rubygems.org'
 
 group :test do
-  gem "shoulda"
+  gem 'rake'
+  gem 'shoulda'
 
-  # Limited to Rails 3.2.x only because of Mongoid dependency below
-  # If Mongoid Appender is not used, Rails 4 should work fine
-  gem "activerecord", "~> 3.2.0"
+  gem 'activerecord'
   gem 'sqlite3', :platform => :ruby
 
   platforms :jruby do
@@ -13,5 +12,8 @@ group :test do
     gem 'activerecord-jdbcsqlite3-adapter'
   end
 
-  gem "mongoid", "~> 3.1.0"
+  # Use Mongo as the database with Mongoid as the Object Document Mapper
+  # Edge has support for Rails 4
+  gem 'mongoid', git: 'https://github.com/mongoid/mongoid.git'
+  gem 'awesome_print'
 end

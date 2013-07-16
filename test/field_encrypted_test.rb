@@ -10,7 +10,6 @@ require 'shoulda'
 require 'active_record'
 require 'mongoid'
 require 'symmetric-encryption'
-require 'symmetric_encryption/extensions/mongoid/fields'
 
 Mongoid.logger = Logger.new($stdout)
 filename = defined?(Mongoid::VERSION) ? "test/config/mongoid_v3.yml" : "test/config/mongoid_v2.yml"
@@ -22,12 +21,8 @@ class MongoidUser
   field :name,                             :type => String
   field :encrypted_bank_account_number,    :type => String,  :encrypted => true
   field :encrypted_social_security_number, :type => String,  :encrypted => true
-  field :encrypted_string,                 :type => String,  :encrypted => true, :random_iv => true
-  field :encrypted_long_string,            :type => String,  :encrypted => true, :random_iv => true, :compress => true
-#  field :encrypted_integer,                :type => Integer, :encrypted => true
-#  field :encrypted_float,                  :type => Float,   :encrypted => true
-#  field :encrypted_date,                   :type => Date,    :encrypted => true
-  # etc...
+  field :encrypted_string,                 :type => String,  :encrypted => {:random_iv => true}
+  field :encrypted_long_string,            :type => String,  :encrypted => {:random_iv => true, :compress => true}
 
   #  validates :encrypted_bank_account_number, :symmetric_encrypted => true
   #  validates :encrypted_social_security_number, :symmetric_encrypted => true
@@ -64,19 +59,36 @@ class FieldEncryptedTest < Test::Unit::TestCase
       @user = MongoidUser.new(
         :encrypted_bank_account_number    => @bank_account_number_encrypted,
         :encrypted_social_security_number => @social_security_number_encrypted,
-        :encrypted_integer                => @integer_encrypted,
-        :encrypted_float                  => @float_encrypted,
-        :encrypted_date                   => @date_encrypted,
         :name                             => "Joe Bloggs"
       )
     end
 
     should "have encrypted methods" do
       assert_equal true, @user.respond_to?(:encrypted_bank_account_number)
-      assert_equal true, @user.respond_to?(:bank_account_number)
       assert_equal true, @user.respond_to?(:encrypted_social_security_number)
-      assert_equal true, @user.respond_to?(:social_security_number)
+      assert_equal true, @user.respond_to?(:encrypted_string)
+      assert_equal true, @user.respond_to?(:encrypted_long_string)
       assert_equal false, @user.respond_to?(:encrypted_name)
+
+      assert_equal true, @user.respond_to?(:encrypted_bank_account_number=)
+      assert_equal true, @user.respond_to?(:encrypted_social_security_number=)
+      assert_equal true, @user.respond_to?(:encrypted_string=)
+      assert_equal true, @user.respond_to?(:encrypted_long_string=)
+      assert_equal false, @user.respond_to?(:encrypted_name=)
+    end
+
+    should "have unencrypted methods" do
+      assert_equal true, @user.respond_to?(:bank_account_number)
+      assert_equal true, @user.respond_to?(:social_security_number)
+      assert_equal true, @user.respond_to?(:string)
+      assert_equal true, @user.respond_to?(:long_string)
+      assert_equal true, @user.respond_to?(:name)
+
+      assert_equal true, @user.respond_to?(:bank_account_number=)
+      assert_equal true, @user.respond_to?(:social_security_number=)
+      assert_equal true, @user.respond_to?(:string=)
+      assert_equal true, @user.respond_to?(:long_string=)
+      assert_equal true, @user.respond_to?(:name=)
     end
 
     should "have unencrypted values" do
@@ -156,11 +168,6 @@ class FieldEncryptedTest < Test::Unit::TestCase
       assert_equal @bank_account_number_encrypted, user.encrypted_bank_account_number
       assert_equal @social_security_number_encrypted, user.encrypted_social_security_number
     end
-
-#    should "support different data types" do
-#      assert_equal @integer, @user.integer
-#      assert_equal @integer_encrypted, @user.encrypted_integer
-#    end
   end
 
 end

@@ -18,5 +18,5 @@ end
 
 # field encryption for Mongoid
 if defined?(Mongoid)
-  require 'symmetric_encryption/extensions/mongoid/fields'
+  require 'symmetric_encryption/mongoid'
 end
