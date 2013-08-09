@@ -22,7 +22,7 @@ class WriterTest < Test::Unit::TestCase
       ]
       @data_str = @data.inject('') {|sum,str| sum << str}
       @data_len = @data_str.length
-      @data_encrypted = SymmetricEncryption.cipher.binary_encrypt(@data_str, false, false)
+      @data_encrypted = SymmetricEncryption.cipher.encrypt(@data_str, false, false)
       @filename = '._test'
     end
 

@@ -93,19 +93,19 @@ class CipherTest < Test::Unit::TestCase
       end
     end
 
-    context "magic header" do
+    context "build header" do
 
-      should "create and parse magic header" do
+      should "build and parse header" do
         random_cipher = SymmetricEncryption::Cipher.new(SymmetricEncryption::Cipher.random_key_pair)
-        header = SymmetricEncryption::Cipher.magic_header(1, compressed=true, random_cipher.send(:iv), random_cipher.send(:key), random_cipher.cipher_name)
-        compressed, iv, key, cipher_name, version, decryption_cipher = SymmetricEncryption::Cipher.parse_magic_header!(header)
-        assert_equal true, compressed
-        assert_equal random_cipher.cipher_name, cipher_name, "Ciphers differ"
-        assert_equal random_cipher.send(:key), key, "Keys differ"
-        assert_equal random_cipher.send(:iv), iv, "IVs differ"
+        binary_header = SymmetricEncryption::Cipher.build_header(1, compressed=true, random_cipher.send(:iv), random_cipher.send(:key), random_cipher.cipher_name)
+        header = SymmetricEncryption::Cipher.parse_header!(binary_header)
+        assert_equal true, header.compressed
+        assert_equal random_cipher.cipher_name, header.cipher_name, "Ciphers differ"
+        assert_equal random_cipher.send(:key), header.key, "Keys differ"
+        assert_equal random_cipher.send(:iv), header.iv, "IVs differ"
 
         string = "Hello World"
-        cipher = SymmetricEncryption::Cipher.new(:key => key, :iv => iv, :cipher_name => cipher_name)
+        cipher = SymmetricEncryption::Cipher.new(:key => header.key, :iv => header.iv, :cipher_name => header.cipher_name)
         # Test Encryption
         assert_equal random_cipher.encrypt(string, false, false), cipher.encrypt(string, false, false), "Encrypted values differ"
       end

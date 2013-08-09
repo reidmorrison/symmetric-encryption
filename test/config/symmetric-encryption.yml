@@ -5,6 +5,7 @@
 test:
   # Test RSA Key, DO NOT use this RSA key, generate a new one using
   #    openssl genrsa 2048
+  # Or use the rails generator to create a new config file as described in the readme
   private_rsa_key: |
     -----BEGIN RSA PRIVATE KEY-----
     MIIEpAIBAAKCAQEAxIL9H/jYUGpA38v6PowRSRJEo3aNVXULNM/QNRpx2DTf++KH
@@ -36,18 +37,36 @@ test:
 
   ciphers:
     # Current / Newest Symmetric Encryption Key
-    - key_filename: test/config/test_new.key
-      iv_filename:  test/config/test_new.iv
-      cipher_name:  aes-128-cbc
-      # Base64 encode encrypted data without newlines
-      encoding:     base64strict
-      version:      1
+#    -
+#      key_filename:      test/config/test_new.key
+#      iv_filename:       test/config/test_new.iv
+#      cipher_name:       aes-128-cbc
+#      # Base64 encode encrypted data without newlines
+#      encoding:          base64strict
+#      version:           2
+#      always_add_header: true
 
-    # Previous Symmetric Encryption Key
-    - key_filename: test/config/test_secondary_1.key
-      iv_filename:  test/config/test_secondary_1.iv
-      cipher_name:  aes-128-cbc
+    # Previous Symmetric Encryption Key specified in environment variable
+    -
+      # Base64strict encoded, RSA encrypted, encryption key
+      # Can also be retrieved from an environment variable: ENV['KEY']
+      # To manually generate new keys once this file has been generated:
+      #   require 'symmetric_encryption'
+      #   SymmetricEncryption.generate_symmetric_key_files('this_file_name.yml', 'production')
+      encrypted_key:     <%= 'xFAsZ73PThktyo76PoNQGYnjCJUAd4+Yaz71bO5FajshXsbjkfZjjvbK9hxzWLr+C7X67hcrTypVHB1Rw0De8lRDqexlc87sTx1wtlz70lOvTBXt9Lv4sbJNLxacuqk545LIJpgK02Dq7FGzACV3jb3Yk+QQngiscETYM6PyiuFpReFB0qFOgCSLeBJsXAdNdqkEZggl8PL+lGDueDGeKUng+Ic/AFWPhJGYkk3xV++AGwUFXdDQeuHllxmV9WlzriHnDwzbfugkfGaRjWn808VXrv9Jgf2yRy++gOYUvRnjZ1ltOgXUEEmBVF2Uvhu+zs6C/D4cb1mkR7911M5naA==' %>
+      iv:                1234567890ABCDEF
+      cipher_name:       aes-128-cbc
       # Base64 encode encrypted data without newlines
-      encoding:     base64
-      version:      0
+      encoding:          base64strict
+      version:           1
+      always_add_header: false
 
+    # First Symmetric Encryption Key
+    -
+      key_filename:      test/config/test_secondary_1.key
+      iv_filename:       test/config/test_secondary_1.iv
+      cipher_name:       aes-128-cbc
+      # Base64 encode encrypted data without newlines
+      encoding:          base64
+      version:           0
+      always_add_header: false

@@ -15,6 +15,34 @@ and consistent way
 Symmetric Encryption uses OpenSSL to encrypt and decrypt data, and can therefore
 expose all the encryption algorithms supported by OpenSSL.
 
+## Upgrading from earlier versions to SymmetricEncryption V3
+
+In version 3 of SymmetricEncryption, the following changes have been made that
+may have backward compatibility issues:
+
+* SymmetricEncryption.decrypt no longer rotates through all the decryption keys
+  when previous ciphers fail to decrypt the encrypted string.
+  In a very small, yet significant number of cases it was possible to decrypt data
+  using the incorrect key. Clearly the data returned was garbage, but it still
+  returned a string of data instead of throwing an exception.
+  See SymmetricEncryption.cipher_selector= to supply your own custom logic to
+  determine the correct cipher to use when the encrypted string does not have a
+  header and multiple ciphers are defined.
+
+* #encode and #decode have been moved from low-level ciphers and into SymmetricEncryption.
+  Does not affect existing calls to the commonly used SymmetricEncryption.encrypt
+  and SymmetricEncryption.decrypt methods.
+
+* Configuration file format prior to V1 is no longer supported
+
+* New configuration option has been added to support setting encryption keys
+  from environment variables
+
+* Cipher.parse_magic_header! now returns a Struct instead of an Array
+
+* New config options :encrypted_key and :encrypted_iv to support setting
+  the encryption key in environment variables
+
 ## Security
 
 Many solutions that encrypt data require the encryption keys to be stored in the
@@ -50,6 +78,12 @@ From a security perspective it is important then to properly secure the system s
 no hacker can switch to and run as the rails user and thereby gain access to the
 encryption and decryption capabilities
 
+It is not necessary to encrypt the IV (initialization vector), and it can be placed
+directly in the configuration file. The encryption key must be kept secure and
+must never be placed in the configuration file or other Rails source file in production.
+The IV should be generated using the rails generator described below to ensure
+it is a truly random key from the key space.
+
 ## Limitations
 
 By default symmetric encryption uses the same initialization vector (IV) and
@@ -78,7 +112,7 @@ option will result in different encrypted output every time it is encrypted.
 
 * Encryption of passwords in configuration files
 * Encryption of ActiveRecord model attributes by prefixing attributes / column
-names with encrypted_
+  names with encrypted_
 * Encryption of Mongoid model fields by adding :encrypted option to field
   definitions
 * Externalization of symmetric encryption keys so that they are not in the
@@ -97,6 +131,14 @@ names with encrypted_
 * Drop in replacement for attr_encrypted. Just remove the attr_encrypted gem
 * For maximum security supports fully random keys and initialization vectors
   extracted from the entire encryption key space
+
+## Recommendations
+
+* Add the encryption header to all encrypted strings.
+  See the _always_add_header_ option in the configuration file.
+
+* Set :random_iv => true for all ActiveRecord attributes and Mongoid fields
+  which are not used in indexes and will not be used as part of a query.
 
 ## Examples
 

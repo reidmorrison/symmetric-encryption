@@ -34,5 +34,8 @@ task :test do
     t.verbose    = true
   end
 
+  # For mongoid
+  ENV['RACK_ENV'] = 'test'
+
   Rake::Task['functional'].invoke
 end

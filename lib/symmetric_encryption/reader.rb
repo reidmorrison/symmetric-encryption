@@ -311,17 +311,28 @@ module SymmetricEncryption
 
     # Read the header from the file if present
     def read_header
-      @compressed = nil
       @pos = 0
 
       # Read first block and check for the header
       buf = @ios.read(@buffer_size)
 
       # Use cipher specified in header, or global cipher if it has no header
-      @compressed, iv, key, cipher_name, version, decryption_cipher = SymmetricEncryption::Cipher.parse_magic_header!(buf, @version)
-      @header_present = true if iv || key || version
+      iv, key, cipher_name, decryption_cipher = nil
+      if header = SymmetricEncryption::Cipher.parse_header!(buf)
+        @header_present   = true
+        @compressed       = header.compressed
+        decryption_cipher = header.decryption_cipher
+        cipher_name       = header.cipher_name || decryption_cipher.cipher_name
+        key               = header.key
+        iv                = header.iv
+      else
+        @header_present   = false
+        @compressed       = nil
+        decryption_cipher = SymmetricEncryption.cipher(@version)
+        cipher_name       = decryption_cipher.cipher_name
+      end
 
-      @stream_cipher = ::OpenSSL::Cipher.new(cipher_name || decryption_cipher.cipher_name)
+      @stream_cipher = ::OpenSSL::Cipher.new(cipher_name)
       @stream_cipher.decrypt
       @stream_cipher.key = key || decryption_cipher.send(:key)
       @stream_cipher.iv = iv || decryption_cipher.send(:iv)
