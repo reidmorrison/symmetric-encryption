@@ -56,10 +56,10 @@ class AttrEncryptedTest < Test::Unit::TestCase
 
     setup do
       @bank_account_number = "1234567890"
-      @bank_account_number_encrypted = "L94ArJeFlJrZp6SYsvoOGA=="
+      @bank_account_number_encrypted = "QEVuQwIAL94ArJeFlJrZp6SYsvoOGA=="
 
       @social_security_number = "987654321"
-      @social_security_number_encrypted = "S+8X1NRrqdfEIQyFHVPuVA=="
+      @social_security_number_encrypted = "QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA=="
 
       @string = "A string containing some data to be encrypted with a random initialization vector"
       @long_string = "A string containing some data to be encrypted with a random initialization vector and compressed since it takes up so much space in plain text form"

@@ -17,8 +17,7 @@ class SymmetricEncryptionTest < Test::Unit::TestCase
     context 'configuration' do
       setup do
         @ciphers = SymmetricEncryption.send(:read_config, File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
-        assert @cipher_v2 = @ciphers[0]
-        assert @cipher_v0 = @ciphers[1]
+        @cipher_v2, @cipher_v1, @cipher_v0 = @ciphers
       end
 
       should "match config file for first cipher" do
@@ -57,13 +56,13 @@ class SymmetricEncryptionTest < Test::Unit::TestCase
           @social_security_number_encrypted =
             case encoding
           when :base64
-            "S+8X1NRrqdfEIQyFHVPuVA==\n"
+            "QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA==\n"
           when :base64strict
-            "S+8X1NRrqdfEIQyFHVPuVA=="
+            "QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA=="
           when :base16
-            "4bef17d4d46ba9d7c4210c851d53ee54"
+            "40456e4302004bef17d4d46ba9d7c4210c851d53ee54"
           when :none
-            "K\xEF\x17\xD4\xD4k\xA9\xD7\xC4!\f\x85\x1DS\xEET".force_encoding(Encoding.find("binary"))
+            "@EnC\x02\x00K\xEF\x17\xD4\xD4k\xA9\xD7\xC4!\f\x85\x1DS\xEET".force_encoding(Encoding.find("binary"))
           else
             raise "Add test for encoding: #{encoding}"
           end
@@ -89,23 +88,60 @@ class SymmetricEncryptionTest < Test::Unit::TestCase
           assert_equal false, SymmetricEncryption.encrypted?(@social_security_number)
         end
       end
+
+      context "using select_cipher" do
+        setup do
+          @social_security_number = "987654321"
+          # Encrypt data without a header and encode with base64 which has a trailing '\n'
+          @encrypted_0_ssn = SymmetricEncryption.cipher(0).encode(SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number,false,false,false))
+
+          SymmetricEncryption.select_cipher do |encoded_str, decoded_str|
+            # Use cipher version 0 if the encoded string ends with "\n" otherwise
+            # use the current default cipher
+            encoded_str.end_with?("\n") ? SymmetricEncryption.cipher(0) : SymmetricEncryption.cipher
+          end
+        end
+
+        teardown do
+          # Clear out select_cipher
+          SymmetricEncryption.select_cipher
+        end
+
+        should "decrypt string without a header using an old cipher" do
+          assert_equal @social_security_number, SymmetricEncryption.decrypt(@encrypted_0_ssn)
+        end
+      end
+
+      context "without select_cipher" do
+        setup do
+          @social_security_number = "987654321"
+          # Encrypt data without a header and encode with base64 which has a trailing '\n'
+          assert @encrypted_0_ssn = SymmetricEncryption.cipher(0).encode(SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number,false,false,false))
+        end
+
+        should "decrypt string without a header using an old cipher" do
+          assert_raises OpenSSL::Cipher::CipherError do
+            SymmetricEncryption.decrypt(@encrypted_0_ssn)
+          end
+        end
+      end
     end
 
     context "random iv" do
       setup do
-          @social_security_number = "987654321"
+        @social_security_number = "987654321"
       end
 
       should "encrypt and then decrypt using random iv" do
         # Encrypt with random iv
-        assert encrypted = SymmetricEncryption.encrypt(@social_security_number, true)
+        assert encrypted = SymmetricEncryption.encrypt(@social_security_number, random_iv=true)
         assert_equal true, SymmetricEncryption.encrypted?(encrypted)
         assert_equal @social_security_number, SymmetricEncryption.decrypt(encrypted)
       end
 
       should "encrypt and then decrypt using random iv with compression" do
         # Encrypt with random iv and compress
-        assert encrypted = SymmetricEncryption.encrypt(@social_security_number, true, true)
+        assert encrypted = SymmetricEncryption.encrypt(@social_security_number, random_iv=true, compress=true)
         assert_equal true, SymmetricEncryption.encrypted?(encrypted)
         assert_equal @social_security_number, SymmetricEncryption.decrypt(encrypted)
       end

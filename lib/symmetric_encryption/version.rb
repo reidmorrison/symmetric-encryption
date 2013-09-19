@@ -1,4 +1,4 @@
 # encoding: utf-8
 module SymmetricEncryption #:nodoc
-  VERSION = "3.0.0.alpha"
+  VERSION = "3.0.0"
 end

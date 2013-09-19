@@ -22,21 +22,23 @@ class ReaderTest < Test::Unit::TestCase
       ]
       @data_str = @data.inject('') {|sum,str| sum << str}
       @data_len = @data_str.length
-      @data_encrypted_without_header = SymmetricEncryption.cipher.encrypt(@data_str)
+      # Use Cipher 0 since it does not always include a header
+      @cipher = SymmetricEncryption.cipher(0)
+      @data_encrypted_without_header = @cipher.binary_encrypt(@data_str)
 
       @data_encrypted_with_header = SymmetricEncryption::Cipher.build_header(
-        SymmetricEncryption.cipher.version,
+        @cipher.version,
         compress = false,
-        SymmetricEncryption.cipher.send(:iv),
-        SymmetricEncryption.cipher.send(:key),
-        SymmetricEncryption.cipher.cipher_name,
+        @cipher.send(:iv),
+        @cipher.send(:key),
+        @cipher.cipher_name,
         binary=false,
       )
-      @data_encrypted_with_header << SymmetricEncryption.cipher.encrypt(@data_str)
+      @data_encrypted_with_header << @cipher.binary_encrypt(@data_str)
 
       # Verify regular decrypt can decrypt this string
-      SymmetricEncryption.cipher.decrypt(@data_encrypted_without_header)
-      SymmetricEncryption.cipher.decrypt(@data_encrypted_with_header)
+      @cipher.binary_decrypt(@data_encrypted_without_header)
+      @cipher.binary_decrypt(@data_encrypted_with_header)
       assert @data_encrypted_without_header != @data_encrypted_with_header
     end
 
@@ -48,13 +50,15 @@ class ReaderTest < Test::Unit::TestCase
 
         should "#read()" do
           stream = StringIO.new(@data_encrypted)
-          decrypted = SymmetricEncryption::Reader.open(stream) {|file| file.read}
+          # Version 0 supplied if the file/stream does not have a header
+          decrypted = SymmetricEncryption::Reader.open(stream, version: 0) {|file| file.read}
           assert_equal @data_str, decrypted
         end
 
         should "#read(size) followed by #read()" do
           stream = StringIO.new(@data_encrypted)
-          decrypted = SymmetricEncryption::Reader.open(stream) do |file|
+          # Version 0 supplied if the file/stream does not have a header
+          decrypted = SymmetricEncryption::Reader.open(stream, version: 0) do |file|
             file.read(10)
             file.read
           end
@@ -64,7 +68,8 @@ class ReaderTest < Test::Unit::TestCase
         should "#each_line" do
           stream = StringIO.new(@data_encrypted)
           i = 0
-          decrypted = SymmetricEncryption::Reader.open(stream) do |file|
+          # Version 0 supplied if the file/stream does not have a header
+          decrypted = SymmetricEncryption::Reader.open(stream, version: 0) do |file|
             file.each_line do |line|
               assert_equal @data[i], line
               i += 1
@@ -75,7 +80,8 @@ class ReaderTest < Test::Unit::TestCase
         should "#read(size)" do
           stream = StringIO.new(@data_encrypted)
           i = 0
-          SymmetricEncryption::Reader.open(stream) do |file|
+          # Version 0 supplied if the file/stream does not have a header
+          decrypted = SymmetricEncryption::Reader.open(stream, version: 0) do |file|
             index = 0
             [0,10,5,5000].each do |size|
               buf = file.read(size)

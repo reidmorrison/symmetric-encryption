@@ -38,10 +38,10 @@ class FieldEncryptedTest < Test::Unit::TestCase
   context 'the SymmetricEncryption Library' do
     setup do
       @bank_account_number = "1234567890"
-      @bank_account_number_encrypted = "L94ArJeFlJrZp6SYsvoOGA=="
+      @bank_account_number_encrypted = "QEVuQwIAL94ArJeFlJrZp6SYsvoOGA=="
 
       @social_security_number = "987654321"
-      @social_security_number_encrypted = "S+8X1NRrqdfEIQyFHVPuVA=="
+      @social_security_number_encrypted = "QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA=="
 
       @integer = 32768
       @integer_encrypted = "FA3smFQEKqB/ITv+A0xACg=="

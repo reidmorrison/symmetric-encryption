@@ -12,7 +12,7 @@ module SymmetricEncryption
   # Defaults
   @@cipher = nil
   @@secondary_ciphers = []
-  @@cipher_selector = nil
+  @@select_cipher = nil
 
   # Set the Primary Symmetric Cipher to be used
   #
@@ -86,16 +86,16 @@ module SymmetricEncryption
     str = encrypted_and_encoded_string.to_s
 
     # Decode before decrypting supplied string
-    decoded = self.decode(str, @@cipher.encoding)
+    decoded = @@cipher.decode(str)
     return unless decoded
-
     return decoded if decoded.empty?
+
     if header = Cipher.parse_header!(decoded)
-      header.decryption_cipher.decrypt(decoded, header)
+      header.decryption_cipher.binary_decrypt(decoded, header)
     else
       # Use cipher_selector if present to decide which cipher to use
-      c = @@cipher_selector.nil? ? cipher(version) : @@cipher_selector.call(str, decoded)
-      c.decrypt(decoded)
+      c = @@select_cipher.nil? ? cipher(version) : @@select_cipher.call(str, decoded)
+      c.binary_decrypt(decoded)
     end
   end
 
@@ -136,7 +136,7 @@ module SymmetricEncryption
     raise "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data" unless @@cipher
 
     # Encrypt and then encode the supplied string
-    encode(@@cipher.encrypt(str, random_iv, compress), @@cipher.encoding)
+    @@cipher.encrypt(str, random_iv, compress)
   end
 
   # Invokes decrypt
@@ -194,63 +194,13 @@ module SymmetricEncryption
   #       returns a string of data
   #
   # Example:
-  #   SymmetricEncryption.cipher_selector = Proc.new do |encoded_str, decoded_str|
+  #   SymmetricEncryption.select_cipher do |encoded_str, decoded_str|
   #     # Use cipher version 0 if the encoded string ends with "\n" otherwise
   #     # use the current default cipher
-  #     encoded_str.ends_with?("\n") ? SymmetricEncryption.cipher(0) : SymmetricEncryption.cipher
+  #     encoded_str.end_with?("\n") ? SymmetricEncryption.cipher(0) : SymmetricEncryption.cipher
   #   end
-  def self.cipher_selector=(&block)
-    @@cipher_selector = block
-  end
-
-  # Returns UTF8 encoded string after encoding the supplied Binary string
-  #
-  # Encode the supplied string using the encoding in this cipher instance
-  # Returns nil if the supplied string is nil
-  # Note: No encryption or decryption is performed
-  #
-  # Returned string is UTF8 encoded except for encoding :none
-  def self.encode(binary_string, encoding)
-    return binary_string if binary_string.nil? || (binary_string == '')
-
-    # Now encode data based on encoding setting
-    case encoding
-    when :base64
-      encoded_string = ::Base64.encode64(binary_string)
-      # Support Ruby 1.9 encoding
-      defined?(Encoding) ? encoded_string.force_encoding(SymmetricEncryption::UTF8_ENCODING) : encoded_string
-    when :base64strict
-      encoded_string = ::Base64.encode64(binary_string).gsub(/\n/, '')
-      # Support Ruby 1.9 encoding
-      defined?(Encoding) ? encoded_string.force_encoding(SymmetricEncryption::UTF8_ENCODING) : encoded_string
-    when :base16
-      encoded_string = binary_string.to_s.unpack('H*').first
-      # Support Ruby 1.9 encoding
-      defined?(Encoding) ? encoded_string.force_encoding(SymmetricEncryption::UTF8_ENCODING) : encoded_string
-    else
-      binary_string
-    end
-  end
-
-  # Decode the supplied string using the encoding in this cipher instance
-  # Note: No encryption or decryption is performed
-  #
-  # Returned string is Binary encoded
-  def self.decode(encoded_string, encoding)
-    return encoded_string if encoded_string.nil? || (encoded_string == '')
-
-    case encoding
-    when :base64, :base64strict
-      decoded_string = ::Base64.decode64(encoded_string)
-      # Support Ruby 1.9 encoding
-      defined?(Encoding) ? decoded_string.force_encoding(SymmetricEncryption::BINARY_ENCODING) : decoded_string
-    when :base16
-      decoded_string = [encoded_string].pack('H*')
-      # Support Ruby 1.9 encoding
-      defined?(Encoding) ? decoded_string.force_encoding(SymmetricEncryption::BINARY_ENCODING) : decoded_string
-    else
-      encoded_string
-    end
+  def self.select_cipher(&block)
+    @@select_cipher = block ? block : nil
   end
 
   # Load the Encryption Configuration from a YAML file
@@ -308,7 +258,7 @@ module SymmetricEncryption
     elsif !cipher_cfg[:key]
       key = rsa_key.public_encrypt(key_pair[:key])
       puts "Generated new Symmetric Key for encryption. Set the KEY environment variable in #{environment} to:"
-      puts SymmetricEncryption.encode(key, :base64strict)
+      puts ::Base64.encode64(key)
     end
 
     if iv_filename
@@ -317,8 +267,8 @@ module SymmetricEncryption
       puts("Generated new Symmetric Key for encryption. Please copy #{iv_filename} to the other web servers in #{environment}.")
     elsif !cipher_cfg[:iv]
       iv = rsa_key.public_encrypt(key_pair[:iv])
-      puts "Generated new Symmetric Key for encryption. Set the KEY environment variable in #{environment} to:"
-      puts SymmetricEncryption.encode(iv, :base64strict)
+      puts "Generated new Symmetric Key for encryption. Set the IV environment variable in #{environment} to:"
+      puts ::Base64.encode64(key)
     end
   end
 
@@ -438,21 +388,18 @@ module SymmetricEncryption
       end
       config[:iv] = rsa.private_decrypt(encrypted_iv)
     end
-    puts "**********************"
-     p config
-    puts "**********************"
 
     if encrypted_key = config.delete(:encrypted_key)
       raise "Missing mandatory config parameter :private_rsa_key when :encrypted_key is supplied" unless rsa
       # Decode value first using encoding specified
-      encrypted_key = SymmetricEncryption.decode(encrypted_key, config[:encoding] || :base64)
+      encrypted_key = ::Base64.decode64(encrypted_key)
       config[:key] = rsa.private_decrypt(encrypted_key)
     end
 
     if encrypted_iv = config.delete(:encrypted_iv)
       raise "Missing mandatory config parameter :private_rsa_key when :encrypted_iv is supplied" unless rsa
       # Decode value first using encoding specified
-      encrypted_iv = SymmetricEncryption.decode(encrypted_iv, config[:encoding] || :base64)
+      encrypted_iv = ::Base64.decode64(encrypted_iv)
       config[:iv] = rsa.private_decrypt(encrypted_iv)
     end
 

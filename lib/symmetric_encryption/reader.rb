@@ -335,7 +335,7 @@ module SymmetricEncryption
       @stream_cipher = ::OpenSSL::Cipher.new(cipher_name)
       @stream_cipher.decrypt
       @stream_cipher.key = key || decryption_cipher.send(:key)
-      @stream_cipher.iv = iv || decryption_cipher.send(:iv)
+      @stream_cipher.iv = iv || decryption_cipher.iv
 
       # First call to #update should return an empty string anyway
       if buf && buf.length > 0

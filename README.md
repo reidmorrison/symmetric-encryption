@@ -25,13 +25,9 @@ may have backward compatibility issues:
   In a very small, yet significant number of cases it was possible to decrypt data
   using the incorrect key. Clearly the data returned was garbage, but it still
   returned a string of data instead of throwing an exception.
-  See SymmetricEncryption.cipher_selector= to supply your own custom logic to
+  See SymmetricEncryption.select_cipher to supply your own custom logic to
   determine the correct cipher to use when the encrypted string does not have a
   header and multiple ciphers are defined.
-
-* #encode and #decode have been moved from low-level ciphers and into SymmetricEncryption.
-  Does not affect existing calls to the commonly used SymmetricEncryption.encrypt
-  and SymmetricEncryption.decrypt methods.
 
 * Configuration file format prior to V1 is no longer supported
 
