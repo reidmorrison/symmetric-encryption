@@ -81,7 +81,7 @@ module SymmetricEncryption
   #       successfully returns a string of data
   def self.decrypt(encrypted_and_encoded_string, version=nil)
     raise "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data" unless @@cipher
-    return if encrypted_and_encoded_string.nil? || (encrypted_and_encoded_string == '')
+    return encrypted_and_encoded_string if encrypted_and_encoded_string.nil? || (encrypted_and_encoded_string == '')
 
     str = encrypted_and_encoded_string.to_s
 

@@ -77,6 +77,22 @@ class CipherTest < Test::Unit::TestCase
       assert_equal @social_security_number_encrypted, @cipher.encrypt(@social_security_number)
     end
 
+    should "return nil when encrypting nil" do
+      assert_equal nil, @cipher.encrypt(nil)
+    end
+
+    should "return '' when encrypting ''" do
+      assert_equal '', @cipher.encrypt('')
+    end
+
+    should "return nil when decrypting nil" do
+      assert_equal nil, @cipher.decrypt(nil)
+    end
+
+    should "return '' when decrypting ''" do
+      assert_equal '', @cipher.decrypt('')
+    end
+
     should "decrypt string" do
       assert_equal @social_security_number, @cipher.decrypt(@social_security_number_encrypted)
     end

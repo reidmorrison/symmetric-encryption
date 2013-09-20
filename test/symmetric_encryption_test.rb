@@ -83,6 +83,22 @@ class SymmetricEncryptionTest < Test::Unit::TestCase
           assert_equal @social_security_number, SymmetricEncryption.decrypt(@social_security_number_encrypted)
         end
 
+        should "return nil when encrypting nil" do
+          assert_equal nil, SymmetricEncryption.encrypt(nil)
+        end
+
+        should "return '' when encrypting ''" do
+          assert_equal '', SymmetricEncryption.encrypt('')
+        end
+
+        should "return nil when decrypting nil" do
+          assert_equal nil, SymmetricEncryption.decrypt(nil)
+        end
+
+        should "return '' when decrypting ''" do
+          assert_equal '', SymmetricEncryption.decrypt('')
+        end
+
         should "determine if string is encrypted" do
           assert_equal true, SymmetricEncryption.encrypted?(@social_security_number_encrypted)
           assert_equal false, SymmetricEncryption.encrypted?(@social_security_number)
