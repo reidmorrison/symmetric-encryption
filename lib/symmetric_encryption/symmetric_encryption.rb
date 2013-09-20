@@ -248,7 +248,7 @@ module SymmetricEncryption
 
     # Generate a new Symmetric Key pair
     iv_filename = cipher_cfg[:iv_filename]
-    key_pair = SymmetricEncryption::Cipher.random_key_pair(cipher_name || 'aes-256-cbc', !iv_filename.nil?)
+    key_pair = SymmetricEncryption::Cipher.random_key_pair(cipher_name || 'aes-256-cbc')
 
     if key_filename = cipher_cfg[:key_filename]
       # Save symmetric key after encrypting it with the private RSA key, backing up existing files if present

@@ -259,6 +259,24 @@ module SymmetricEncryption
       return unless has_header?(buffer)
 
       # Header includes magic header and version byte
+      #
+      # The encryption header consists of:
+      #    4 Byte Magic Header Prefix: @Enc
+      #    Followed by 2 Bytes (16 bits)
+      #       Bit 0 through 7: The version of the cipher used to encrypt the header
+      #       Bit 8 though 10: Reserved
+      #       Bit 11: Whether the encrypted data is Binary (otherwise UTF8 text)
+      #       Bit 12: Whether the Cipher Name is included
+      #       Bit 13: Whether the Key is included
+      #       Bit 14: Whether the IV is included
+      #       Bit 15: Whether the data is compressed
+      #    2 Byte IV Length if included
+      #    IV in binary form
+      #    2 Byte Key Length if included
+      #    Key in binary form
+      #    2 Byte Cipher Name Length if included
+      #    Cipher name it UTF8 text
+
       # Remove header and extract flags
       _, flags      = buffer.slice!(0..MAGIC_HEADER_SIZE+1).unpack(MAGIC_HEADER_UNPACK)
       compressed    = (flags & 0b1000_0000_0000_0000) != 0
