@@ -79,13 +79,13 @@
 Mongoid::Fields.option :encrypted do |model, field, options|
   if options != false
     options = options.is_a?(Hash) ? options.dup : {}
-    field_name = field.name
+    encrypted_field_name = field.name
 
-    decrypt_as = options.delete(:decrypt_as)
-    if decrypt_as.nil? && field_name.to_s.start_with?('encrypted_')
-      decrypt_as = field_name.to_s['encrypted_'.length..-1]
+    decrypted_field_name = options.delete(:decrypt_as)
+    if decrypted_field_name.nil? && encrypted_field_name.to_s.start_with?('encrypted_')
+      decrypted_field_name = encrypted_field_name.to_s['encrypted_'.length..-1]
     else
-      raise "SymmetricEncryption for Mongoid. Encryption enabled for field #{field_name}. It must either start with 'encrypted_' or the option :decrypt_as must be supplied"
+      raise "SymmetricEncryption for Mongoid. Encryption enabled for field #{encrypted_field_name}. It must either start with 'encrypted_' or the option :decrypt_as must be supplied"
     end
 
     random_iv = options.delete(:random_iv) || false
@@ -95,21 +95,21 @@ Mongoid::Fields.option :encrypted do |model, field, options|
     model.class_eval(<<-EOS, __FILE__, __LINE__ + 1)
       # Set the un-encrypted field
       # Also updates the encrypted field with the encrypted value
-      def #{decrypt_as}=(value)
-        @stored_#{field_name} = ::SymmetricEncryption.encrypt(value,#{random_iv},#{compress})
-        self.#{field_name} = @stored_#{field_name}
-        @#{decrypt_as} = value.freeze
+      # Freeze the decrypted field value so that it is not modified directly
+      def #{decrypted_field_name}=(value)
+        self.#{encrypted_field_name} = @stored_#{encrypted_field_name} = ::SymmetricEncryption.encrypt(value,#{random_iv},#{compress})
+        @#{decrypted_field_name} = value.freeze
       end
 
       # Returns the decrypted value for the encrypted field
       # The decrypted value is cached and is only decrypted if the encrypted value has changed
       # If this method is not called, then the encrypted value is never decrypted
-      def #{decrypt_as}
-        if @stored_#{field_name} != self.#{field_name}
-          @#{decrypt_as} = ::SymmetricEncryption.decrypt(self.#{field_name}).freeze
-          @stored_#{field_name} = self.#{field_name}
+      def #{decrypted_field_name}
+        if @stored_#{encrypted_field_name} != self.#{encrypted_field_name}
+          @#{decrypted_field_name} = ::SymmetricEncryption.decrypt(self.#{encrypted_field_name}).freeze
+          @stored_#{encrypted_field_name} = self.#{encrypted_field_name}
         end
-        @#{decrypt_as}
+        @#{decrypted_field_name}
       end
     EOS
   end

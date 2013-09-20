@@ -392,7 +392,7 @@ module SymmetricEncryption
         openssl_cipher.iv = iv if iv
         # Set the binary indicator on the header if string is Binary Encoded
         binary = (string.encoding == SymmetricEncryption::BINARY_ENCODING)
-        self.class.build_header(version, compress, random_iv ? iv : nil, binary) +
+        self.class.build_header(version, compress, random_iv ? iv : nil, nil, nil, binary) +
           openssl_cipher.update(compress ? Zlib::Deflate.deflate(string) : string)
       else
         openssl_cipher.iv = @iv if @iv
