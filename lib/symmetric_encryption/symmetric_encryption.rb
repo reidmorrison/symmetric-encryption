@@ -90,13 +90,21 @@ module SymmetricEncryption
     return unless decoded
     return decoded if decoded.empty?
 
-    if header = Cipher.parse_header!(decoded)
+    decrypted = if header = Cipher.parse_header!(decoded)
       header.decryption_cipher.binary_decrypt(decoded, header)
     else
       # Use cipher_selector if present to decide which cipher to use
       c = @@select_cipher.nil? ? cipher(version) : @@select_cipher.call(str, decoded)
       c.binary_decrypt(decoded)
     end
+
+    if defined?(Encoding)
+      # Try to force result to UTF-8 encoding, but if it is not valid, force it back to Binary
+      unless decrypted.force_encoding(SymmetricEncryption::UTF8_ENCODING).valid_encoding?
+        decrypted.force_encoding(SymmetricEncryption::BINARY_ENCODING)
+      end
+    end
+    decrypted
   end
 
   # AES Symmetric Encryption of supplied string

@@ -137,35 +137,10 @@ option will result in different encrypted output every time it is encrypted.
 * Set :random_iv => true for all ActiveRecord attributes and Mongoid fields
   which are not used in indexes and will not be used as part of a query.
 
-* Set the encoding before encrypting strings used for any key lookups
-  to prevent the header changing when UTF-8 or BINARY is used.
-  UTF-8 and BINARY strings will result in different encrypted data
-
 ## Binary Data
 
-The following is true only if _always_add_header_ is true:
-
-With Ruby V1.9 the notion of encoding strings was introduced. When encrypting a
-string which is UTF-8 encoded, it will be returned with UTF8 encoding when decrypted.
-Similarly, when encrypting a BINARY encoded string, it will be returned as a
-BINARY encoded string.
-
-SymmetricEncryption does this by including a binary indicator in the header of
-the encrypted string.
-
-NOTE: The downside is that the following 2 strings when encrypted do _not_
-      return the same result:
-
-```ruby
-encrypted_1 = SymmetricEncryption.encrypt("123456789".force_encoding(SymmetricEncryption::UTF8_ENCODING))
-# => "QEVuQwIAnCH9jxNF3WNAoEp4IL5eBw=="
-
-encrypted_2 = SymmetricEncryption.encrypt("123456789".force_encoding(SymmetricEncryption::BINARY_ENCODING))
-# => "QEVuQwIInCH9jxNF3WNAoEp4IL5eBw=="
-
-encrypted_1 == encrypted_2
-# => false
-```
+On decryption an attempt is made to encode the data as UTF-8, if it fails it
+will be returned as BINARY encoded.
 
 ## Examples
 
@@ -370,6 +345,11 @@ since the header embedded in the file will indicate whether it was compressed
 The file header also contains a random key and iv used to encrypt the files contents.
 The key and iv is encrypted with the global encryption key being used by the symmetric
 encryption installation.
+
+## Dependencies
+
+- Ruby 1.9.3 (or above) Or, JRuby 1.7.3 (or above)
+- Optional: To log to MongoDB, Mongo Ruby Driver 1.5.2 or above
 
 ## Installation
 

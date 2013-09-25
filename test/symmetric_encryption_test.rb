@@ -67,6 +67,7 @@ class SymmetricEncryptionTest < Test::Unit::TestCase
             raise "Add test for encoding: #{encoding}"
           end
           @social_security_number_encrypted_with_secondary_1 = "D1UCu38pqJ3jc0GvwJHiow==\n"
+          @non_utf8 = "\xc2".force_encoding('binary')
           @encoding = SymmetricEncryption.cipher.encoding
           SymmetricEncryption.cipher.encoding = encoding
         end
@@ -80,7 +81,19 @@ class SymmetricEncryptionTest < Test::Unit::TestCase
         end
 
         should "decrypt string" do
-          assert_equal @social_security_number, SymmetricEncryption.decrypt(@social_security_number_encrypted)
+          assert decrypted = SymmetricEncryption.decrypt(@social_security_number_encrypted)
+          assert_equal @social_security_number, decrypted
+          assert_equal Encoding.find('utf-8'), decrypted.encoding, decrypted
+        end
+
+        should 'return BINARY encoding for non-UTF-8 encrypted data' do
+          assert_equal Encoding.find('binary'), @non_utf8.encoding
+          assert_equal true, @non_utf8.valid_encoding?
+          assert encrypted = SymmetricEncryption.encrypt(@non_utf8)
+          assert decrypted = SymmetricEncryption.decrypt(encrypted)
+          assert_equal true, decrypted.valid_encoding?
+          assert_equal Encoding.find('binary'), decrypted.encoding, decrypted
+          assert_equal @non_utf8, decrypted
         end
 
         should "return nil when encrypting nil" do

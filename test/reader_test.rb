@@ -31,8 +31,7 @@ class ReaderTest < Test::Unit::TestCase
         compress = false,
         @cipher.send(:iv),
         @cipher.send(:key),
-        @cipher.cipher_name,
-        binary=false,
+        @cipher.cipher_name
       )
       @data_encrypted_with_header << @cipher.binary_encrypt(@data_str)
 

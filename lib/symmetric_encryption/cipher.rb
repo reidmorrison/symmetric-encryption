@@ -19,7 +19,6 @@ module SymmetricEncryption
     # Defines the Header Structure returned when parsing the header
     HeaderStruct = Struct.new(
       :compressed,          # [true|false] Whether the data is compressed, if supplied in the header
-      :binary,              # [true|false] Whether the data is binary, if supplied in the header
       :iv,                  # [String] IV used to encrypt the data, if supplied in the header
       :key,                 # [String] Key used to encrypt the data, if supplied in the header
       :cipher_name,         # [String] Name of the cipher used, if supplied in the header
@@ -100,7 +99,7 @@ module SymmetricEncryption
       parms.each_pair {|k,v| warn "SymmetricEncryption::Cipher Ignoring unknown option #{k.inspect} = #{v.inspect}"}
     end
 
-    # Encrypt and then encode a binary or UTF-8 string
+    # Encrypt and then encode a string
     #
     # Returns data encrypted and then encoded according to the encoding setting
     #         of this cipher
@@ -154,14 +153,7 @@ module SymmetricEncryption
     #   encrypted_string [String]
     #     Binary encrypted string to decrypt
     #
-    #   header [HeaderStruct]
-    #     Optional header for the supplied encrypted_string
-    #
-    #   binary [true|false]
-    #     If no header is supplied then determines whether the string returned
-    #     is binary or UTF8
-    #
-    # Reads the 'magic' header if present for key, iv, cipher_name and compression
+    # Reads the header if present for key, iv, cipher_name and compression
     #
     # encrypted_string must be in raw binary form when calling this method
     #
@@ -173,7 +165,14 @@ module SymmetricEncryption
       return unless decoded
 
       return decoded if decoded.empty?
-      binary_decrypt(decoded).force_encoding(SymmetricEncryption::UTF8_ENCODING)
+      decrypted = binary_decrypt(decoded)
+      if defined?(Encoding)
+        # Try to force result to UTF-8 encoding, but if it is not valid, force it back to Binary
+        unless decrypted.force_encoding(SymmetricEncryption::UTF8_ENCODING).valid_encoding?
+          decrypted.force_encoding(SymmetricEncryption::BINARY_ENCODING)
+        end
+      end
+      decrypted
     end
 
     # Returns UTF8 encoded string after encoding the supplied Binary string
@@ -283,7 +282,6 @@ module SymmetricEncryption
       include_iv    = (flags & 0b0100_0000_0000_0000) != 0
       include_key   = (flags & 0b0010_0000_0000_0000) != 0
       include_cipher= (flags & 0b0001_0000_0000_0000) != 0
-      binary        = (flags & 0b0000_1000_0000_0000) != 0
       # Version of the key to use to decrypt the key if present,
       # otherwise to decrypt the data following the header
       version       = flags & 0b0000_0000_1111_1111
@@ -297,14 +295,14 @@ module SymmetricEncryption
       end
       if include_key
         len = buffer.slice!(0..1).unpack('v').first
-        key = decryption_cipher.binary_decrypt(buffer.slice!(0..len-1), header=false, binary=true)
+        key = decryption_cipher.binary_decrypt(buffer.slice!(0..len-1), header=false)
       end
       if include_cipher
         len    = buffer.slice!(0..1).unpack('v').first
         cipher_name = buffer.slice!(0..len-1)
       end
 
-      HeaderStruct.new(compressed, binary, iv, key, cipher_name, version, decryption_cipher)
+      HeaderStruct.new(compressed, iv, key, cipher_name, version, decryption_cipher)
     end
 
     # Returns a magic header for this cipher instance that can be placed at
@@ -328,11 +326,7 @@ module SymmetricEncryption
     #     Includes the cipher_name used. For example 'aes-256-cbc'
     #     The cipher_name string to to put in the header
     #     Default: nil : Exclude cipher_name name from header
-    #
-    #   binary
-    #     Whether the data being encrypted is binary.
-    #     When the header is read, it sets the encoding of the string returned to Binary
-    def self.build_header(version, compressed=false, iv=nil, key=nil, cipher_name=nil, binary=false)
+    def self.build_header(version, compressed=false, iv=nil, key=nil, cipher_name=nil)
       # Ruby V2 named parameters would be perfect here
 
       # Version number of supplied encryption key, or use the global cipher version if none was supplied
@@ -344,7 +338,6 @@ module SymmetricEncryption
       flags |= 0b0100_0000_0000_0000 if iv
       flags |= 0b0010_0000_0000_0000 if key
       flags |= 0b0001_0000_0000_0000 if cipher_name
-      flags |= 0b0000_1000_0000_0000 if binary
       header = "#{MAGIC_HEADER}#{[flags].pack('v')}".force_encoding(SymmetricEncryption::BINARY_ENCODING)
       if iv
         header << [iv.length].pack('v')
@@ -391,8 +384,7 @@ module SymmetricEncryption
         iv = random_iv ? openssl_cipher.random_iv : @iv
         openssl_cipher.iv = iv if iv
         # Set the binary indicator on the header if string is Binary Encoded
-        binary = (string.encoding == SymmetricEncryption::BINARY_ENCODING)
-        self.class.build_header(version, compress, random_iv ? iv : nil, nil, nil, binary) +
+        self.class.build_header(version, compress, random_iv ? iv : nil, nil, nil) +
           openssl_cipher.update(compress ? Zlib::Deflate.deflate(string) : string)
       else
         openssl_cipher.iv = @iv if @iv
@@ -405,6 +397,7 @@ module SymmetricEncryption
     # See #decrypt to decrypt encoded strings
     #
     # Returns a Binary decrypted string without decoding the string first
+    # The returned string has BINARY encoding
     #
     # Decryption of supplied string
     #   Returns the decrypted string
@@ -418,10 +411,6 @@ module SymmetricEncryption
     #   header [HeaderStruct]
     #     Optional header for the supplied encrypted_string
     #
-    #   binary [true|false]
-    #     If no header is supplied then determines whether the string returned
-    #     is binary or UTF8
-    #
     # Reads the 'magic' header if present for key, iv, cipher_name and compression
     #
     # encrypted_string must be in raw binary form when calling this method
@@ -433,16 +422,15 @@ module SymmetricEncryption
     # Note:
     #   When a string is encrypted and the header is used, its decrypted form
     #   is automatically set to the same UTF-8 or Binary encoding
-    def binary_decrypt(encrypted_string, header=nil, binary=false)
+    def binary_decrypt(encrypted_string, header=nil)
       return if encrypted_string.nil?
       str = encrypted_string.to_s
       str.force_encoding(SymmetricEncryption::BINARY_ENCODING) if str.respond_to?(:force_encoding)
       return str if str.empty?
 
-      decrypted_string = if header || self.class.has_header?(str)
+      if header || self.class.has_header?(str)
         str = str.dup
         header ||= self.class.parse_header!(str)
-        binary = header.binary
 
         openssl_cipher = ::OpenSSL::Cipher.new(header.cipher_name || self.cipher_name)
         openssl_cipher.decrypt
@@ -459,14 +447,6 @@ module SymmetricEncryption
         openssl_cipher.iv = @iv if @iv
         result = openssl_cipher.update(str)
         result << openssl_cipher.final
-      end
-
-      # Support Ruby 1.9 and above Encoding
-      if defined?(Encoding)
-        # Sets the encoding of the result string to UTF8 or BINARY based on the binary header
-        binary ? decrypted_string.force_encoding(SymmetricEncryption::BINARY_ENCODING) : decrypted_string.force_encoding(SymmetricEncryption::UTF8_ENCODING)
-      else
-        decrypted_string
       end
     end
 
