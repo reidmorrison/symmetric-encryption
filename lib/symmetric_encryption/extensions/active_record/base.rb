@@ -57,7 +57,7 @@ module ActiveRecord #:nodoc:
                 @#{attribute} = ::SymmetricEncryption.decrypt(self.encrypted_#{attribute}).freeze
                 @stored_encrypted_#{attribute} = self.encrypted_#{attribute}
               end
-              @#{attribute}
+              #{marshal} == true ? YAML.load(@#{attribute}) : @#{attribute}
             end
 
             # Set the un-encrypted attribute
