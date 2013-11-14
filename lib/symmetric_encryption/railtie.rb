@@ -33,12 +33,15 @@ module SymmetricEncryption #:nodoc:
     # Loaded before Active Record initializes since database.yml can have encrypted
     # passwords in it
     config.before_configuration do
-      config_file = Rails.root.join("config", "symmetric-encryption.yml")
-      if config_file.file?
-        ::SymmetricEncryption.load!(config_file, Rails.env)
-      else
-        puts "\nSymmetric Encryption config not found."
-        puts "To generate one for the first time: rails generate symmetric_encryption:config\n\n"
+      # Check if already configured
+      unless ::SymmetricEncryption.cipher?
+        config_file = Rails.root.join("config", "symmetric-encryption.yml")
+        if config_file.file?
+          ::SymmetricEncryption.load!(config_file, Rails.env)
+        else
+          puts "\nSymmetric Encryption config not found."
+          puts "To generate one for the first time: rails generate symmetric_encryption:config\n\n"
+        end
       end
     end
 

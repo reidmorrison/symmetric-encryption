@@ -38,6 +38,11 @@ module SymmetricEncryption
     secondary_ciphers.find {|c| c.version == version} || (@@cipher if version == 0)
   end
 
+  # Returns whether a primary cipher has been set
+  def self.cipher?
+    !@@cipher.nil?
+  end
+
   # Set the Secondary Symmetric Ciphers Array to be used
   def self.secondary_ciphers=(secondary_ciphers)
     raise "secondary_ciphers must be a collection" unless secondary_ciphers.respond_to? :each
