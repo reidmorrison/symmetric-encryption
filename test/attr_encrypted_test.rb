@@ -23,6 +23,15 @@ ActiveRecord::Schema.define :version => 0 do
     t.string :encrypted_string
     t.text   :encrypted_long_string
     t.string :name
+
+    t.string :encrypted_integer_value
+    t.string :encrypted_float_value
+    t.string :encrypted_decimal_value
+    t.string :encrypted_datetime_value
+    t.string :encrypted_time_value
+    t.string :encrypted_date_value
+    t.string :encrypted_true_value
+    t.string :encrypted_false_value
   end
 end
 
@@ -31,6 +40,15 @@ class User < ActiveRecord::Base
   attr_encrypted :social_security_number
   attr_encrypted :string,      :random_iv => true
   attr_encrypted :long_string, :random_iv => true, :compress => true
+
+  attr_encrypted :integer_value,  :type => :integer
+  attr_encrypted :float_value,    :type => :float
+  attr_encrypted :decimal_value,  :type => :decimal
+  attr_encrypted :datetime_value, :type => :datetime
+  attr_encrypted :time_value,     :type => :time
+  attr_encrypted :date_value,     :type => :date
+  attr_encrypted :true_value,     :type => :boolean
+  attr_encrypted :false_value,    :type => :boolean
 
   validates :encrypted_bank_account_number, :symmetric_encryption => true
   validates :encrypted_social_security_number, :symmetric_encryption => true
@@ -66,12 +84,28 @@ class AttrEncryptedTest < Test::Unit::TestCase
 
       @name = 'Joe Bloggs'
 
+      @integer_value = 12
+      @float_value = 88.12345
+      @decimal_value = BigDecimal.new("22.51")
+      @datetime_value = DateTime.new(2001, 11, 26, 20, 55, 54, "-5")
+      @time_value = Time.new(2013, 01, 01, 22, 30, 00, "-04:00")
+      @date_value = Date.new(1927, 04, 02)
+
       @user = User.new(
         # Encrypted Attribute
         :bank_account_number    => @bank_account_number,
         # Encrypted Attribute
         :social_security_number => @social_security_number,
-        :name                   => @name
+        :name                   => @name,
+        # data type specific fields
+        :integer_value          => @integer_value,
+        :float_value            => @float_value,
+        :decimal_value          => @decimal_value,
+        :datetime_value         => @datetime_value,
+        :time_value             => @time_value,
+        :date_value             => @date_value,
+        :true_value             => true,
+        :false_value            => false
       )
     end
 
@@ -206,7 +240,7 @@ class AttrEncryptedTest < Test::Unit::TestCase
       end
 
       teardown do
-        @user.destroy
+        # @user.destroy
       end
 
       should "handle gsub! for non-encrypted_field" do
@@ -247,7 +281,212 @@ class AttrEncryptedTest < Test::Unit::TestCase
         assert_equal @bank_account_number_encrypted, @user.encrypted_bank_account_number
         assert_equal @bank_account_number, @user.bank_account_number
       end
-    end
 
+      context "data types" do
+        setup do
+          @user_clone = User.find(@user.id)
+        end
+
+        context "integer values" do
+          should "return correct data type" do
+            assert_equal @integer_value, @user_clone.integer_value
+            assert @user.clone.integer_value.kind_of?(Integer)
+          end
+
+          should "permit replacing value with nil" do
+            @user_clone.integer_value = nil
+            @user_clone.save!
+
+            @user.reload
+            assert_nil @user.integer_value
+            assert_nil @user.encrypted_integer_value
+          end
+
+          should "permit replacing value" do
+            new_integer_value = 98
+            @user_clone.integer_value = new_integer_value
+            @user_clone.save!
+
+            @user.reload
+            assert_equal new_integer_value, @user.integer_value
+          end
+        end
+
+        context "float values" do
+          should "return correct data type" do
+            assert_equal @float_value, @user_clone.float_value
+            assert @user.clone.float_value.kind_of?(Float)
+          end
+
+          should "permit replacing value with nil" do
+            @user_clone.float_value = nil
+            @user_clone.save!
+
+            @user.reload
+            assert_nil @user.float_value
+            assert_nil @user.encrypted_float_value
+          end
+
+          should "permit replacing value" do
+            new_float_value = 45.4321
+            @user_clone.float_value = new_float_value
+            @user_clone.save!
+
+            @user.reload
+            assert_equal new_float_value, @user.float_value
+          end
+        end
+
+        context "decimal values" do
+          should "return correct data type" do
+            assert_equal @decimal_value, @user_clone.decimal_value
+            assert @user.clone.decimal_value.kind_of?(BigDecimal)
+          end
+
+          should "permit replacing value with nil" do
+            @user_clone.decimal_value = nil
+            @user_clone.save!
+
+            @user.reload
+            assert_nil @user.decimal_value
+            assert_nil @user.encrypted_decimal_value
+          end
+
+          should "permit replacing value" do
+            new_decimal_value = BigDecimal.new("99.95")
+            @user_clone.decimal_value = new_decimal_value
+            @user_clone.save!
+
+            @user.reload
+            assert_equal new_decimal_value, @user.decimal_value
+          end
+        end
+
+        context "datetime values" do
+          should "return correct data type" do
+            assert_equal @datetime_value, @user_clone.datetime_value
+            assert @user.clone.datetime_value.kind_of?(DateTime)
+          end
+
+          should "permit replacing value with nil" do
+            @user_clone.datetime_value = nil
+            @user_clone.save!
+
+            @user.reload
+            assert_nil @user.datetime_value
+            assert_nil @user.encrypted_datetime_value
+          end
+
+          should "permit replacing value" do
+            new_datetime_value = DateTime.new(1998, 10, 21, 8, 33, 28, "+5")
+            @user_clone.datetime_value = new_datetime_value
+            @user_clone.save!
+
+            @user.reload
+            assert_equal new_datetime_value, @user.datetime_value
+          end
+        end
+
+        context "time values" do
+          should "return correct data type" do
+            assert_equal @time_value, @user_clone.time_value
+            assert @user.clone.time_value.kind_of?(Time)
+          end
+
+          should "permit replacing value with nil" do
+            @user_clone.time_value = nil
+            @user_clone.save!
+
+            @user.reload
+            assert_nil @user.time_value
+            assert_nil @user.encrypted_time_value
+          end
+
+          should "permit replacing value" do
+            new_time_value = Time.new(1998, 10, 21, 8, 33, 28, "+04:00")
+            @user_clone.time_value = new_time_value
+            @user_clone.save!
+
+            @user.reload
+            assert_equal new_time_value, @user.time_value
+          end
+        end
+
+        context "date values" do
+          should "return correct data type" do
+            assert_equal @date_value, @user_clone.date_value
+            assert @user.clone.date_value.kind_of?(Date)
+          end
+
+          should "permit replacing value with nil" do
+            @user_clone.date_value = nil
+            @user_clone.save!
+
+            @user.reload
+            assert_nil @user.date_value
+            assert_nil @user.encrypted_date_value
+          end
+
+          should "permit replacing value" do
+            new_date_value = Date.new(1998, 10, 21)
+            @user_clone.date_value = new_date_value
+            @user_clone.save!
+
+            @user.reload
+            assert_equal new_date_value, @user.date_value
+          end
+        end
+
+        context "true values" do
+          should "return correct data type" do
+            assert_equal true, @user_clone.true_value
+            assert @user.clone.true_value.kind_of?(TrueClass)
+          end
+
+          should "permit replacing value with nil" do
+            @user_clone.true_value = nil
+            @user_clone.save!
+
+            @user.reload
+            assert_nil @user.true_value
+            assert_nil @user.encrypted_true_value
+          end
+
+          should "permit replacing value" do
+            new_value = false
+            @user_clone.true_value = new_value
+            @user_clone.save!
+
+            @user.reload
+            assert_equal new_value, @user.true_value
+          end
+        end
+
+        context "false values" do
+          should "return correct data type" do
+            assert_equal false, @user_clone.false_value
+            assert @user.clone.false_value.kind_of?(FalseClass)
+          end
+
+          should "permit replacing value with nil" do
+            @user_clone.false_value = nil
+            @user_clone.save!
+
+            @user.reload
+            assert_nil @user.false_value
+            assert_nil @user.encrypted_false_value
+          end
+
+          should "permit replacing value" do
+            new_value = true
+            @user_clone.false_value = new_value
+            @user_clone.save!
+
+            @user.reload
+            assert_equal new_value, @user.false_value
+          end
+        end
+      end
+    end
   end
 end
