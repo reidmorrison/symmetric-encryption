@@ -447,7 +447,7 @@ module SymmetricEncryption
   def self.coerce_from_string(value, type)
     unless value.nil?
       if type == :string
-        value.to_s
+        value
       else
         require 'coercible'
         coercer = Coercible::Coercer.new
