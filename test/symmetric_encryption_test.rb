@@ -239,7 +239,7 @@ class SymmetricEncryptionTest < Test::Unit::TestCase
 
       context "time" do
         setup do
-          @closing_time = DateTime.new(2013, 01, 01, 22, 30, 00, "-4")
+          @closing_time = Time.new(2013, 01, 01, 22, 30, 00, "-04:00")
         end
 
         should "encrypt and decrypt value to and from a Time" do
