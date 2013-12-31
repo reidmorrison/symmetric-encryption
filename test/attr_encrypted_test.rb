@@ -240,7 +240,7 @@ class AttrEncryptedTest < Test::Unit::TestCase
       end
 
       teardown do
-        # @user.destroy
+        @user.destroy
       end
 
       should "handle gsub! for non-encrypted_field" do
