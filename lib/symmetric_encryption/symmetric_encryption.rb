@@ -58,8 +58,8 @@ module SymmetricEncryption
   end
 
   # AES Symmetric Decryption of supplied string
-  #  Returns decrypted string
-  #  Returns nil if the supplied str is nil
+  #  Returns decrypted value
+  #  Returns nil if the supplied value is nil
   #  Returns "" if it is a string and it is empty
   #
   #  Parameters
@@ -68,6 +68,13 @@ module SymmetricEncryption
   #    version
   #      Specify which cipher version to use if no header is present on the
   #      encrypted string
+  #    type [:string|:integer|:float|:decimal|:datetime|:time|:date|:boolean]
+  #      If value is set to something other than :string, then the coercible gem
+  #      will be use to coerce the unencrypted string value into the specified
+  #      type. This assumes that the value was stored using the same type.
+  #      Note: If type is set to something other than :string, it's expected
+  #        that the coercible gem is available in the path.
+  #      Default: :string
   #
   #  If the supplied string has an encryption header then the cipher matching
   #  the version number in the header will be used to decrypt the string
@@ -84,7 +91,7 @@ module SymmetricEncryption
   #       yet significant number of cases it is possible to decrypt data using
   #       the incorrect key. Clearly the data returned is garbage, but it still
   #       successfully returns a string of data
-  def self.decrypt(encrypted_and_encoded_string, version=nil)
+  def self.decrypt(encrypted_and_encoded_string, version=nil, type=:string)
     raise "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data" unless @@cipher
     return encrypted_and_encoded_string if encrypted_and_encoded_string.nil? || (encrypted_and_encoded_string == '')
 
@@ -109,7 +116,7 @@ module SymmetricEncryption
         decrypted.force_encoding(SymmetricEncryption::BINARY_ENCODING)
       end
     end
-    decrypted
+    coerce_from_string(decrypted, type)
   end
 
   # AES Symmetric Encryption of supplied string
@@ -118,7 +125,7 @@ module SymmetricEncryption
   #  Returns "" if it is a string and it is empty
   #
   # Parameters
-  #   str [String]
+  #   value [Object]
   #     String to be encrypted. If str is not a string, #to_s will be called on it
   #     to convert it to a string
   #
@@ -145,11 +152,20 @@ module SymmetricEncryption
   #     compression
   #     Note: Adds a 6 byte header prior to encoding, only if :random_iv is false
   #     Default: false
-  def self.encrypt(str, random_iv=false, compress=false)
+  #
+  #   type [:string|:integer|:float|:decimal|:datetime|:time|:date|:boolean]
+  #     Expected data type of the value to encrypt
+  #     Uses the coercible gem to coerce non-string values into string values.
+  #     When type is set to :string (the default), uses #to_s to convert
+  #     non-string values to string values.
+  #     Note: If type is set to something other than :string, it's expected that
+  #       the coercible gem is available in the path.
+  #     Default: :string
+  def self.encrypt(str, random_iv=false, compress=false, type=:string)
     raise "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data" unless @@cipher
 
     # Encrypt and then encode the supplied string
-    @@cipher.encrypt(str, random_iv, compress)
+    @@cipher.encrypt(coerce_to_string(str, type), random_iv, compress)
   end
 
   # Invokes decrypt
@@ -424,6 +440,56 @@ module SymmetricEncryption
     # Decrypt Symmetric Keys
     Cipher.new(config)
   end
+
+  # Uses coercible gem to coerce values from strings into the target type
+  # Note: if the type is :string, then the value is returned as is, and the
+  #   coercible gem is not used at all.
+  def self.coerce_from_string(value, type)
+    unless value.nil?
+      if type == :string
+        value.to_s
+      else
+        require 'coercible'
+        coercer = Coercible::Coercer.new
+        coercion_method = "to_#{type}".to_sym
+        coercer[String].send(coercion_method, value)
+      end
+    end
+  end
+
+  # Uses coercible gem to coerce values to strings from the specified type
+  # Note: if the type is :string, and value is not nil, then #to_s is called
+  #   on the value and the coercible gem is not used at all.
+  def self.coerce_to_string(value, type)
+    unless value.nil?
+      if type == :string
+        value.to_s
+      else
+        require 'coercible'
+        coercer = Coercible::Coercer.new
+        coercer[coercion_type(type, value)].to_string(value)
+      end
+    end
+  end
+
+  # Returns the correct coercion type to use for the specified symbol and value
+  def self.coercion_type(symbol, value)
+    if symbol == :boolean
+      value.class
+    else
+      COERCION_TYPE_MAP[symbol]
+    end
+  end
+
+  COERCION_TYPE_MAP = {
+    :string => String,
+    :integer => Integer,
+    :float => Float,
+    :decimal => BigDecimal,
+    :datetime => DateTime,
+    :time => Time,
+    :date => Date
+  }
 
   # With Ruby 1.9 strings have encodings
   if defined?(Encoding)
