@@ -8,7 +8,11 @@ namespace :symmetric_encryption do
 
   desc 'Encrypt a value, such as a password. Example: rake symmetric_encryption:encrypt'
   task :encrypt => :environment do
-    require 'highline'
+    begin
+      require 'highline'
+    rescue LoadError
+      raise "Please install gem highline before using the command line task to encrypt an entered string.\n   gem install \"highline\""
+    end
     password1 = nil
     password2 = 0
 
