@@ -45,6 +45,7 @@ module ActiveRecord #:nodoc:
         random_iv = options.fetch(:random_iv, false)
         compress  = options.fetch(:compress, false)
         marshal   = options.fetch(:marshal, false)
+        type      = options.fetch(:type, :string)
 
         params.each do |attribute|
           # Generate unencrypted attribute with getter and setter
@@ -54,7 +55,7 @@ module ActiveRecord #:nodoc:
             # If this method is not called, then the encrypted value is never decrypted
             def #{attribute}
               if @stored_encrypted_#{attribute} != self.encrypted_#{attribute}
-                @#{attribute} = ::SymmetricEncryption.decrypt(self.encrypted_#{attribute}).freeze
+                @#{attribute} = ::SymmetricEncryption.decrypt(self.encrypted_#{attribute},version=nil,:#{type}).freeze
                 @stored_encrypted_#{attribute} = self.encrypted_#{attribute}
               end
               @#{attribute}
@@ -63,7 +64,7 @@ module ActiveRecord #:nodoc:
             # Set the un-encrypted attribute
             # Also updates the encrypted field with the encrypted value
             def #{attribute}=(value)
-              self.encrypted_#{attribute} = @stored_encrypted_#{attribute} = ::SymmetricEncryption.encrypt(value#{".to_yaml" if marshal},#{random_iv},#{compress})
+              self.encrypted_#{attribute} = @stored_encrypted_#{attribute} = ::SymmetricEncryption.encrypt(value#{".to_yaml" if marshal},#{random_iv},#{compress},:#{type})
               @#{attribute} = value.freeze
             end
           UNENCRYPTED

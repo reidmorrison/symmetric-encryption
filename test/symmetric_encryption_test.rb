@@ -176,6 +176,118 @@ class SymmetricEncryptionTest < Test::Unit::TestCase
       end
     end
 
+    context "data types" do
+      context "string" do
+        setup do
+          @social_security_number = "987654321"
+        end
+
+        should "encrypt and decrypt value to and from a string" do
+          assert encrypted = SymmetricEncryption.encrypt(@social_security_number, random_iv=false, compress=false, type=:string)
+          assert_equal true, SymmetricEncryption.encrypted?(encrypted)
+          assert_equal @social_security_number, SymmetricEncryption.decrypt(encrypted, version=nil, type=:string)
+        end
+      end
+
+      context "integer" do
+        setup do
+          @age = 21
+        end
+
+        should "encrypt and decrypt value to and from an integer" do
+          assert encrypted = SymmetricEncryption.encrypt(@age, random_iv=false, compress=false, type=:integer)
+          assert_equal true, SymmetricEncryption.encrypted?(encrypted)
+          assert_equal @age, SymmetricEncryption.decrypt(encrypted, version=nil, type=:integer)
+        end
+      end
+
+      context "float" do
+        setup do
+          @miles = 2.5
+        end
+
+        should "encrypt and decrypt value to and from a float" do
+          assert encrypted = SymmetricEncryption.encrypt(@miles, random_iv=false, compress=false, type=:float)
+          assert_equal true, SymmetricEncryption.encrypted?(encrypted)
+          assert_equal @miles, SymmetricEncryption.decrypt(encrypted, version=nil, type=:float)
+        end
+      end
+
+      context "decimal" do
+        setup do
+          @account_balance = BigDecimal.new("12.58")
+        end
+
+        should "encrypt and decrypt value to and from a BigDecimal" do
+          assert encrypted = SymmetricEncryption.encrypt(@account_balance, random_iv=false, compress=false, type=:decimal)
+          assert_equal true, SymmetricEncryption.encrypted?(encrypted)
+          assert_equal @account_balance, SymmetricEncryption.decrypt(encrypted, version=nil, type=:decimal)
+        end
+      end
+
+      context "datetime" do
+        setup do
+          @checked_in_at = DateTime.new(2001, 11, 26, 20, 55, 54, "-5")
+        end
+
+        should "encrypt and decrypt value to and from a DateTime" do
+          assert encrypted = SymmetricEncryption.encrypt(@checked_in_at, random_iv=false, compress=false, type=:datetime)
+          assert_equal true, SymmetricEncryption.encrypted?(encrypted)
+          assert_equal @checked_in_at, SymmetricEncryption.decrypt(encrypted, version=nil, type=:datetime)
+        end
+      end
+
+      context "time" do
+        setup do
+          @closing_time = Time.new(2013, 01, 01, 22, 30, 00, "-04:00")
+        end
+
+        should "encrypt and decrypt value to and from a Time" do
+          assert encrypted = SymmetricEncryption.encrypt(@closing_time, random_iv=false, compress=false, type=:time)
+          assert_equal true, SymmetricEncryption.encrypted?(encrypted)
+          assert_equal @closing_time, SymmetricEncryption.decrypt(encrypted, version=nil, type=:time)
+        end
+      end
+
+      context "date" do
+        setup do
+          @birthdate = Date.new(1927, 04, 01)
+        end
+
+        should "encrypt and decrypt value to and from a Date" do
+          assert encrypted = SymmetricEncryption.encrypt(@birthdate, random_iv=false, compress=false, type=:date)
+          assert_equal true, SymmetricEncryption.encrypted?(encrypted)
+          assert_equal @birthdate, SymmetricEncryption.decrypt(encrypted, version=nil, type=:date)
+        end
+      end
+
+      context "boolean" do
+        context "when true" do
+          setup do
+            @is_working = true
+          end
+
+          should "encrypt and decrypt a true value to and from a boolean" do
+            assert encrypted = SymmetricEncryption.encrypt(@is_working, random_iv=false, compress=false, type=:boolean)
+            assert_equal true, SymmetricEncryption.encrypted?(encrypted)
+            assert_equal @is_working, SymmetricEncryption.decrypt(encrypted, version=nil, type=:boolean)
+          end
+        end
+
+        context "when false" do
+          setup do
+            @is_broken = false
+          end
+
+          should "encrypt and decrypt a false value to and from a boolean" do
+            assert encrypted = SymmetricEncryption.encrypt(@is_broken, random_iv=false, compress=false, type=:boolean)
+            assert_equal true, SymmetricEncryption.encrypted?(encrypted)
+            assert_equal @is_broken, SymmetricEncryption.decrypt(encrypted, version=nil, type=:boolean)
+          end
+        end
+      end
+    end
+
   end
 
 end

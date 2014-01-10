@@ -16,4 +16,6 @@ group :test do
   # Edge has support for Rails 4
   gem 'mongoid', git: 'https://github.com/mongoid/mongoid.git'
   gem 'awesome_print'
+
+  gem 'coercible'
 end
