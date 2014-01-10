@@ -9,10 +9,6 @@ module ActiveRecord #:nodoc:
       # * Symbolic names of each method to create which has a corresponding
       #   method already defined in rails starting with: encrypted_
       # * Followed by an optional hash:
-      #     :marshal [true|false]
-      #       Whether this element should be converted to YAML before encryption
-      #       Default: false
-      #
       #     :random_iv [true|false]
       #       Whether the encrypted value should use a random IV every time the
       #       field is encrypted.
@@ -29,6 +25,10 @@ module ActiveRecord #:nodoc:
       #       Default: false
       #       Highly Recommended where feasible: true
       #
+      #     :type [Symbol]
+      #       The type for this field, #see SymmetricEncryption::COERCION_TYPES
+      #       Default: :string
+      #
       #     :compress [true|false]
       #       Whether to compress str before encryption
       #       Should only be used for large strings since compression overhead and
@@ -41,11 +41,21 @@ module ActiveRecord #:nodoc:
         # Ignore failures since the table may not yet actually exist
         define_attribute_methods rescue nil
 
-        options = params.last.is_a?(Hash) ? params.pop : {}
-        random_iv = options.fetch(:random_iv, false)
-        compress  = options.fetch(:compress, false)
-        marshal   = options.fetch(:marshal, false)
-        type      = options.fetch(:type, :string)
+        options   = params.last.is_a?(Hash) ? params.pop.dup : {}
+        random_iv = options.delete(:random_iv) || false
+        compress  = options.delete(:compress) || false
+        type      = options.delete(:type) || :string
+
+        raise "Invalid type: #{type.inspect}. Valid types: #{SymmetricEncryption::COERCION_TYPES.inspect}" unless SymmetricEncryption::COERCION_TYPES.include?(type)
+
+        # For backward compatibility
+        if options.delete(:marshal) == true
+          warn("The :marshal option has been deprecated in favor of :type. For example: attr_encrypted name, :type => :yaml")
+          raise "Marshal is depreacted and cannot be used in conjunction with :type, just use :type. For #{params.inspect}" if type != :string
+          type = :yaml
+        end
+
+        options.each {|option| warn "Ignoring unknown option #{option.inspect} supplied to attr_encrypted with #{params.inspect}"}
 
         params.each do |attribute|
           # Generate unencrypted attribute with getter and setter
@@ -64,7 +74,7 @@ module ActiveRecord #:nodoc:
             # Set the un-encrypted attribute
             # Also updates the encrypted field with the encrypted value
             def #{attribute}=(value)
-              self.encrypted_#{attribute} = @stored_encrypted_#{attribute} = ::SymmetricEncryption.encrypt(value#{".to_yaml" if marshal},#{random_iv},#{compress},:#{type})
+              self.encrypted_#{attribute} = @stored_encrypted_#{attribute} = ::SymmetricEncryption.encrypt(value,#{random_iv},#{compress},:#{type})
               @#{attribute} = value.freeze
             end
           UNENCRYPTED

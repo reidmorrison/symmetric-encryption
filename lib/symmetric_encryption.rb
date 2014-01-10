@@ -1,4 +1,8 @@
+# Used for compression
 require 'zlib'
+# Used to coerce data types between string and their actual types
+require 'coercible'
+
 require 'symmetric_encryption/version'
 require 'symmetric_encryption/cipher'
 require 'symmetric_encryption/symmetric_encryption'

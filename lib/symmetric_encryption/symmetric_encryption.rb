@@ -14,6 +14,20 @@ module SymmetricEncryption
   @@secondary_ciphers = []
   @@select_cipher = nil
 
+  # List of types supported when encrypting or decrypting data
+  #
+  # Each type maps to the built-in Ruby types as follows:
+  #   :string    => String
+  #   :integer   => Integer
+  #   :float     => Float
+  #   :decimal   => BigDecimal
+  #   :datetime  => DateTime
+  #   :time      => Time
+  #   :date      => Date
+  #   :json      => Uses JSON serialization, useful for hashes and arrays
+  #   :yaml      => Uses YAML serialization, useful for hashes and arrays
+  COERCION_TYPES = [:string, :integer, :float, :decimal, :datetime, :time, :date, :boolean, :json, :yaml]
+
   # Set the Primary Symmetric Cipher to be used
   #
   # Example: For testing purposes the following test cipher can be used:
@@ -445,15 +459,18 @@ module SymmetricEncryption
   # Note: if the type is :string, then the value is returned as is, and the
   #   coercible gem is not used at all.
   def self.coerce_from_string(value, type)
-    unless value.nil?
-      if type == :string
-        value
-      else
-        require 'coercible'
-        coercer = Coercible::Coercer.new
-        coercion_method = "to_#{type}".to_sym
-        coercer[String].send(coercion_method, value)
-      end
+    return if value.nil?
+    case type
+    when :string
+      value
+    when :json
+      JSON.load(value)
+    when :yaml
+      YAML.load(value)
+    else
+      coercer = Coercible::Coercer.new
+      coercion_method = "to_#{type}".to_sym
+      coercer[String].send(coercion_method, value)
     end
   end
 
@@ -461,14 +478,18 @@ module SymmetricEncryption
   # Note: if the type is :string, and value is not nil, then #to_s is called
   #   on the value and the coercible gem is not used at all.
   def self.coerce_to_string(value, type)
-    unless value.nil?
-      if type == :string
-        value.to_s
-      else
-        require 'coercible'
-        coercer = Coercible::Coercer.new
-        coercer[coercion_type(type, value)].to_string(value)
-      end
+    return if value.nil?
+
+    case type
+    when :string
+      value.to_s
+    when :json
+      value.to_json
+    when :yaml
+      value.to_yaml
+    else
+      coercer = Coercible::Coercer.new
+      coercer[coercion_type(type, value)].to_string(value)
     end
   end
 

@@ -22,6 +22,8 @@ ActiveRecord::Schema.define :version => 0 do
     t.string :encrypted_social_security_number
     t.string :encrypted_string
     t.text   :encrypted_long_string
+    t.text   :encrypted_data_yaml
+    t.text   :encrypted_data_json
     t.string :name
 
     t.string :encrypted_integer_value
@@ -40,6 +42,8 @@ class User < ActiveRecord::Base
   attr_encrypted :social_security_number
   attr_encrypted :string,      :random_iv => true
   attr_encrypted :long_string, :random_iv => true, :compress => true
+  attr_encrypted :data_yaml,   :random_iv => true, :compress => true, :type => :yaml
+  attr_encrypted :data_json,   :random_iv => true, :compress => true, :type => :json
 
   attr_encrypted :integer_value,  :type => :integer
   attr_encrypted :float_value,    :type => :float
@@ -90,6 +94,7 @@ class AttrEncryptedTest < Test::Unit::TestCase
       @datetime_value = DateTime.new(2001, 11, 26, 20, 55, 54, "-5")
       @time_value = Time.new(2013, 01, 01, 22, 30, 00, "-04:00")
       @date_value = Date.new(1927, 04, 02)
+      @h = { :a => 'A', :b => 'B' }
 
       @user = User.new(
         # Encrypted Attribute
@@ -105,7 +110,10 @@ class AttrEncryptedTest < Test::Unit::TestCase
         :time_value             => @time_value,
         :date_value             => @date_value,
         :true_value             => true,
-        :false_value            => false
+        :false_value            => false,
+        # Marshaled attributes
+        :data_yaml              => @h.dup,
+        :data_json              => @h.dup
       )
     end
 
@@ -114,6 +122,8 @@ class AttrEncryptedTest < Test::Unit::TestCase
       assert_equal true, @user.respond_to?(:bank_account_number)
       assert_equal true, @user.respond_to?(:encrypted_social_security_number)
       assert_equal true, @user.respond_to?(:social_security_number)
+      assert_equal true, @user.respond_to?(:data_yaml)
+      assert_equal true, @user.respond_to?(:data_json)
       assert_equal false, @user.respond_to?(:encrypted_name)
     end
 
