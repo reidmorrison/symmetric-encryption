@@ -57,9 +57,16 @@ module ActiveRecord #:nodoc:
 
         options.each {|option| warn "Ignoring unknown option #{option.inspect} supplied to attr_encrypted with #{params.inspect}"}
 
+        if const_defined?(:EncryptedAttributes, _search_ancestors = false)
+          mod = const_get(:EncryptedAttributes)
+        else
+          mod = const_set(:EncryptedAttributes, Module.new)
+          include mod
+        end
+
         params.each do |attribute|
           # Generate unencrypted attribute with getter and setter
-          class_eval(<<-UNENCRYPTED, __FILE__, __LINE__ + 1)
+          mod.module_eval(<<-UNENCRYPTED, __FILE__, __LINE__ + 1)
             # Returns the decrypted value for the encrypted attribute
             # The decrypted value is cached and is only decrypted if the encrypted value has changed
             # If this method is not called, then the encrypted value is never decrypted
