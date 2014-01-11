@@ -1,21 +1,19 @@
 source 'https://rubygems.org'
 
-group :test do
-  gem 'rake'
-  gem 'shoulda'
+gem 'rake'
+gem 'shoulda'
 
-  gem 'activerecord'
-  gem 'sqlite3', :platform => :ruby
+gem 'activerecord'
+gem 'sqlite3', platform: :ruby
 
-  platforms :jruby do
-    gem 'jdbc-sqlite3'
-    gem 'activerecord-jdbcsqlite3-adapter'
-  end
+gem 'jdbc-sqlite3', platform: :jruby
+gem 'activerecord-jdbcsqlite3-adapter', platform: :jruby
 
-  # Use Mongo as the database with Mongoid as the Object Document Mapper
-  # Edge has support for Rails 4
-  gem 'mongoid', git: 'https://github.com/mongoid/mongoid.git'
-  gem 'awesome_print'
+gem 'bson'
+gem 'mongoid', '>= 4.0.0.alpha1'
 
-  gem 'coercible'
-end
+# Used by rake task for user to enter text to be encrypted
+gem 'highline'
+gem 'coercible'
+gem 'awesome_print'
+gem 'semantic_logger'

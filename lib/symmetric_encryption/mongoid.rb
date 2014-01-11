@@ -17,8 +17,15 @@
 #
 #    field :name,                             :type => String
 #    field :encrypted_social_security_number, :type => String, :encrypted => true
-#    field :age,                              :type => Integer
+#    field :date_of_birth,                    :type => Date
 #    field :encrypted_life_history,           :type => String, :encrypted => {:compress => true, :random_iv => true}
+#
+#    # Encrypted fields are _always_ stored in Mongo as a String
+#    # To get the result back as an Integer, Symmetric Encryption can do the
+#    # necessary conversions by specifying the internal type as an option
+#    # to :encrypted
+#    # #see SymmetricEncryption::COERCION_TYPES for full list of types
+#    field :encrypted_age,                    :type => String, :encrypted => {:type => :integer, :random_iv => true}
 #  end
 #
 # The above document results in the following document in the Mongo collection 'persons':
@@ -67,9 +74,13 @@
 # @param [ Hash ] options The options to pass to the field.
 #
 # @option options [ Boolean | Hash ] :encrypted  If the field contains encrypted data.
-# @option options [ Symbol ]  :decrypt_as Name of the getters and setters to generate to access the decrypted value of this field.
-# @option options [ Boolean ] :compress   Whether to compress this encrypted field
-# @option options [ Boolean ] :random_iv  Whether the encrypted value should use a random IV every time the field is encrypted.
+#   When :encrypted is a Hash it consists of:
+#     @option options [ Symbol ]  :type The type for this field, #see SymmetricEncryption::COERCION_TYPES
+#     @option options [ Boolean ] :random_iv  Whether the encrypted value should use a random IV every time the field is encrypted.
+#     @option options [ Boolean ] :compress   Whether to compress this encrypted field
+#     @option options [ Symbol ]  :decrypt_as Name of the getters and setters to generate to access the decrypted value of this field.
+#
+# Some of the other regular Mongoid options:
 #
 # @option options [ Class ]   :type The type of the field.
 # @option options [ String ]  :label The label for the field.
@@ -90,14 +101,25 @@ Mongoid::Fields.option :encrypted do |model, field, options|
 
     random_iv = options.delete(:random_iv) || false
     compress  = options.delete(:compress) || false
+    type      = options.delete(:type) || :string
+    raise "Invalid type: #{type.inspect}. Valid types: #{SymmetricEncryption::COERCION_TYPES.inspect}" unless SymmetricEncryption::COERCION_TYPES.include?(type)
+
+    options.each {|option| warn "Ignoring unknown option #{option.inspect} supplied to Mongoid :encrypted for #{model}##{field}"}
+
+    if model.const_defined?(:EncryptedAttributes, _search_ancestors = false)
+      mod = model.const_get(:EncryptedAttributes)
+    else
+      mod = model.const_set(:EncryptedAttributes, Module.new)
+      model.include mod
+    end
 
     # Generate getter and setter methods
-    model.class_eval(<<-EOS, __FILE__, __LINE__ + 1)
+    mod.module_eval(<<-EOS, __FILE__, __LINE__ + 1)
       # Set the un-encrypted field
       # Also updates the encrypted field with the encrypted value
       # Freeze the decrypted field value so that it is not modified directly
       def #{decrypted_field_name}=(value)
-        self.#{encrypted_field_name} = @stored_#{encrypted_field_name} = ::SymmetricEncryption.encrypt(value,#{random_iv},#{compress})
+        self.#{encrypted_field_name} = @stored_#{encrypted_field_name} = ::SymmetricEncryption.encrypt(value,#{random_iv},#{compress},:#{type})
         @#{decrypted_field_name} = value.freeze
       end
 
@@ -106,7 +128,7 @@ Mongoid::Fields.option :encrypted do |model, field, options|
       # If this method is not called, then the encrypted value is never decrypted
       def #{decrypted_field_name}
         if @stored_#{encrypted_field_name} != self.#{encrypted_field_name}
-          @#{decrypted_field_name} = ::SymmetricEncryption.decrypt(self.#{encrypted_field_name}).freeze
+          @#{decrypted_field_name} = ::SymmetricEncryption.decrypt(self.#{encrypted_field_name},version=nil,:#{type}).freeze
           @stored_#{encrypted_field_name} = self.#{encrypted_field_name}
         end
         @#{decrypted_field_name}

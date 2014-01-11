@@ -1,18 +1,6 @@
-# Allow examples to be run in-place without requiring a gem install
-$LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
+require File.dirname(__FILE__) + '/test_helper'
 
-require 'rubygems'
-require 'logger'
-require 'erb'
-require 'test/unit'
-# Since we want both the AR and Mongoid extensions loaded we need to require them first
-require 'active_record'
-require 'mongoid'
-require 'symmetric-encryption'
-# Should redefines Proc#bind so must include after Rails
-require 'shoulda'
-
-ActiveRecord::Base.logger = Logger.new($stderr)
+ActiveRecord::Base.logger = SemanticLogger[ActiveRecord]
 ActiveRecord::Base.configurations = YAML::load(ERB.new(IO.read('test/config/database.yml')).result)
 ActiveRecord::Base.establish_connection('test')
 
@@ -111,7 +99,6 @@ class AttrEncryptedTest < Test::Unit::TestCase
         :date_value             => @date_value,
         :true_value             => true,
         :false_value            => false,
-        # Marshaled attributes
         :data_yaml              => @h.dup,
         :data_json              => @h.dup
       )
@@ -496,6 +483,68 @@ class AttrEncryptedTest < Test::Unit::TestCase
             assert_equal new_value, @user.false_value
           end
         end
+
+        context "JSON Serialization" do
+          setup do
+            # JSON Does not support symbols, so they will come back as strings
+            # Convert symbols to string in the test
+            @h.keys.each do |k|
+              @h[k.to_s] = @h[k]
+              @h.delete(k)
+            end
+          end
+
+          should "return correct data type" do
+            assert_equal @h, @user_clone.data_json
+            assert @user.clone.data_json.kind_of?(Hash)
+          end
+
+          should "permit replacing value with nil" do
+            @user_clone.data_json = nil
+            @user_clone.save!
+
+            @user.reload
+            assert_nil @user.data_json
+            assert_nil @user.encrypted_data_json
+          end
+
+          should "permit replacing value" do
+            new_value = @h.clone
+            new_value['c'] = 'C'
+            @user_clone.data_json = new_value
+            @user_clone.save!
+
+            @user.reload
+            assert_equal new_value, @user.data_json
+          end
+        end
+
+        context "YAML Serialization" do
+          should "return correct data type" do
+            assert_equal @h, @user_clone.data_yaml
+            assert @user.clone.data_yaml.kind_of?(Hash)
+          end
+
+          should "permit replacing value with nil" do
+            @user_clone.data_yaml = nil
+            @user_clone.save!
+
+            @user.reload
+            assert_nil @user.data_yaml
+            assert_nil @user.encrypted_data_yaml
+          end
+
+          should "permit replacing value" do
+            new_value = @h.clone
+            new_value[:c] = 'C'
+            @user_clone.data_yaml = new_value
+            @user_clone.save!
+
+            @user.reload
+            assert_equal new_value, @user.data_yaml
+          end
+        end
+
       end
     end
   end

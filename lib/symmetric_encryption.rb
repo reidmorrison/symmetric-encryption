@@ -14,13 +14,7 @@ end
 if defined?(Rails)
   require 'symmetric_encryption/railtie'
 end
-# attr_encrypted and Encrypted validator
-if defined?(ActiveRecord::Base)
-  require 'symmetric_encryption/extensions/active_record/base'
-  require 'symmetric_encryption/railties/symmetric_encryption_validator'
-end
 
-# field encryption for Mongoid
-if defined?(Mongoid)
-  require 'symmetric_encryption/mongoid'
-end
+require 'symmetric_encryption/extensions/active_record/base' if defined?(ActiveRecord::Base)
+require 'symmetric_encryption/railties/symmetric_encryption_validator' if defined?(ActiveModel)
+require 'symmetric_encryption/mongoid' if defined?(Mongoid)

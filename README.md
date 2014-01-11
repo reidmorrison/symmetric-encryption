@@ -240,6 +240,13 @@ class User
   field :encrypted_bank_account_number,    :type => String,  :encrypted => true
   field :encrypted_social_security_number, :type => String,  :encrypted => true
   field :encrypted_life_history,           :type => String,  :encrypted => {:compress => true, :random_iv => true}
+
+  # Encrypted fields are _always_ stored in Mongo as a String
+  # To get the result back as an Integer, Symmetric Encryption can do the
+  # necessary conversions by specifying the internal type as an option
+  # to :encrypted
+  # #see SymmetricEncryption::COERCION_TYPES for full list of types
+  field :encrypted_age,                    :type => String, :encrypted => {:type => :integer}
 end
 
 # Create a new user document
@@ -363,6 +370,13 @@ Encrypt a known value, such as a password:
 
 Note: Passwords must be encrypted in the environment in which they will be used.
   Since each environment should have its own symmetric encryption keys
+
+Note: To use the rake task 'symmetric_encryption:encrypt' the gem 'highline'
+  must first be installed by adding to bundler or installing directly:
+
+```ruby
+gem install 'highline'
+```
 
 Encrypt a file
 

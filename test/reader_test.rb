@@ -1,14 +1,5 @@
-# Allow examples to be run in-place without requiring a gem install
-$LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
-
+require File.dirname(__FILE__) + '/test_helper'
 require 'stringio'
-require 'rubygems'
-require 'test/unit'
-require 'shoulda'
-require 'symmetric-encryption'
-
-# Load Symmetric Encryption keys
-SymmetricEncryption.load!(File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
 
 # Unit Test for SymmetricEncrypted::ReaderStream
 #
