@@ -110,7 +110,7 @@ Mongoid::Fields.option :encrypted do |model, field, options|
       mod = model.const_get(:EncryptedAttributes)
     else
       mod = model.const_set(:EncryptedAttributes, Module.new)
-      model.include mod
+      model.send(:include, mod)
     end
 
     # Generate getter and setter methods
