@@ -95,7 +95,9 @@ Mongoid::Fields.option :encrypted do |model, field, options|
     decrypted_field_name = options.delete(:decrypt_as)
     if decrypted_field_name.nil? && encrypted_field_name.to_s.start_with?('encrypted_')
       decrypted_field_name = encrypted_field_name.to_s['encrypted_'.length..-1]
-    else
+    end
+  
+    if decrypted_field_name.nil?
       raise "SymmetricEncryption for Mongoid. Encryption enabled for field #{encrypted_field_name}. It must either start with 'encrypted_' or the option :decrypt_as must be supplied"
     end
 
