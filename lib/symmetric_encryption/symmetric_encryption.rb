@@ -387,12 +387,14 @@ module SymmetricEncryption
   #
   #     :encrypted_key
   #       Symmetric key encrypted using the public key from the private_rsa_key
+  #       and then Base64 encoded
   #
   #     :iv
   #       Optional: The actual iv to use for encryption/decryption purposes
   #
   #     :encrypted_iv
   #       Initialization vector encrypted using the public key from the private_rsa_key
+  #       and then Base64 encoded
   #
   #     :iv_filename
   #       Optional: Name of file containing symmetric key initialization vector

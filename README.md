@@ -417,6 +417,8 @@ Install the Gem with bundler
 
 ## Rails Configuration
 
+If deploying to Heroku skip to the section "Rails Configuration for a Heroku deployment" below
+
 ### Creating the configuration file
 
 The configuration file contains the path to the production encryption key files.
@@ -483,6 +485,27 @@ key files to every server in that environment. I.e. All Rails servers in each
 environment must run the same encryption keys.
 
 Note: The generate step above must only be run once in each environment
+
+## Rails Configuration for a Heroku deployment
+
+Deploying to Heroku requires the encrypted key to be stored in an environment
+variable rather than as a file on disk.
+
+Generate the configuration file:
+
+    rails g symmetric_encryption:heroku_config
+
+Note: Ignore the warning about "Symmetric Encryption config not found" since it is
+being generated.
+
+Note: The encrypted keys for the release and production environments are displayed on
+screen and must be entered manually as environment variables into Heroku so that the
+application can find them when it starts.
+
+#### Save to version control
+
+This configuration file should be checked into the source code control system.
+It does Not include the Symmetric Encryption keys.
 
 ## Using in non-Rails environments
 

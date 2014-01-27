@@ -1,0 +1,75 @@
+#
+# Symmetric Encryption for Ruby
+#
+---
+# For the development and test environments the test symmetric encryption keys
+# can be placed directly in the source code.
+# And therefore no RSA private key is required
+development:   &development_defaults
+  key:         1234567890ABCDEF1234567890ABCDEF
+  iv:          1234567890ABCDEF
+  cipher_name: aes-128-cbc
+  encoding:    :base64strict
+
+test:
+  <<: *development_defaults
+
+<%
+cipher_name   = 'aes-256-cbc'
+rsa_key       = OpenSSL::PKey::RSA.generate(2048)
+key_pair      = SymmetricEncryption::Cipher.random_key_pair(cipher_name)
+iv            = ::Base64.strict_encode64(key_pair[:iv])
+encrypted_key = ::Base64.strict_encode64(rsa_key.public_encrypt(key_pair[:key]))
+
+puts "\n\n********************************************************************************"
+puts "Add the following environment setting to your heroku 'release' environment:\n\n"
+puts "  RELEASE_KEY1=\"#{encrypted_key}\"\n\n"
+-%>
+release:
+  # Since the key to encrypt and decrypt with must NOT be stored along with the
+  # source code, we only hold a RSA key that is used to unlock the file
+  # containing the actual symmetric encryption key
+  private_rsa_key: |
+<%= rsa_key.to_s.each_line.collect { |line| "    #{line}" }.join('') %>
+
+  # List Symmetric Key files in the order of current / latest first
+  ciphers:
+    -
+      # Filename containing Symmetric Encryption Key encrypted using the
+      # RSA public key derived from the private key above
+      encrypted_key: "<%= '<' + "%= ENV['RELEASE_KEY1'] %" + '>' %>"
+      iv:            "<%=  iv %>"
+      cipher_name:   <%=  cipher_name %>
+      # Base64 encode encrypted data without newlines
+      encoding:      :base64strict
+      version:       1
+
+<%
+cipher_name   = 'aes-256-cbc'
+rsa_key       = OpenSSL::PKey::RSA.generate(2048)
+key_pair      = SymmetricEncryption::Cipher.random_key_pair(cipher_name)
+iv            = ::Base64.strict_encode64(key_pair[:iv])
+encrypted_key = ::Base64.strict_encode64(rsa_key.public_encrypt(key_pair[:key]))
+
+puts "Add the following environment setting to your heroku 'production' environment:\n\n"
+puts "  PRODUCTION_KEY1=\"#{encrypted_key}\"\n\n"
+puts "********************************************************************************\n\n\n"
+-%>
+production:
+  # Since the key to encrypt and decrypt with must NOT be stored along with the
+  # source code, we only hold a RSA key that is used to unlock the file
+  # containing the actual symmetric encryption key
+  private_rsa_key: |
+<%= rsa_key.to_s.each_line.collect { |line| "    #{line}" }.join('') %>
+
+  # List Symmetric Key files in the order of current / latest first
+  ciphers:
+    -
+      # Filename containing Symmetric Encryption Key encrypted using the
+      # RSA public key derived from the private key above
+      encrypted_key: "<%= '<' + "%= ENV['PRODUCTION_KEY1'] %" + '>' %>"
+      iv:            "<%=  iv %>"
+      cipher_name:   <%=  cipher_name %>
+      # Base64 encode encrypted data without newlines
+      encoding:     :base64strict
+      version:      1
