@@ -14,6 +14,7 @@ class MongoidUser
   field :encrypted_long_string,            :type => String,  :encrypted => {:random_iv => true, :compress => true}
 
   field :encrypted_integer_value,  :type => String, :encrypted => {:type => :integer}
+  field :aiv,                      :type => String, :encrypted => {:type => :integer, decrypt_as: :aliased_integer_value}
   field :encrypted_float_value,    :type => String, :encrypted => {:type => :float}
   field :encrypted_decimal_value,  :type => String, :encrypted => {:type => :decimal}
   field :encrypted_datetime_value, :type => String, :encrypted => {:type => :datetime}
@@ -70,6 +71,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
         :name                             => "Joe Bloggs",
         # data type specific fields
         :integer_value          => @integer_value,
+        :aliased_integer_value  => @integer_value,
         :float_value            => @float_value,
         :decimal_value          => @decimal_value,
         :datetime_value         => @datetime_value,
@@ -108,6 +110,11 @@ class FieldEncryptedTest < Test::Unit::TestCase
       assert_equal true, @user.respond_to?(:string=)
       assert_equal true, @user.respond_to?(:long_string=)
       assert_equal true, @user.respond_to?(:name=)
+    end
+
+    should "support aliased fields" do
+      assert_equal true, @user.respond_to?(:aliased_integer_value=)
+      assert_equal true, @user.respond_to?(:aliased_integer_value)
     end
 
     should "have unencrypted values" do
@@ -198,6 +205,12 @@ class FieldEncryptedTest < Test::Unit::TestCase
         should "return correct data type" do
           assert_equal @integer_value, @user_clone.integer_value
           assert @user.clone.integer_value.kind_of?(Integer)
+        end
+
+        should "return correct data type before save" do
+          u = MongoidUser.new(:integer_value => "5")
+          assert_equal 5, u.integer_value
+          assert u.integer_value.kind_of?(Integer)
         end
 
         should "permit replacing value with nil" do
@@ -454,6 +467,14 @@ class FieldEncryptedTest < Test::Unit::TestCase
           assert_equal new_value, @user.data_yaml
         end
       end
+
+      context "aliased fields" do
+        should "return correct data type" do
+          @user_clone.aliased_integer_value = "5"
+          assert_equal 5, @user_clone.aliased_integer_value
+        end
+      end
+
     end
 
   end
