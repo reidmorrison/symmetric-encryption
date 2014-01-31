@@ -96,7 +96,7 @@ Mongoid::Fields.option :encrypted do |model, field, options|
     if decrypted_field_name.nil? && encrypted_field_name.to_s.start_with?('encrypted_')
       decrypted_field_name = encrypted_field_name.to_s['encrypted_'.length..-1]
     end
-  
+
     if decrypted_field_name.nil?
       raise "SymmetricEncryption for Mongoid. Encryption enabled for field #{encrypted_field_name}. It must either start with 'encrypted_' or the option :decrypt_as must be supplied"
     end
@@ -121,8 +121,9 @@ Mongoid::Fields.option :encrypted do |model, field, options|
       # Also updates the encrypted field with the encrypted value
       # Freeze the decrypted field value so that it is not modified directly
       def #{decrypted_field_name}=(value)
-        self.#{encrypted_field_name} = @stored_#{encrypted_field_name} = ::SymmetricEncryption.encrypt(value,#{random_iv},#{compress},:#{type})
-        @#{decrypted_field_name} = value.freeze
+        v = SymmetricEncryption::coerce(value, :#{type})
+        self.#{encrypted_field_name} = @stored_#{encrypted_field_name} = ::SymmetricEncryption.encrypt(v,#{random_iv},#{compress},:#{type})
+        @#{decrypted_field_name} = v.freeze
       end
 
       # Returns the decrypted value for the encrypted field

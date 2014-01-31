@@ -81,8 +81,9 @@ module ActiveRecord #:nodoc:
             # Set the un-encrypted attribute
             # Also updates the encrypted field with the encrypted value
             def #{attribute}=(value)
-              self.encrypted_#{attribute} = @stored_encrypted_#{attribute} = ::SymmetricEncryption.encrypt(value,#{random_iv},#{compress},:#{type})
-              @#{attribute} = value.freeze
+              v = SymmetricEncryption::coerce(value, :#{type})
+              self.encrypted_#{attribute} = @stored_encrypted_#{attribute} = ::SymmetricEncryption.encrypt(v,#{random_iv},#{compress},:#{type})
+              @#{attribute} = v.freeze
             end
           UNENCRYPTED
 

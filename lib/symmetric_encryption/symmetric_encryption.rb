@@ -457,6 +457,23 @@ module SymmetricEncryption
     Cipher.new(config)
   end
 
+  # Coerce given value into given type
+  # Does not coerce json or yaml values
+  def self.coerce(value, type, from_type=nil)
+    return if value.nil?
+
+    from_type ||= value.class
+    case type
+    when :json
+      value
+    when :yaml
+      value
+    else
+      coercer = Coercible::Coercer.new
+      coercer[from_type].send("to_#{type}".to_sym, value)
+    end
+  end
+
   # Uses coercible gem to coerce values from strings into the target type
   # Note: if the type is :string, then the value is returned as is, and the
   #   coercible gem is not used at all.
@@ -470,9 +487,7 @@ module SymmetricEncryption
     when :yaml
       YAML.load(value)
     else
-      coercer = Coercible::Coercer.new
-      coercion_method = "to_#{type}".to_sym
-      coercer[String].send(coercion_method, value)
+      self.coerce(value, type, String)
     end
   end
 
@@ -490,8 +505,7 @@ module SymmetricEncryption
     when :yaml
       value.to_yaml
     else
-      coercer = Coercible::Coercer.new
-      coercer[coercion_type(type, value)].to_string(value)
+      self.coerce(value, :string, coercion_type(type, value))
     end
   end
 

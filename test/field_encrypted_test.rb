@@ -14,6 +14,7 @@ class MongoidUser
   field :encrypted_long_string,            :type => String,  :encrypted => {:random_iv => true, :compress => true}
 
   field :encrypted_integer_value,  :type => String, :encrypted => {:type => :integer}
+  field :aiv,                      :type => String, :encrypted => {:type => :integer, decrypt_as: :aliased_integer_value}
   field :encrypted_float_value,    :type => String, :encrypted => {:type => :float}
   field :encrypted_decimal_value,  :type => String, :encrypted => {:type => :decimal}
   field :encrypted_datetime_value, :type => String, :encrypted => {:type => :datetime}
@@ -70,6 +71,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
         :name                             => "Joe Bloggs",
         # data type specific fields
         :integer_value          => @integer_value,
+        :aliased_integer_value  => @integer_value,
         :float_value            => @float_value,
         :decimal_value          => @decimal_value,
         :datetime_value         => @datetime_value,
@@ -108,6 +110,11 @@ class FieldEncryptedTest < Test::Unit::TestCase
       assert_equal true, @user.respond_to?(:string=)
       assert_equal true, @user.respond_to?(:long_string=)
       assert_equal true, @user.respond_to?(:name=)
+    end
+
+    should "support aliased fields" do
+      assert_equal true, @user.respond_to?(:aliased_integer_value=)
+      assert_equal true, @user.respond_to?(:aliased_integer_value)
     end
 
     should "have unencrypted values" do
@@ -194,10 +201,23 @@ class FieldEncryptedTest < Test::Unit::TestCase
         @user_clone = MongoidUser.find(@user.id)
       end
 
+      context "aliased fields" do
+        should "return correct data type" do
+          @user_clone.aliased_integer_value = "5"
+          assert_equal 5, @user_clone.aliased_integer_value
+        end
+      end
+
       context "integer values" do
         should "return correct data type" do
           assert_equal @integer_value, @user_clone.integer_value
           assert @user.clone.integer_value.kind_of?(Integer)
+        end
+
+        should "coerce data type before save" do
+          u = MongoidUser.new(:integer_value => "5")
+          assert_equal 5, u.integer_value
+          assert u.integer_value.kind_of?(Integer)
         end
 
         should "permit replacing value with nil" do
@@ -225,6 +245,12 @@ class FieldEncryptedTest < Test::Unit::TestCase
           assert @user.clone.float_value.kind_of?(Float)
         end
 
+        should "coerce data type before save" do
+          u = MongoidUser.new(:float_value => "5.6")
+          assert_equal 5.6, u.float_value
+          assert u.float_value.kind_of?(Float)
+        end
+
         should "permit replacing value with nil" do
           @user_clone.float_value = nil
           @user_clone.save!
@@ -248,6 +274,12 @@ class FieldEncryptedTest < Test::Unit::TestCase
         should "return correct data type" do
           assert_equal @decimal_value, @user_clone.decimal_value
           assert @user.clone.decimal_value.kind_of?(BigDecimal)
+        end
+
+        should "coerce data type before save" do
+          u = MongoidUser.new(:decimal_value => "99.95")
+          assert_equal BigDecimal.new("99.95"), u.decimal_value
+          assert u.decimal_value.kind_of?(BigDecimal)
         end
 
         should "permit replacing value with nil" do
@@ -275,6 +307,13 @@ class FieldEncryptedTest < Test::Unit::TestCase
           assert @user.clone.datetime_value.kind_of?(DateTime)
         end
 
+        should "coerce data type before save" do
+          now = Time.now
+          u = MongoidUser.new(:datetime_value => now)
+          assert_equal now, u.datetime_value
+          assert u.datetime_value.kind_of?(DateTime)
+        end
+
         should "permit replacing value with nil" do
           @user_clone.datetime_value = nil
           @user_clone.save!
@@ -298,6 +337,13 @@ class FieldEncryptedTest < Test::Unit::TestCase
         should "return correct data type" do
           assert_equal @time_value, @user_clone.time_value
           assert @user.clone.time_value.kind_of?(Time)
+        end
+
+        should "coerce data type before save" do
+          now = Time.now
+          u = MongoidUser.new(:time_value => now)
+          assert_equal now, u.time_value
+          assert u.time_value.kind_of?(Time)
         end
 
         should "permit replacing value with nil" do
@@ -325,6 +371,13 @@ class FieldEncryptedTest < Test::Unit::TestCase
           assert @user.clone.date_value.kind_of?(Date)
         end
 
+        should "coerce data type before save" do
+          now = Time.now
+          u = MongoidUser.new(:date_value => now)
+          assert_equal now.to_date, u.date_value
+          assert u.date_value.kind_of?(Date)
+        end
+
         should "permit replacing value with nil" do
           @user_clone.date_value = nil
           @user_clone.save!
@@ -350,6 +403,12 @@ class FieldEncryptedTest < Test::Unit::TestCase
           assert @user.clone.true_value.kind_of?(TrueClass)
         end
 
+        should "coerce data type before save" do
+          u = MongoidUser.new(:true_value => "1")
+          assert_equal true, u.true_value
+          assert u.true_value.kind_of?(TrueClass)
+        end
+
         should "permit replacing value with nil" do
           @user_clone.true_value = nil
           @user_clone.save!
@@ -373,6 +432,12 @@ class FieldEncryptedTest < Test::Unit::TestCase
         should "return correct data type" do
           assert_equal false, @user_clone.false_value
           assert @user.clone.false_value.kind_of?(FalseClass)
+        end
+
+        should "coerce data type before save" do
+          u = MongoidUser.new(:false_value => "0")
+          assert_equal false, u.false_value
+          assert u.false_value.kind_of?(FalseClass)
         end
 
         should "permit replacing value with nil" do
@@ -409,6 +474,12 @@ class FieldEncryptedTest < Test::Unit::TestCase
           assert @user.clone.data_json.kind_of?(Hash)
         end
 
+        should "not coerce data type (leaves as hash) before save" do
+          u = MongoidUser.new(:data_json => @h)
+          assert_equal @h, u.data_json
+          assert u.data_json.kind_of?(Hash)
+        end
+
         should "permit replacing value with nil" do
           @user_clone.data_json = nil
           @user_clone.save!
@@ -435,6 +506,12 @@ class FieldEncryptedTest < Test::Unit::TestCase
           assert @user.clone.data_yaml.kind_of?(Hash)
         end
 
+        should "not coerce data type (leaves as hash) before save" do
+          u = MongoidUser.new(:data_yaml => @h)
+          assert_equal @h, u.data_yaml
+          assert u.data_yaml.kind_of?(Hash)
+        end
+
         should "permit replacing value with nil" do
           @user_clone.data_yaml = nil
           @user_clone.save!
@@ -454,6 +531,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
           assert_equal new_value, @user.data_yaml
         end
       end
+
     end
 
   end
