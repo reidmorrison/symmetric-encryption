@@ -22,8 +22,8 @@ iv            = ::Base64.strict_encode64(key_pair[:iv])
 encrypted_key = ::Base64.strict_encode64(rsa_key.public_encrypt(key_pair[:key]))
 
 puts "\n\n********************************************************************************"
-puts "Add the following environment setting to your heroku 'release' environment:\n\n"
-puts "  RELEASE_KEY1=\"#{encrypted_key}\"\n\n"
+puts "Add the following environment variables to heroku:\n\n"
+puts "  heroku config:set RELEASE_KEY1:#{encrypted_key}\n\n"
 -%>
 release:
   # Since the key to encrypt and decrypt with must NOT be stored along with the
@@ -51,8 +51,7 @@ key_pair      = SymmetricEncryption::Cipher.random_key_pair(cipher_name)
 iv            = ::Base64.strict_encode64(key_pair[:iv])
 encrypted_key = ::Base64.strict_encode64(rsa_key.public_encrypt(key_pair[:key]))
 
-puts "Add the following environment setting to your heroku 'production' environment:\n\n"
-puts "  PRODUCTION_KEY1=\"#{encrypted_key}\"\n\n"
+puts "  heroku config:set PRODUCTION_KEY1:#{encrypted_key}\n\n"
 puts "********************************************************************************\n\n\n"
 -%>
 production:
