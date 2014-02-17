@@ -704,6 +704,7 @@ Contributors
 ------------
 
 [M. Scott Ford](https://github.com/mscottford)
+[Adam St. John](https://github.com/astjohn)
 
 License
 -------
