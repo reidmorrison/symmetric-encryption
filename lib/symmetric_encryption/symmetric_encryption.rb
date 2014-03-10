@@ -73,7 +73,7 @@ module SymmetricEncryption
 
   # AES Symmetric Decryption of supplied string
   #  Returns decrypted value
-  #  Returns nil if the supplied value is nil
+  #  Returns nil if the supplied value is nil or "NULL"
   #  Returns "" if it is a string and it is empty
   #
   #  Parameters
@@ -108,6 +108,7 @@ module SymmetricEncryption
   def self.decrypt(encrypted_and_encoded_string, version=nil, type=:string)
     raise "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data" unless @@cipher
     return encrypted_and_encoded_string if encrypted_and_encoded_string.nil? || (encrypted_and_encoded_string == '')
+    return nil if encrypted_and_encoded_string == 'NULL'
 
     str = encrypted_and_encoded_string.to_s
 
