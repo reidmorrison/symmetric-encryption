@@ -62,7 +62,15 @@ User.establish_connection(cfg)
 # Unit Test for attr_encrypted and validation aspects of SymmetricEncryption
 #
 class AttrEncryptedTest < Test::Unit::TestCase
+
+
   context 'the SymmetricEncryption Library' do
+    INTEGER_VALUE  = 12
+    FLOAT_VALUE    = 88.12345
+    DECIMAL_VALUE  = BigDecimal.new("22.51")
+    DATETIME_VALUE = DateTime.new(2001, 11, 26, 20, 55, 54, "-5")
+    TIME_VALUE     = Time.new(2013, 01, 01, 22, 30, 00, "-04:00")
+    DATE_VALUE     = Date.new(1927, 04, 02)
 
     setup do
       @bank_account_number = "1234567890"
@@ -76,12 +84,6 @@ class AttrEncryptedTest < Test::Unit::TestCase
 
       @name = 'Joe Bloggs'
 
-      @integer_value = 12
-      @float_value = 88.12345
-      @decimal_value = BigDecimal.new("22.51")
-      @datetime_value = DateTime.new(2001, 11, 26, 20, 55, 54, "-5")
-      @time_value = Time.new(2013, 01, 01, 22, 30, 00, "-04:00")
-      @date_value = Date.new(1927, 04, 02)
       @h = { :a => 'A', :b => 'B' }
 
       @user = User.new(
@@ -91,12 +93,12 @@ class AttrEncryptedTest < Test::Unit::TestCase
         :social_security_number => @social_security_number,
         :name                   => @name,
         # data type specific fields
-        :integer_value          => @integer_value,
-        :float_value            => @float_value,
-        :decimal_value          => @decimal_value,
-        :datetime_value         => @datetime_value,
-        :time_value             => @time_value,
-        :date_value             => @date_value,
+        :integer_value          => INTEGER_VALUE,
+        :float_value            => FLOAT_VALUE,
+        :decimal_value          => DECIMAL_VALUE,
+        :datetime_value         => DATETIME_VALUE,
+        :time_value             => TIME_VALUE,
+        :date_value             => DATE_VALUE,
         :true_value             => true,
         :false_value            => false,
         :data_yaml              => @h.dup,
@@ -292,254 +294,52 @@ class AttrEncryptedTest < Test::Unit::TestCase
           @user_clone = User.find(@user.id)
         end
 
-        context "integer values" do
-          should "return correct data type" do
-            assert_equal @integer_value, @user_clone.integer_value
-            assert @user.clone.integer_value.kind_of?(Integer)
-          end
+        [
+          { attribute: :integer_value,  klass: Integer,    value: INTEGER_VALUE,  new_value: 98 },
+          { attribute: :float_value,    klass: Float,      value: FLOAT_VALUE,    new_value: 45.4321 },
+          { attribute: :decimal_value,  klass: BigDecimal, value: DECIMAL_VALUE,  new_value: BigDecimal.new("99.95"), coercible: "22.51"},
+          { attribute: :datetime_value, klass: DateTime,   value: DATETIME_VALUE, new_value: DateTime.new(1998, 10, 21, 8, 33, 28, "+5"), coercible: DATETIME_VALUE.to_time},
+          { attribute: :time_value,     klass: Time,       value: TIME_VALUE,     new_value: Time.new(2000, 01, 01, 22, 30, 00, "-04:00") },
+          { attribute: :date_value,     klass: Date,       value: DATE_VALUE,     new_value: Date.new(2027, 04, 02), coercible: DATE_VALUE.to_time },
+          { attribute: :true_value,     klass: TrueClass,  value: true,           new_value: false },
+          { attribute: :false_value,    klass: FalseClass, value: false,          new_value: true },
+        ].each do |value_test|
+          context "#{value_test[:klass]} values" do
+            setup do
+              @attribute = value_test[:attribute]
+              @klass     = value_test[:klass]
+              @value     = value_test[:value]
+              @coercible = value_test[:coercible] || @value.to_s
+              @new_value = value_test[:new_value]
+            end
 
-          should "coerce data type before save" do
-            u = User.new(:integer_value => "5")
-            assert_equal 5, u.integer_value
-            assert u.integer_value.kind_of?(Integer)
-          end
+            should "return correct data type" do
+              assert_equal @value, @user_clone.send(@attribute)
+              assert @user.clone.send(@attribute).kind_of?(@klass)
+            end
 
-          should "permit replacing value with nil" do
-            @user_clone.integer_value = nil
-            @user_clone.save!
+            should "coerce data type before save" do
+              u = User.new(@attribute => @value)
+              assert_equal @value, u.send(@attribute)
+              assert u.send(@attribute).kind_of?(@klass), "Value supposed to be coerced into #{@klass}, but is #{u.send(@attribute).class.name}"
+            end
 
-            @user.reload
-            assert_nil @user.integer_value
-            assert_nil @user.encrypted_integer_value
-          end
+            should "permit replacing value with nil" do
+              @user_clone.send("#{@attribute}=".to_sym, nil)
+              @user_clone.save!
 
-          should "permit replacing value" do
-            new_integer_value = 98
-            @user_clone.integer_value = new_integer_value
-            @user_clone.save!
+              @user.reload
+              assert_nil @user.send(@attribute)
+              assert_nil @user.send("encrypted_#{@attribute}".to_sym)
+            end
 
-            @user.reload
-            assert_equal new_integer_value, @user.integer_value
-          end
-        end
+            should "permit replacing value" do
+              @user_clone.send("#{@attribute}=".to_sym, @new_value)
+              @user_clone.save!
 
-        context "float values" do
-          should "return correct data type" do
-            assert_equal @float_value, @user_clone.float_value
-            assert @user.clone.float_value.kind_of?(Float)
-          end
-
-          should "coerce data type before save" do
-            u = User.new(:float_value => "5.6")
-            assert_equal 5.6, u.float_value
-            assert u.float_value.kind_of?(Float)
-          end
-
-          should "permit replacing value with nil" do
-            @user_clone.float_value = nil
-            @user_clone.save!
-
-            @user.reload
-            assert_nil @user.float_value
-            assert_nil @user.encrypted_float_value
-          end
-
-          should "permit replacing value" do
-            new_float_value = 45.4321
-            @user_clone.float_value = new_float_value
-            @user_clone.save!
-
-            @user.reload
-            assert_equal new_float_value, @user.float_value
-          end
-        end
-
-        context "decimal values" do
-          should "return correct data type" do
-            assert_equal @decimal_value, @user_clone.decimal_value
-            assert @user.clone.decimal_value.kind_of?(BigDecimal)
-          end
-
-          should "coerce data type before save" do
-            u = User.new(:decimal_value => "99.95")
-            assert_equal BigDecimal.new("99.95"), u.decimal_value
-            assert u.decimal_value.kind_of?(BigDecimal)
-          end
-
-          should "permit replacing value with nil" do
-            @user_clone.decimal_value = nil
-            @user_clone.save!
-
-            @user.reload
-            assert_nil @user.decimal_value
-            assert_nil @user.encrypted_decimal_value
-          end
-
-          should "permit replacing value" do
-            new_decimal_value = BigDecimal.new("99.95")
-            @user_clone.decimal_value = new_decimal_value
-            @user_clone.save!
-
-            @user.reload
-            assert_equal new_decimal_value, @user.decimal_value
-          end
-        end
-
-        context "datetime values" do
-          should "return correct data type" do
-            assert_equal @datetime_value, @user_clone.datetime_value
-            assert @user.clone.datetime_value.kind_of?(DateTime)
-          end
-
-          should "coerce data type before save" do
-            now = Time.now
-            u = User.new(:datetime_value => now)
-            assert_equal now, u.datetime_value
-            assert u.datetime_value.kind_of?(DateTime)
-          end
-
-          should "permit replacing value with nil" do
-            @user_clone.datetime_value = nil
-            @user_clone.save!
-
-            @user.reload
-            assert_nil @user.datetime_value
-            assert_nil @user.encrypted_datetime_value
-          end
-
-          should "permit replacing value" do
-            new_datetime_value = DateTime.new(1998, 10, 21, 8, 33, 28, "+5")
-            @user_clone.datetime_value = new_datetime_value
-            @user_clone.save!
-
-            @user.reload
-            assert_equal new_datetime_value, @user.datetime_value
-          end
-        end
-
-        context "time values" do
-          should "return correct data type" do
-            assert_equal @time_value, @user_clone.time_value
-            assert @user.clone.time_value.kind_of?(Time)
-          end
-
-          should "coerce data type before save" do
-            now = Time.now
-            u = User.new(:time_value => now)
-            assert_equal now, u.time_value
-            assert u.time_value.kind_of?(Time)
-          end
-
-          should "permit replacing value with nil" do
-            @user_clone.time_value = nil
-            @user_clone.save!
-
-            @user.reload
-            assert_nil @user.time_value
-            assert_nil @user.encrypted_time_value
-          end
-
-          should "permit replacing value" do
-            new_time_value = Time.new(1998, 10, 21, 8, 33, 28, "+04:00")
-            @user_clone.time_value = new_time_value
-            @user_clone.save!
-
-            @user.reload
-            assert_equal new_time_value, @user.time_value
-          end
-        end
-
-        context "date values" do
-          should "return correct data type" do
-            assert_equal @date_value, @user_clone.date_value
-            assert @user.clone.date_value.kind_of?(Date)
-          end
-
-          should "coerce data type before save" do
-            now = Time.now
-            u = User.new(:date_value => now)
-            assert_equal now.to_date, u.date_value
-            assert u.date_value.kind_of?(Date)
-          end
-
-          should "permit replacing value with nil" do
-            @user_clone.date_value = nil
-            @user_clone.save!
-
-            @user.reload
-            assert_nil @user.date_value
-            assert_nil @user.encrypted_date_value
-          end
-
-          should "permit replacing value" do
-            new_date_value = Date.new(1998, 10, 21)
-            @user_clone.date_value = new_date_value
-            @user_clone.save!
-
-            @user.reload
-            assert_equal new_date_value, @user.date_value
-          end
-        end
-
-        context "true values" do
-          should "return correct data type" do
-            assert_equal true, @user_clone.true_value
-            assert @user.clone.true_value.kind_of?(TrueClass)
-          end
-
-          should "coerce data type before save" do
-            u = User.new(:true_value => "1")
-            assert_equal true, u.true_value
-            assert u.true_value.kind_of?(TrueClass)
-          end
-
-          should "permit replacing value with nil" do
-            @user_clone.true_value = nil
-            @user_clone.save!
-
-            @user.reload
-            assert_nil @user.true_value
-            assert_nil @user.encrypted_true_value
-          end
-
-          should "permit replacing value" do
-            new_value = false
-            @user_clone.true_value = new_value
-            @user_clone.save!
-
-            @user.reload
-            assert_equal new_value, @user.true_value
-          end
-        end
-
-        context "false values" do
-          should "return correct data type" do
-            assert_equal false, @user_clone.false_value
-            assert @user.clone.false_value.kind_of?(FalseClass)
-          end
-
-          should "coerce data type before save" do
-            u = User.new(:false_value => "0")
-            assert_equal false, u.false_value
-            assert u.false_value.kind_of?(FalseClass)
-          end
-
-          should "permit replacing value with nil" do
-            @user_clone.false_value = nil
-            @user_clone.save!
-
-            @user.reload
-            assert_nil @user.false_value
-            assert_nil @user.encrypted_false_value
-          end
-
-          should "permit replacing value" do
-            new_value = true
-            @user_clone.false_value = new_value
-            @user_clone.save!
-
-            @user.reload
-            assert_equal new_value, @user.false_value
+              @user.reload
+              assert_equal @new_value, @user.send(@attribute)
+            end
           end
         end
 
