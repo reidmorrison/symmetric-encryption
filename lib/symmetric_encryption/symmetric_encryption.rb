@@ -311,7 +311,7 @@ module SymmetricEncryption
     elsif !cipher_cfg[:iv]
       iv = rsa_key.public_encrypt(key_pair[:iv])
       puts "Generated new Symmetric Key for encryption. Set the IV environment variable in #{environment} to:"
-      puts ::Base64.encode64(key)
+      puts ::Base64.encode64(iv)
     end
   end
 
