@@ -438,6 +438,11 @@ module SymmetricEncryption
       raise "Missing mandatory config parameter :private_rsa_key when :encrypted_key is supplied" unless rsa
       # Decode value first using encoding specified
       encrypted_key = ::Base64.decode64(encrypted_key)
+      if !encrypted_key || encrypted_key.empty?
+        puts "\nSymmetric Encryption encrypted_key not found."
+        puts "To generate the keys for the first time run: rails generate symmetric_encryption:new_keys\n\n"
+        return
+      end
       config[:key] = rsa.private_decrypt(encrypted_key)
     end
 
@@ -445,6 +450,11 @@ module SymmetricEncryption
       raise "Missing mandatory config parameter :private_rsa_key when :encrypted_iv is supplied" unless rsa
       # Decode value first using encoding specified
       encrypted_iv = ::Base64.decode64(encrypted_iv)
+      if !encrypted_key || encrypted_key.empty?
+        puts "\nSymmetric Encryption encrypted_iv not found."
+        puts "To generate the keys for the first time run: rails generate symmetric_encryption:new_keys\n\n"
+        return
+      end
       config[:iv] = rsa.private_decrypt(encrypted_iv)
     end
 
