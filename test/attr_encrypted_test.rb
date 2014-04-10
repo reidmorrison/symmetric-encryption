@@ -46,6 +46,7 @@ class User < ActiveRecord::Base
   validates :encrypted_social_security_number, :symmetric_encryption => true
 
   validates :name, format: { with: /\A[a-zA-Z ]+\z/, message: "only allows letters" }, presence: true
+  validate  :integer_value, presence: true
 end
 
 # Load Symmetric Encryption keys
@@ -235,7 +236,7 @@ class AttrEncryptedTest < Test::Unit::TestCase
       assert_equal true, @user.valid?
     end
 
-    should 'validate un-encrypted data' do
+    should 'validate un-encrypted string data' do
       assert_equal true, @user.valid?
       @user.name = '123'
       assert_equal false, @user.valid?
@@ -246,6 +247,14 @@ class AttrEncryptedTest < Test::Unit::TestCase
       @user.name = ''
       assert_equal false, @user.valid?
       assert_equal ["only allows letters", "can't be blank"], @user.errors[:name]
+    end
+
+    should 'validate un-encrypted integer data with coercion' do
+      assert_equal true, @user.valid?
+      @user.integer_value = '123'
+      assert_equal true, @user.valid?
+      assert_equal 123, @user.integer_value
+      assert_equal true, @user.valid?
     end
 
     context "with saved user" do
