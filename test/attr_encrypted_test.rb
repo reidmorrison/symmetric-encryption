@@ -44,6 +44,8 @@ class User < ActiveRecord::Base
 
   validates :encrypted_bank_account_number, :symmetric_encryption => true
   validates :encrypted_social_security_number, :symmetric_encryption => true
+
+  validates :name, format: { with: /\A[a-zA-Z ]+\z/, message: "only allows letters" }, presence: true
 end
 
 # Load Symmetric Encryption keys
@@ -106,7 +108,7 @@ class AttrEncryptedTest < Test::Unit::TestCase
       )
     end
 
-    should "have encrypted methods" do
+    should 'have encrypted methods' do
       assert_equal true, @user.respond_to?(:encrypted_bank_account_number)
       assert_equal true, @user.respond_to?(:bank_account_number)
       assert_equal true, @user.respond_to?(:encrypted_social_security_number)
@@ -116,17 +118,17 @@ class AttrEncryptedTest < Test::Unit::TestCase
       assert_equal false, @user.respond_to?(:encrypted_name)
     end
 
-    should "have unencrypted values" do
+    should 'have unencrypted values' do
       assert_equal @bank_account_number, @user.bank_account_number
       assert_equal @social_security_number, @user.social_security_number
     end
 
-    should "have encrypted values" do
+    should 'have encrypted values' do
       assert_equal @bank_account_number_encrypted, @user.encrypted_bank_account_number
       assert_equal @social_security_number_encrypted, @user.encrypted_social_security_number
     end
 
-    should "support same iv" do
+    should 'support same iv' do
       @user.social_security_number = @social_security_number
       assert first_value = @user.social_security_number
       # Assign the same value
@@ -134,7 +136,7 @@ class AttrEncryptedTest < Test::Unit::TestCase
       assert_equal first_value, @user.social_security_number
     end
 
-    should "support a random iv" do
+    should 'support a random iv' do
       @user.string = @string
       assert first_value = @user.encrypted_string
       # Assign the same value
@@ -142,21 +144,21 @@ class AttrEncryptedTest < Test::Unit::TestCase
       assert_equal true, first_value != @user.encrypted_string
     end
 
-    should "support a random iv and compress" do
+    should 'support a random iv and compress' do
       @user.string = @long_string
       @user.long_string = @long_string
 
       assert_equal true, (@user.encrypted_long_string.length.to_f / @user.encrypted_string.length) < 0.8
     end
 
-    should "encrypt" do
+    should 'encrypt' do
       user = User.new
       user.bank_account_number = @bank_account_number
       assert_equal @bank_account_number, user.bank_account_number
       assert_equal @bank_account_number_encrypted, user.encrypted_bank_account_number
     end
 
-    should "allow lookups using unencrypted or encrypted column name" do
+    should 'allow lookups using unencrypted or encrypted column name' do
       @user.save!
 
       inq = User.find_by_bank_account_number(@bank_account_number)
@@ -166,19 +168,19 @@ class AttrEncryptedTest < Test::Unit::TestCase
       @user.delete
     end
 
-    should "all paths should lead to the same result" do
+    should 'all paths should lead to the same result' do
       assert_equal @bank_account_number_encrypted, (@user.encrypted_social_security_number = @bank_account_number_encrypted)
       assert_equal @bank_account_number, @user.social_security_number
       assert_equal @bank_account_number_encrypted, @user.encrypted_social_security_number
     end
 
-    should "all paths should lead to the same result 2" do
+    should 'all paths should lead to the same result 2' do
       assert_equal @bank_account_number, (@user.social_security_number = @bank_account_number)
       assert_equal @bank_account_number_encrypted, @user.encrypted_social_security_number
       assert_equal @bank_account_number, @user.social_security_number
     end
 
-    should "all paths should lead to the same result, check uninitialized" do
+    should 'all paths should lead to the same result, check uninitialized' do
       user = User.new
       assert_equal nil, user.social_security_number
       assert_equal @bank_account_number, (user.social_security_number = @bank_account_number)
@@ -190,7 +192,7 @@ class AttrEncryptedTest < Test::Unit::TestCase
       assert_equal nil, user.encrypted_social_security_number
     end
 
-    should "allow unencrypted values to be passed to the constructor" do
+    should 'allow unencrypted values to be passed to the constructor' do
       user = User.new(:bank_account_number => @bank_account_number, :social_security_number => @social_security_number)
       assert_equal @bank_account_number, user.bank_account_number
       assert_equal @social_security_number, user.social_security_number
@@ -198,13 +200,13 @@ class AttrEncryptedTest < Test::Unit::TestCase
       assert_equal @social_security_number_encrypted, user.encrypted_social_security_number
     end
 
-    should "return encrypted attributes for the class" do
+    should 'return encrypted attributes for the class' do
       expect = {:social_security_number=>:encrypted_social_security_number, :bank_account_number=>:encrypted_bank_account_number}
       result = User.encrypted_attributes
       expect.each_pair {|k,v| assert_equal expect[k], result[k]}
     end
 
-    should "return encrypted keys for the class" do
+    should 'return encrypted keys for the class' do
       expect = [:social_security_number, :bank_account_number]
       result = User.encrypted_keys
       expect.each {|val| assert_equal true, result.include?(val)}
@@ -213,7 +215,7 @@ class AttrEncryptedTest < Test::Unit::TestCase
       expect.each {|val| assert_equal true, User.encrypted_attribute?(val)}
     end
 
-    should "return encrypted columns for the class" do
+    should 'return encrypted columns for the class' do
       expect = [:encrypted_social_security_number, :encrypted_bank_account_number]
       result = User.encrypted_columns
       expect.each {|val| assert_equal true, result.include?(val)}
@@ -222,7 +224,7 @@ class AttrEncryptedTest < Test::Unit::TestCase
       expect.each {|val| assert_equal true, User.encrypted_column?(val)}
     end
 
-    should "validate encrypted data" do
+    should 'validate encrypted data' do
       assert_equal true, @user.valid?
       @user.encrypted_bank_account_number = '123'
       assert_equal false, @user.valid?
@@ -233,7 +235,18 @@ class AttrEncryptedTest < Test::Unit::TestCase
       assert_equal true, @user.valid?
     end
 
-
+    should 'validate un-encrypted data' do
+      assert_equal true, @user.valid?
+      @user.name = '123'
+      assert_equal false, @user.valid?
+      assert_equal ["only allows letters"], @user.errors[:name]
+      @user.name = nil
+      assert_equal false, @user.valid?
+      assert_equal ["only allows letters", "can't be blank"], @user.errors[:name]
+      @user.name = ''
+      assert_equal false, @user.valid?
+      assert_equal ["only allows letters", "can't be blank"], @user.errors[:name]
+    end
 
     context "with saved user" do
       setup do
