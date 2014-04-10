@@ -470,7 +470,7 @@ module SymmetricEncryption
   # Coerce given value into given type
   # Does not coerce json or yaml values
   def self.coerce(value, type, from_type=nil)
-    return if value.nil?
+    return if value.nil? || (value.is_a?(String) && (value !~ /[^[:space:]]/))
 
     from_type ||= value.class
     case type

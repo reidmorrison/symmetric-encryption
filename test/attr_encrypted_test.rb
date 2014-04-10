@@ -22,6 +22,9 @@ ActiveRecord::Schema.define :version => 0 do
     t.string :encrypted_date_value
     t.string :encrypted_true_value
     t.string :encrypted_false_value
+
+    t.string :encrypted_text
+    t.string :encrypted_number
   end
 end
 
@@ -45,8 +48,10 @@ class User < ActiveRecord::Base
   validates :encrypted_bank_account_number, :symmetric_encryption => true
   validates :encrypted_social_security_number, :symmetric_encryption => true
 
-  validates :name, format: { with: /\A[a-zA-Z ]+\z/, message: "only allows letters" }, presence: true
-  validate  :integer_value, presence: true
+  attr_encrypted :text,           :type => :string
+  attr_encrypted :number,         :type => :integer
+  validates :text, format: { with: /\A[a-zA-Z ]+\z/, message: "only allows letters" }, presence: true
+  validates :number, presence: true
 end
 
 # Load Symmetric Encryption keys
@@ -105,7 +110,9 @@ class AttrEncryptedTest < Test::Unit::TestCase
         :true_value             => true,
         :false_value            => false,
         :data_yaml              => @h.dup,
-        :data_json              => @h.dup
+        :data_json              => @h.dup,
+        :text                   => 'hello',
+        :number                 => '21'
       )
     end
 
@@ -238,23 +245,32 @@ class AttrEncryptedTest < Test::Unit::TestCase
 
     should 'validate un-encrypted string data' do
       assert_equal true, @user.valid?
-      @user.name = '123'
+      @user.text = '123'
       assert_equal false, @user.valid?
-      assert_equal ["only allows letters"], @user.errors[:name]
-      @user.name = nil
+      assert_equal ["only allows letters"], @user.errors[:text]
+      @user.text = nil
       assert_equal false, @user.valid?
-      assert_equal ["only allows letters", "can't be blank"], @user.errors[:name]
-      @user.name = ''
+      assert_equal ["only allows letters", "can't be blank"], @user.errors[:text]
+      @user.text = ''
       assert_equal false, @user.valid?
-      assert_equal ["only allows letters", "can't be blank"], @user.errors[:name]
+      assert_equal ["only allows letters", "can't be blank"], @user.errors[:text]
     end
 
     should 'validate un-encrypted integer data with coercion' do
       assert_equal true, @user.valid?
-      @user.integer_value = '123'
+      @user.number = '123'
       assert_equal true, @user.valid?
-      assert_equal 123, @user.integer_value
+      assert_equal 123, @user.number
       assert_equal true, @user.valid?
+      @user.number = ''
+      assert_equal false, @user.valid?
+      assert_equal nil, @user.number
+      assert_equal ["can't be blank"], @user.errors[:number]
+      @user.number = nil
+      assert_equal nil, @user.number
+      assert_equal nil, @user.encrypted_number
+      assert_equal false, @user.valid?
+      assert_equal ["can't be blank"], @user.errors[:number]
     end
 
     context "with saved user" do
@@ -348,6 +364,24 @@ class AttrEncryptedTest < Test::Unit::TestCase
 
             should "permit replacing value with nil" do
               @user_clone.send("#{@attribute}=".to_sym, nil)
+              @user_clone.save!
+
+              @user.reload
+              assert_nil @user.send(@attribute)
+              assert_nil @user.send("encrypted_#{@attribute}".to_sym)
+            end
+
+            should "permit replacing value with an empty string" do
+              @user_clone.send("#{@attribute}=".to_sym, '')
+              @user_clone.save!
+
+              @user.reload
+              assert_nil @user.send(@attribute)
+              assert_nil @user.send("encrypted_#{@attribute}".to_sym)
+            end
+
+            should "permit replacing value with a blank string" do
+              @user_clone.send("#{@attribute}=".to_sym, '    ')
               @user_clone.save!
 
               @user.reload
