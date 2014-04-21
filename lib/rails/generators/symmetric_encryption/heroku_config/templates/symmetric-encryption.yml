@@ -23,7 +23,7 @@ encrypted_key = ::Base64.strict_encode64(rsa_key.public_encrypt(key_pair[:key]))
 
 puts "\n\n********************************************************************************"
 puts "Add the release environment key to Heroku: (Optional)\n\n"
-puts "  heroku config:add RELEASE_KEY1:#{encrypted_key}\n\n"
+puts "  heroku config:add RELEASE_KEY1=#{encrypted_key}\n\n"
 -%>
 release:
   # Since the key to encrypt and decrypt with must NOT be stored along with the
@@ -52,7 +52,7 @@ iv            = ::Base64.strict_encode64(key_pair[:iv])
 encrypted_key = ::Base64.strict_encode64(rsa_key.public_encrypt(key_pair[:key]))
 
 puts "Add the production key to Heroku:\n\n"
-puts "  heroku config:add PRODUCTION_KEY1:#{encrypted_key}\n\n"
+puts "  heroku config:add PRODUCTION_KEY1=#{encrypted_key}\n\n"
 puts "********************************************************************************\n\n\n"
 -%>
 production:
