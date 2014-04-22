@@ -695,16 +695,16 @@ Meta
 
 This project uses [Semantic Versioning](http://semver.org/).
 
-Authors
--------
+Author
+------
 
 [Reid Morrison](https://github.com/reidmorrison)
 
 Contributors
 ------------
 
-[M. Scott Ford](https://github.com/mscottford)
-[Adam St. John](https://github.com/astjohn)
+* [M. Scott Ford](https://github.com/mscottford)
+* [Adam St. John](https://github.com/astjohn)
 
 License
 -------

@@ -5,5 +5,9 @@ rvm:
   - 2.0.0
   - 2.1.1
   - jruby-1.7.11
+matrix:
+  allow_failures:
+    - rvm: jruby-1.7.11
+  fast_finish: true
 services:
   - mongodb
