@@ -50,7 +50,7 @@ module ActiveRecord #:nodoc:
 
         # For backward compatibility
         if options.delete(:marshal) == true
-          warn("The :marshal option has been deprecated in favor of :type. For example: attr_encrypted name, :type => :yaml")
+          warn("The :marshal option has been deprecated in favor of :type. For example: attr_encrypted name, type: :yaml")
           raise "Marshal is depreacted and cannot be used in conjunction with :type, just use :type. For #{params.inspect}" if type != :string
           type = :yaml
         end
@@ -100,7 +100,7 @@ module ActiveRecord #:nodoc:
       #     attr_encrypted :email
       #   end
       #
-      #   User.encrypted_attributes # { :email => :encrypted_email }
+      #   User.encrypted_attributes  =>  { email: encrypted_email }
       def encrypted_attributes
         @encrypted_attributes ||= superclass.respond_to?(:encrypted_attributes) ? superclass.encrypted_attributes.dup : {}
       end

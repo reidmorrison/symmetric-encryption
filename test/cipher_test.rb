@@ -7,18 +7,18 @@ class CipherTest < Test::Unit::TestCase
 
     should "allow setting the cipher_name" do
       cipher = SymmetricEncryption::Cipher.new(
-        :cipher_name   => 'aes-128-cbc',
-        :key      => '1234567890ABCDEF1234567890ABCDEF',
-        :iv       => '1234567890ABCDEF',
-        :encoding => :none
+        cipher_name: 'aes-128-cbc',
+        key:         '1234567890ABCDEF1234567890ABCDEF',
+        iv:          '1234567890ABCDEF',
+        encoding:    :none
       )
       assert_equal 'aes-128-cbc', cipher.cipher_name
     end
 
     should "not require an iv" do
       cipher = SymmetricEncryption::Cipher.new(
-        :key      => '1234567890ABCDEF1234567890ABCDEF',
-        :encoding => :none
+        key:      '1234567890ABCDEF1234567890ABCDEF',
+        encoding: :none
       )
       result = "\302<\351\227oj\372\3331\310\260V\001\v'\346"
       # Note: This test fails on JRuby 1.7 RC1 since it's OpenSSL
@@ -31,10 +31,10 @@ class CipherTest < Test::Unit::TestCase
 
     should "throw an exception on bad data" do
       cipher = SymmetricEncryption::Cipher.new(
-        :cipher_name   => 'aes-128-cbc',
-        :key      => '1234567890ABCDEF1234567890ABCDEF',
-        :iv       => '1234567890ABCDEF',
-        :encoding => :none
+        cipher_name: 'aes-128-cbc',
+        key:         '1234567890ABCDEF1234567890ABCDEF',
+        iv:          '1234567890ABCDEF',
+        encoding:    :none
       )
       assert_raise OpenSSL::Cipher::CipherError do
         cipher.decrypt('bad data')
@@ -115,9 +115,9 @@ class CipherTest < Test::Unit::TestCase
   context 'with configuration' do
     setup do
       @cipher = SymmetricEncryption::Cipher.new(
-        :key               => '1234567890ABCDEF1234567890ABCDEF',
-        :iv                => '1234567890ABCDEF',
-        :encoding          => :none
+        key:      '1234567890ABCDEF1234567890ABCDEF',
+        iv:       '1234567890ABCDEF',
+        encoding: :none
       )
       @social_security_number = "987654321"
 
@@ -125,7 +125,7 @@ class CipherTest < Test::Unit::TestCase
       @social_security_number_encrypted.force_encoding('binary') if defined?(Encoding)
 
       @sample_data = [
-        { :text => '555052345', :encrypted => ''}
+        { text: '555052345', encrypted: ''}
       ]
     end
 
@@ -149,7 +149,7 @@ class CipherTest < Test::Unit::TestCase
         assert_equal random_cipher.send(:iv), header.iv, "IVs differ"
 
         string = "Hello World"
-        cipher = SymmetricEncryption::Cipher.new(:key => header.key, :iv => header.iv, :cipher_name => header.cipher_name)
+        cipher = SymmetricEncryption::Cipher.new(key: header.key, iv: header.iv, cipher_name: header.cipher_name)
         # Test Encryption
         assert_equal random_cipher.encrypt(string, false, false), cipher.encrypt(string, false, false), "Encrypted values differ"
       end

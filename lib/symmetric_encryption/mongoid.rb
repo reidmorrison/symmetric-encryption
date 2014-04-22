@@ -15,17 +15,17 @@
 #  class Person
 #    include Mongoid::Document
 #
-#    field :name,                             :type => String
-#    field :encrypted_social_security_number, :type => String, :encrypted => true
-#    field :date_of_birth,                    :type => Date
-#    field :encrypted_life_history,           :type => String, :encrypted => {:compress => true, :random_iv => true}
+#    field :name,                             type: String
+#    field :encrypted_social_security_number, type: String, encrypted: true
+#    field :date_of_birth,                    type: Date
+#    field :encrypted_life_history,           type: String, encrypted: {compress: true, random_iv: true}
 #
 #    # Encrypted fields are _always_ stored in Mongo as a String
 #    # To get the result back as an Integer, Symmetric Encryption can do the
 #    # necessary conversions by specifying the internal type as an option
 #    # to :encrypted
 #    # #see SymmetricEncryption::COERCION_TYPES for full list of types
-#    field :encrypted_age,                    :type => String, :encrypted => {:type => :integer, :random_iv => true}
+#    field :encrypted_age,                    type: String, encrypted: {type: :integer, random_iv: true}
 #  end
 #
 # The above document results in the following document in the Mongo collection 'persons':
@@ -40,7 +40,7 @@
 # in it's unencrypted form. For example
 #
 # Example:
-#   person = Person.where(:encrypted_social_security_number => '...').first
+#   person = Person.where(encrypted_social_security_number: '...').first
 #
 #   puts "Decrypted Social Security Number is: #{person.social_security_number}"
 #
@@ -57,18 +57,18 @@
 #
 # Note: Unlike attr_encrypted finders must use the encrypted field name
 #   Invalid Example, does not work:
-#     person = Person.where(:social_security_number => '123456789').first
+#     person = Person.where(social_security_number: '123456789').first
 #
 #   Valid Example:
-#     person = Person.where(:encrypted_social_security_number => SymmetricEncryption.encrypt('123456789')).first
+#     person = Person.where(encrypted_social_security_number: SymmetricEncryption.encrypt('123456789')).first
 #
 # Defines all the fields that are accessible on the Document
 # For each field that is defined, a getter and setter will be
 # added as an instance method to the Document.
 #
 # @example Define a field.
-#   field :social_security_number, :type => String, :encrypted => {:compress => false, :random_iv => false}
-#   field :sensitive_text, :type => String, :encrypted => {:compress => true, :random_iv => true}
+#   field :social_security_number, type: String, encrypted: {compress: false, random_iv: false}
+#   field :sensitive_text, type: String, encrypted: {compress: true, random_iv: true}
 #
 # @param [ Symbol ] name The name of the field.
 # @param [ Hash ] options The options to pass to the field.

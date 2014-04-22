@@ -3,7 +3,7 @@ module SymmetricEncryption
     class ConfigGenerator < Rails::Generators::Base
       desc "Creates a SymmetricEncryption configuration file at config/symmetric-encryption.yml"
 
-      argument :key_path, :type => :string, :optional => false
+      argument :key_path, type: :string, optional: false
 
       def self.source_root
         @_symmetric_encryption_source_root ||= File.expand_path("../templates", __FILE__)

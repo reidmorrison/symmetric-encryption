@@ -66,7 +66,7 @@ namespace :symmetric_encryption do
     if input_filename && output_filename
       puts "\nEncrypting file: #{input_filename} and writing to: #{output_filename}\n\n"
       ::File.open(input_filename, 'rb') do |input_file|
-        SymmetricEncryption::Writer.open(output_filename, :compress => compress) do |output_file|
+        SymmetricEncryption::Writer.open(output_filename, compress: compress) do |output_file|
           while !input_file.eof?
             output_file.write(input_file.read(block_size))
           end

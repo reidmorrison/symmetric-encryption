@@ -23,7 +23,7 @@ module SymmetricEncryption
       :key,                 # [String] Key used to encrypt the data, if supplied in the header
       :cipher_name,         # [String] Name of the cipher used, if supplied in the header
       :version,             # [Integer] Version of the cipher used, if supplied in the header
-      :decryption_cipher,   # [SymmetricEncryption::Cipher] Cipher matching the header, or SymmetricEncryption.cipher(default_version)
+      :decryption_cipher    # [SymmetricEncryption::Cipher] Cipher matching the header, or SymmetricEncryption.cipher(default_version)
     )
 
     # Generate a new Symmetric Key pair
@@ -36,9 +36,9 @@ module SymmetricEncryption
       openssl_cipher.encrypt
 
       {
-        :key         => openssl_cipher.random_key,
-        :iv          => openssl_cipher.random_iv,
-        :cipher_name => cipher_name
+        key:         openssl_cipher.random_key,
+        iv:          openssl_cipher.random_iv,
+        cipher_name: cipher_name
       }
     end
 

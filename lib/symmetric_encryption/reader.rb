@@ -63,15 +63,15 @@ module SymmetricEncryption
     # end
     #
     # # Example: Read, Unencrypt and decompress data in a file
-    # SymmetricEncryption::Reader.open('encrypted_compressed.zip', :compress => true) do |file|
+    # SymmetricEncryption::Reader.open('encrypted_compressed.zip', compress: true) do |file|
     #   file.each_line {|line| p line }
     # end
     #
     # # Example: Reading from a CSV file
     #
-    # require 'fastercsv'
+    # require 'csv'
     # begin
-    #   csv = FasterCSV.new(SymmetricEncryption::Reader.open('csv_encrypted'))
+    #   csv = CSV.new(SymmetricEncryption::Reader.open('csv_encrypted'))
     #   csv.each {|row| p row}
     # ensure
     #   csv.close if csv

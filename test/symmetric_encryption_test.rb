@@ -108,41 +108,41 @@ class SymmetricEncryptionTest < Test::Unit::TestCase
           assert_equal false, SymmetricEncryption.encrypted?(@social_security_number)
         end
       end
+    end
 
-      context "using select_cipher" do
-        setup do
-          @social_security_number = "987654321"
-          # Encrypt data without a header and encode with base64 which has a trailing '\n'
-          @encrypted_0_ssn = SymmetricEncryption.cipher(0).encode(SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number,false,false,false))
+    context "using select_cipher" do
+      setup do
+        @social_security_number = "987654321"
+        # Encrypt data without a header and encode with base64 which has a trailing '\n'
+        @encrypted_0_ssn = SymmetricEncryption.cipher(0).encode(SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number,false,false,false))
 
-          SymmetricEncryption.select_cipher do |encoded_str, decoded_str|
-            # Use cipher version 0 if the encoded string ends with "\n" otherwise
-            # use the current default cipher
-            encoded_str.end_with?("\n") ? SymmetricEncryption.cipher(0) : SymmetricEncryption.cipher
-          end
-        end
-
-        teardown do
-          # Clear out select_cipher
-          SymmetricEncryption.select_cipher
-        end
-
-        should "decrypt string without a header using an old cipher" do
-          assert_equal @social_security_number, SymmetricEncryption.decrypt(@encrypted_0_ssn)
+        SymmetricEncryption.select_cipher do |encoded_str, decoded_str|
+          # Use cipher version 0 if the encoded string ends with "\n" otherwise
+          # use the current default cipher
+          encoded_str.end_with?("\n") ? SymmetricEncryption.cipher(0) : SymmetricEncryption.cipher
         end
       end
 
-      context "without select_cipher" do
-        setup do
-          @social_security_number = "987654321"
-          # Encrypt data without a header and encode with base64 which has a trailing '\n'
-          assert @encrypted_0_ssn = SymmetricEncryption.cipher(0).encode(SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number,false,false,false))
-        end
+      teardown do
+        # Clear out select_cipher
+        SymmetricEncryption.select_cipher
+      end
 
-        should "decrypt string without a header using an old cipher" do
-          assert_raises OpenSSL::Cipher::CipherError do
-            SymmetricEncryption.decrypt(@encrypted_0_ssn)
-          end
+      should "decrypt string without a header using an old cipher" do
+        assert_equal @social_security_number, SymmetricEncryption.decrypt(@encrypted_0_ssn)
+      end
+    end
+
+    context "without select_cipher" do
+      setup do
+        @social_security_number = "987654321"
+        # Encrypt data without a header and encode with base64 which has a trailing '\n'
+        assert @encrypted_0_ssn = SymmetricEncryption.cipher(0).encode(SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number,false,false,false))
+      end
+
+      should "decrypt string without a header using an old cipher" do
+        assert_raises OpenSSL::Cipher::CipherError do
+          SymmetricEncryption.decrypt(@encrypted_0_ssn)
         end
       end
     end

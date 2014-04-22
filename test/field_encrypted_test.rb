@@ -7,27 +7,27 @@ Mongoid.load!(filename)
 class MongoidUser
   include Mongoid::Document
 
-  field :name,                             :type => String
-  field :encrypted_bank_account_number,    :type => String,  :encrypted => true
-  field :encrypted_social_security_number, :type => String,  :encrypted => true
-  field :encrypted_string,                 :type => String,  :encrypted => {:random_iv => true}
-  field :encrypted_long_string,            :type => String,  :encrypted => {:random_iv => true, :compress => true}
+  field :name,                             type: String
+  field :encrypted_bank_account_number,    type: String,  encrypted: true
+  field :encrypted_social_security_number, type: String,  encrypted: true
+  field :encrypted_string,                 type: String,  encrypted: {random_iv: true}
+  field :encrypted_long_string,            type: String,  encrypted: {random_iv: true, compress: true}
 
-  field :encrypted_integer_value,  :type => String, :encrypted => {:type => :integer}
-  field :aiv,                      :type => String, :encrypted => {:type => :integer, decrypt_as: :aliased_integer_value}
-  field :encrypted_float_value,    :type => String, :encrypted => {:type => :float}
-  field :encrypted_decimal_value,  :type => String, :encrypted => {:type => :decimal}
-  field :encrypted_datetime_value, :type => String, :encrypted => {:type => :datetime}
-  field :encrypted_time_value,     :type => String, :encrypted => {:type => :time}
-  field :encrypted_date_value,     :type => String, :encrypted => {:type => :date}
-  field :encrypted_true_value,     :type => String, :encrypted => {:type => :boolean}
-  field :encrypted_false_value,    :type => String, :encrypted => {:type => :boolean}
-  field :encrypted_data_yaml,      :type => String, :encrypted => {:random_iv => true, :compress => true, :type => :yaml}
-  field :encrypted_data_json,      :type => String, :encrypted => {:random_iv => true, :compress => true, :type => :json}
+  field :encrypted_integer_value,  type: String, encrypted: {type: :integer}
+  field :aiv,                      type: String, encrypted: {type: :integer, decrypt_as: :aliased_integer_value}
+  field :encrypted_float_value,    type: String, encrypted: {type: :float}
+  field :encrypted_decimal_value,  type: String, encrypted: {type: :decimal}
+  field :encrypted_datetime_value, type: String, encrypted: {type: :datetime}
+  field :encrypted_time_value,     type: String, encrypted: {type: :time}
+  field :encrypted_date_value,     type: String, encrypted: {type: :date}
+  field :encrypted_true_value,     type: String, encrypted: {type: :boolean}
+  field :encrypted_false_value,    type: String, encrypted: {type: :boolean}
+  field :encrypted_data_yaml,      type: String, encrypted: {random_iv: true, compress: true, type: :yaml}
+  field :encrypted_data_json,      type: String, encrypted: {random_iv: true, compress: true, type: :json}
 
   # TODO Validates should work
-  #validates :encrypted_bank_account_number, :symmetric_encrypted => true
-  #validates :encrypted_social_security_number, :symmetric_encrypted => true
+  #validates :encrypted_bank_account_number, symmetric_encrypted: true
+  #validates :encrypted_social_security_number, symmetric_encrypted: true
 end
 
 # Load Symmetric Encryption keys
@@ -63,24 +63,24 @@ class FieldEncryptedTest < Test::Unit::TestCase
       @datetime_value = DateTime.new(2001, 11, 26, 20, 55, 54, "-5")
       @time_value = Time.new(2013, 01, 01, 22, 30, 00, "-04:00")
       @date_value = Date.new(1927, 04, 02)
-      @h = { :a => 'A', :b => 'B' }
+      @h = { a: 'A', b: 'B' }
 
       @user = MongoidUser.new(
-        :encrypted_bank_account_number    => @bank_account_number_encrypted,
-        :encrypted_social_security_number => @social_security_number_encrypted,
-        :name                             => "Joe Bloggs",
+        encrypted_bank_account_number:   @bank_account_number_encrypted,
+        encrypted_social_security_number: @social_security_number_encrypted,
+        name:                            "Joe Bloggs",
         # data type specific fields
-        :integer_value          => @integer_value,
-        :aliased_integer_value  => @integer_value,
-        :float_value            => @float_value,
-        :decimal_value          => @decimal_value,
-        :datetime_value         => @datetime_value,
-        :time_value             => @time_value,
-        :date_value             => @date_value,
-        :true_value             => true,
-        :false_value            => false,
-        :data_yaml              => @h.dup,
-        :data_json              => @h.dup
+        integer_value:                   @integer_value,
+        aliased_integer_value:           @integer_value,
+        float_value:                     @float_value,
+        decimal_value:                   @decimal_value,
+        datetime_value:                  @datetime_value,
+        time_value:                      @time_value,
+        date_value:                      @date_value,
+        true_value:                      true,
+        false_value:                     false,
+        data_yaml:                       @h.dup,
+        data_json:                       @h.dup
       )
     end
 
@@ -180,7 +180,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
     end
 
     should "allow unencrypted values to be passed to the constructor" do
-      user = MongoidUser.new(:bank_account_number => @bank_account_number, :social_security_number => @social_security_number)
+      user = MongoidUser.new(bank_account_number: @bank_account_number, social_security_number: @social_security_number)
       assert_equal @bank_account_number, user.bank_account_number
       assert_equal @social_security_number, user.social_security_number
       assert_equal @bank_account_number_encrypted, user.encrypted_bank_account_number
@@ -188,7 +188,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
     end
 
     should "allow both encrypted and unencrypted values to be passed to the constructor" do
-      user = MongoidUser.new(:encrypted_bank_account_number => @bank_account_number_encrypted, :social_security_number => @social_security_number)
+      user = MongoidUser.new(encrypted_bank_account_number: @bank_account_number_encrypted, social_security_number: @social_security_number)
       assert_equal @bank_account_number, user.bank_account_number
       assert_equal @social_security_number, user.social_security_number
       assert_equal @bank_account_number_encrypted, user.encrypted_bank_account_number
@@ -215,7 +215,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
         end
 
         should "coerce data type before save" do
-          u = MongoidUser.new(:integer_value => "5")
+          u = MongoidUser.new(integer_value: "5")
           assert_equal 5, u.integer_value
           assert u.integer_value.kind_of?(Integer)
         end
@@ -246,7 +246,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
         end
 
         should "coerce data type before save" do
-          u = MongoidUser.new(:float_value => "5.6")
+          u = MongoidUser.new(float_value: "5.6")
           assert_equal 5.6, u.float_value
           assert u.float_value.kind_of?(Float)
         end
@@ -277,7 +277,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
         end
 
         should "coerce data type before save" do
-          u = MongoidUser.new(:decimal_value => "99.95")
+          u = MongoidUser.new(decimal_value: "99.95")
           assert_equal BigDecimal.new("99.95"), u.decimal_value
           assert u.decimal_value.kind_of?(BigDecimal)
         end
@@ -309,7 +309,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
 
         should "coerce data type before save" do
           now = Time.now
-          u = MongoidUser.new(:datetime_value => now)
+          u = MongoidUser.new(datetime_value: now)
           assert_equal now, u.datetime_value
           assert u.datetime_value.kind_of?(DateTime)
         end
@@ -341,7 +341,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
 
         should "coerce data type before save" do
           now = Time.now
-          u = MongoidUser.new(:time_value => now)
+          u = MongoidUser.new(time_value: now)
           assert_equal now, u.time_value
           assert u.time_value.kind_of?(Time)
         end
@@ -373,7 +373,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
 
         should "coerce data type before save" do
           now = Time.now
-          u = MongoidUser.new(:date_value => now)
+          u = MongoidUser.new(date_value: now)
           assert_equal now.to_date, u.date_value
           assert u.date_value.kind_of?(Date)
         end
@@ -404,7 +404,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
         end
 
         should "coerce data type before save" do
-          u = MongoidUser.new(:true_value => "1")
+          u = MongoidUser.new(true_value: "1")
           assert_equal true, u.true_value
           assert u.true_value.kind_of?(TrueClass)
         end
@@ -435,7 +435,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
         end
 
         should "coerce data type before save" do
-          u = MongoidUser.new(:false_value => "0")
+          u = MongoidUser.new(false_value: "0")
           assert_equal false, u.false_value
           assert u.false_value.kind_of?(FalseClass)
         end
@@ -475,7 +475,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
         end
 
         should "not coerce data type (leaves as hash) before save" do
-          u = MongoidUser.new(:data_json => @h)
+          u = MongoidUser.new(data_json: @h)
           assert_equal @h, u.data_json
           assert u.data_json.kind_of?(Hash)
         end
@@ -507,7 +507,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
         end
 
         should "not coerce data type (leaves as hash) before save" do
-          u = MongoidUser.new(:data_yaml => @h)
+          u = MongoidUser.new(data_yaml: @h)
           assert_equal @h, u.data_yaml
           assert u.data_yaml.kind_of?(Hash)
         end

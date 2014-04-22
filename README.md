@@ -1,4 +1,4 @@
-symmetric-encryption
+symmetric-encryption [![Build Status](https://secure.travis-ci.org/reidmorrison/symmetric-encryption.png?branch=master)](http://travis-ci.org/reidmorrison/symmetric-encryption)
 ====================
 
 * http://github.com/reidmorrison/symmetric-encryption
@@ -134,7 +134,7 @@ option will result in different encrypted output every time it is encrypted.
 * Add the encryption header to all encrypted strings.
   See the _always_add_header_ option in the configuration file.
 
-* Set :random_iv => true for all ActiveRecord attributes and Mongoid fields
+* Add `random_iv: true` for all ActiveRecord attributes and Mongoid fields
   which are not used in indexes and will not be used as part of a query.
 
 ## Binary Data
@@ -174,19 +174,19 @@ class User < ActiveRecord::Base
   # encrypted string
   #
   # Requires users table to have a column called encrypted_age of type string
-  attr_encrypted :age,         :type => :integer
+  attr_encrypted :age,         type: integer
 
   # Since string and long_string are not used in the where clause of any SQL
   # queries it is better to ensure that the encrypted value is always different
   # by encrypting every value with a random Initialization Vector.
   #
   # Note: Encrypting the same value twice will result in different encrypted
-  #       values when :random_iv => true
-  attr_encrypted :string,      :random_iv => true
+  #       values when :random_iv is true
+  attr_encrypted :string,      random_iv: true
 
   # Long encrypted strings can also be compressed prior to encryption to save
   # disk space
-  attr_encrypted :long_string, :random_iv => true, :compress => true
+  attr_encrypted :long_string, random_iv: true, compress: true
 
   # By specifying the type as :json the value will be serialized to JSON
   # before encryption and deserialized from JSON after decryption.
@@ -195,10 +195,10 @@ class User < ActiveRecord::Base
   # compression before the string is encrypted
   #
   # Requires users table to have a column called encrypted_values of type string
-  attr_encrypted :values,      :type => :json, :compress => true
+  attr_encrypted :values,      type: :json, compress: true
 
-  validates :encrypted_bank_account_number, :symmetric_encryption => true
-  validates :encrypted_social_security_number, :symmetric_encryption => true
+  validates :encrypted_bank_account_number, symmetric_encryption: true
+  validates :encrypted_social_security_number, symmetric_encryption: true
 end
 
 # Create a new user instance assigning a bank account number
@@ -210,7 +210,7 @@ user.bank_account_number = '12345'
 user.save!
 
 # Short example using create
-User.create(:bank_account_number => '12345')
+User.create(bank_account_number: '12345')
 ```
 
 Several types are supported for ActiveRecord models when encrypting or decrypting data.
@@ -228,7 +228,7 @@ Each type maps to the built-in Ruby types as follows:
 
 ### Mongoid Example
 
-To encrypt a field in a Mongoid document, just add ":encrypted => true" at the end
+To encrypt a field in a Mongoid document, just add "encrypted: true" at the end
 of the field specifier. The field name must currently begin with "encrypted_"
 
 ```ruby
@@ -236,24 +236,24 @@ of the field specifier. The field name must currently begin with "encrypted_"
 class User
   include Mongoid::Document
 
-  field :name,                             :type => String
-  field :encrypted_bank_account_number,    :type => String,  :encrypted => true
-  field :encrypted_social_security_number, :type => String,  :encrypted => true
-  field :encrypted_life_history,           :type => String,  :encrypted => {:compress => true, :random_iv => true}
+  field :name,                             type: String
+  field :encrypted_bank_account_number,    type: String,  encrypted: true
+  field :encrypted_social_security_number, type: String,  encrypted: true
+  field :encrypted_life_history,           type: String,  encrypted: {compress: true, random_iv: true}
 
   # Encrypted fields are _always_ stored in Mongo as a String
   # To get the result back as an Integer, Symmetric Encryption can do the
   # necessary conversions by specifying the internal type as an option
   # to :encrypted
   # #see SymmetricEncryption::COERCION_TYPES for full list of types
-  field :encrypted_age,                    :type => String, :encrypted => {:type => :integer}
+  field :encrypted_age,                    type: String, encrypted: {type: :integer}
 end
 
 # Create a new user document
-User.create(:bank_account_number => '12345')
+User.create(bank_account_number: '12345')
 
 # When finding a document, always use the encrypted form of the field name
-user = User.where(:encrypted_bank_account_number => SymmetricEncryption.encrypt('12345')).first
+user = User.where(encrypted_bank_account_number: SymmetricEncryption.encrypt('12345')).first
 
 # Fields can be accessed using their unencrypted names
 puts user.bank_account_number
@@ -265,7 +265,7 @@ Note: At this time Symmetric Encryption only supports Mongoid fields with a type
 
 ```ruby
 class MyModel < ActiveRecord::Base
-  validates :encrypted_ssn, :symmetric_encryption => true
+  validates :encrypted_ssn, symmetric_encryption: true
 end
 
 m = MyModel.new
@@ -330,7 +330,7 @@ end
 Example: Compress, Encrypt and write data to a file
 
 ```ruby
-SymmetricEncryption::Writer.open('encrypted_compressed.zip', :compress => true) do |file|
+SymmetricEncryption::Writer.open('encrypted_compressed.zip', compress: true) do |file|
   file.write "Hello World\n"
   file.write "Compress this\n"
   file.write "Keep this safe and secure\n"
@@ -344,9 +344,9 @@ Before generating keys we can use SymmetricEncryption in a standalone test envir
 ```ruby
 # Use test encryption keys
 SymmetricEncryption.cipher = SymmetricEncryption::Cipher.new(
-  :key         => '1234567890ABCDEF1234567890ABCDEF',
-  :iv          => '1234567890ABCDEF',
-  :cipher_name => 'aes-128-cbc'
+  key:         '1234567890ABCDEF1234567890ABCDEF',
+  iv:          '1234567890ABCDEF',
+  cipher_name: 'aes-128-cbc'
 )
 encrypted = SymmetricEncryption.encrypt('hello world')
 puts SymmetricEncryption.decrypt(encrypted)

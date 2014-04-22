@@ -33,9 +33,9 @@ module SymmetricEncryption
   # Example: For testing purposes the following test cipher can be used:
   #
   #   SymmetricEncryption.cipher = SymmetricEncryption::Cipher.new(
-  #     :key    => '1234567890ABCDEF1234567890ABCDEF',
-  #     :iv     => '1234567890ABCDEF',
-  #     :cipher => 'aes-128-cbc'
+  #     key:    '1234567890ABCDEF1234567890ABCDEF',
+  #     iv:     '1234567890ABCDEF',
+  #     cipher: 'aes-128-cbc'
   #   )
   def self.cipher=(cipher)
     raise "Cipher must be similar to SymmetricEncryption::Ciphers" unless cipher.nil? || (cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt))
@@ -413,7 +413,7 @@ module SymmetricEncryption
     if key_filename = config.delete(:key_filename)
       raise "Missing mandatory config parameter :private_rsa_key when :key_filename is supplied" unless rsa
       encrypted_key = begin
-        File.read(key_filename, :open_args => ['rb'])
+        File.open(key_filename, 'rb'){|f| f.read}
       rescue Errno::ENOENT
         puts "\nSymmetric Encryption key file: '#{key_filename}' not found or readable."
         puts "To generate the keys for the first time run: rails generate symmetric_encryption:new_keys\n\n"
@@ -425,7 +425,7 @@ module SymmetricEncryption
     if iv_filename = config.delete(:iv_filename)
       raise "Missing mandatory config parameter :private_rsa_key when :iv_filename is supplied" unless rsa
       encrypted_iv = begin
-        File.read(iv_filename, :open_args => ['rb']) if iv_filename
+        File.open(iv_filename, 'rb'){|f| f.read} if iv_filename
       rescue Errno::ENOENT
         puts "\nSymmetric Encryption initialization vector file: '#{iv_filename}' not found or readable."
         puts "To generate the keys for the first time run: rails generate symmetric_encryption:new_keys\n\n"
@@ -529,13 +529,13 @@ module SymmetricEncryption
   end
 
   COERCION_TYPE_MAP = {
-    :string => String,
-    :integer => Integer,
-    :float => Float,
-    :decimal => BigDecimal,
-    :datetime => DateTime,
-    :time => Time,
-    :date => Date
+    string:   String,
+    integer:  Integer,
+    float:    Float,
+    decimal:  BigDecimal,
+    datetime: DateTime,
+    time:     Time,
+    date:     Date
   }
 
   # With Ruby 1.9 strings have encodings

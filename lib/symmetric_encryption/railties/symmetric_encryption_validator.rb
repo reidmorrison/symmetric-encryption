@@ -2,7 +2,7 @@
 #
 # Example:
 #  class MyModel < ActiveRecord::Base
-#    validates :encrypted_ssn, :symmetric_encryption => true
+#    validates :encrypted_ssn, symmetric_encryption: true
 #  end
 #
 #  m = MyModel.new

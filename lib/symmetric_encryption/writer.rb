@@ -83,17 +83,17 @@ module SymmetricEncryption
     # end
     #
     # # Example: Compress, Encrypt and write data to a file
-    # SymmetricEncryption::Writer.open('encrypted_compressed.zip', :compress => true) do |file|
+    # SymmetricEncryption::Writer.open('encrypted_compressed.zip', compress: true) do |file|
     #   file.write "Hello World\n"
     #   file.write "Compress this\n"
     #   file.write "Keep this safe and secure\n"
     # end
     #
     # # Example: Writing to a CSV file
-    #  require 'fastercsv'
+    #  require 'csv'
     #  begin
-    #    # Must supply :row_sep for FasterCSV otherwise it will attempt to read from and then rewind the file
-    #    csv = FasterCSV.new(SymmetricEncryption::Writer.open('csv_encrypted'), :row_sep => "\n")
+    #    # Must supply :row_sep for CSV otherwise it will attempt to read from and then rewind the file
+    #    csv = CSV.new(SymmetricEncryption::Writer.open('csv_encrypted'), row_sep: "\n")
     #    csv << [1,2,3,4,5]
     #  ensure
     #    csv.close if csv

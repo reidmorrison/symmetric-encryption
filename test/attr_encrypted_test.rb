@@ -4,8 +4,8 @@ ActiveRecord::Base.logger = SemanticLogger[ActiveRecord]
 ActiveRecord::Base.configurations = YAML::load(ERB.new(IO.read('test/config/database.yml')).result)
 ActiveRecord::Base.establish_connection('test')
 
-ActiveRecord::Schema.define :version => 0 do
-  create_table :users, :force => true do |t|
+ActiveRecord::Schema.define version: 0 do
+  create_table :users, force: true do |t|
     t.string :encrypted_bank_account_number
     t.string :encrypted_social_security_number
     t.string :encrypted_string
@@ -31,25 +31,25 @@ end
 class User < ActiveRecord::Base
   attr_encrypted :bank_account_number
   attr_encrypted :social_security_number
-  attr_encrypted :string,      :random_iv => true
-  attr_encrypted :long_string, :random_iv => true, :compress => true
-  attr_encrypted :data_yaml,   :random_iv => true, :compress => true, :type => :yaml
-  attr_encrypted :data_json,   :random_iv => true, :compress => true, :type => :json
+  attr_encrypted :string,      random_iv: true
+  attr_encrypted :long_string, random_iv: true, compress: true
+  attr_encrypted :data_yaml,   random_iv: true, compress: true, type: :yaml
+  attr_encrypted :data_json,   random_iv: true, compress: true, type: :json
 
-  attr_encrypted :integer_value,  :type => :integer
-  attr_encrypted :float_value,    :type => :float
-  attr_encrypted :decimal_value,  :type => :decimal
-  attr_encrypted :datetime_value, :type => :datetime
-  attr_encrypted :time_value,     :type => :time
-  attr_encrypted :date_value,     :type => :date
-  attr_encrypted :true_value,     :type => :boolean
-  attr_encrypted :false_value,    :type => :boolean
+  attr_encrypted :integer_value,  type: :integer
+  attr_encrypted :float_value,    type: :float
+  attr_encrypted :decimal_value,  type: :decimal
+  attr_encrypted :datetime_value, type: :datetime
+  attr_encrypted :time_value,     type: :time
+  attr_encrypted :date_value,     type: :date
+  attr_encrypted :true_value,     type: :boolean
+  attr_encrypted :false_value,    type: :boolean
 
-  validates :encrypted_bank_account_number, :symmetric_encryption => true
-  validates :encrypted_social_security_number, :symmetric_encryption => true
+  validates :encrypted_bank_account_number, symmetric_encryption: true
+  validates :encrypted_social_security_number, symmetric_encryption: true
 
-  attr_encrypted :text,           :type => :string
-  attr_encrypted :number,         :type => :integer
+  attr_encrypted :text,           type: :string
+  attr_encrypted :number,         type: :integer
   validates :text, format: { with: /\A[a-zA-Z ]+\z/, message: "only allows letters" }, presence: true
   validates :number, presence: true
 end
@@ -92,27 +92,27 @@ class AttrEncryptedTest < Test::Unit::TestCase
 
       @name = 'Joe Bloggs'
 
-      @h = { :a => 'A', :b => 'B' }
+      @h = { a: 'A', b: 'B' }
 
       @user = User.new(
         # Encrypted Attribute
-        :bank_account_number    => @bank_account_number,
+        bank_account_number:    @bank_account_number,
         # Encrypted Attribute
-        :social_security_number => @social_security_number,
-        :name                   => @name,
+        social_security_number: @social_security_number,
+        name:                   @name,
         # data type specific fields
-        :integer_value          => INTEGER_VALUE,
-        :float_value            => FLOAT_VALUE,
-        :decimal_value          => DECIMAL_VALUE,
-        :datetime_value         => DATETIME_VALUE,
-        :time_value             => TIME_VALUE,
-        :date_value             => DATE_VALUE,
-        :true_value             => true,
-        :false_value            => false,
-        :data_yaml              => @h.dup,
-        :data_json              => @h.dup,
-        :text                   => 'hello',
-        :number                 => '21'
+        integer_value:          INTEGER_VALUE,
+        float_value:            FLOAT_VALUE,
+        decimal_value:          DECIMAL_VALUE,
+        datetime_value:         DATETIME_VALUE,
+        time_value:             TIME_VALUE,
+        date_value:             DATE_VALUE,
+        true_value:             true,
+        false_value:            false,
+        data_yaml:              @h.dup,
+        data_json:              @h.dup,
+        text:                   'hello',
+        number:                 '21'
       )
     end
 
@@ -201,7 +201,7 @@ class AttrEncryptedTest < Test::Unit::TestCase
     end
 
     should 'allow unencrypted values to be passed to the constructor' do
-      user = User.new(:bank_account_number => @bank_account_number, :social_security_number => @social_security_number)
+      user = User.new(bank_account_number: @bank_account_number, social_security_number: @social_security_number)
       assert_equal @bank_account_number, user.bank_account_number
       assert_equal @social_security_number, user.social_security_number
       assert_equal @bank_account_number_encrypted, user.encrypted_bank_account_number
@@ -209,7 +209,7 @@ class AttrEncryptedTest < Test::Unit::TestCase
     end
 
     should 'return encrypted attributes for the class' do
-      expect = {:social_security_number=>:encrypted_social_security_number, :bank_account_number=>:encrypted_bank_account_number}
+      expect = {social_security_number: :encrypted_social_security_number, bank_account_number: :encrypted_bank_account_number}
       result = User.encrypted_attributes
       expect.each_pair {|k,v| assert_equal expect[k], result[k]}
     end
@@ -283,7 +283,7 @@ class AttrEncryptedTest < Test::Unit::TestCase
       end
 
       should "return correct data type before save" do
-        u = User.new(:integer_value => "5")
+        u = User.new(integer_value: "5")
         assert_equal 5, u.integer_value
         assert u.integer_value.kind_of?(Integer)
       end
@@ -415,7 +415,7 @@ class AttrEncryptedTest < Test::Unit::TestCase
           end
 
           should "not coerce data type (leaves as hash) before save" do
-            u = User.new(:data_json => @h)
+            u = User.new(data_json: @h)
             assert_equal @h, u.data_json
             assert u.data_json.kind_of?(Hash)
           end
@@ -447,7 +447,7 @@ class AttrEncryptedTest < Test::Unit::TestCase
           end
 
           should "not coerce data type (leaves as hash) before save" do
-            u = User.new(:data_yaml => @h)
+            u = User.new(data_yaml: @h)
             assert_equal @h, u.data_yaml
             assert u.data_yaml.kind_of?(Hash)
           end
