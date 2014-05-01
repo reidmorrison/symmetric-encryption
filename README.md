@@ -15,30 +15,6 @@ and consistent way
 Symmetric Encryption uses OpenSSL to encrypt and decrypt data, and can therefore
 expose all the encryption algorithms supported by OpenSSL.
 
-## Upgrading from earlier versions to SymmetricEncryption V3
-
-In version 3 of SymmetricEncryption, the following changes have been made that
-may have backward compatibility issues:
-
-* SymmetricEncryption.decrypt no longer rotates through all the decryption keys
-  when previous ciphers fail to decrypt the encrypted string.
-  In a very small, yet significant number of cases it was possible to decrypt data
-  using the incorrect key. Clearly the data returned was garbage, but it still
-  returned a string of data instead of throwing an exception.
-  See SymmetricEncryption.select_cipher to supply your own custom logic to
-  determine the correct cipher to use when the encrypted string does not have a
-  header and multiple ciphers are defined.
-
-* Configuration file format prior to V1 is no longer supported
-
-* New configuration option has been added to support setting encryption keys
-  from environment variables
-
-* Cipher.parse_magic_header! now returns a Struct instead of an Array
-
-* New config options :encrypted_key and :encrypted_iv to support setting
-  the encryption key in environment variables
-
 ## Security
 
 Many solutions that encrypt data require the encryption keys to be stored in the
@@ -684,6 +660,30 @@ production:
      Note: Adds a 6 byte header prior to encoding, only if :random_iv is false
      Default: false
 ```
+
+## Upgrading from earlier versions to SymmetricEncryption V3
+
+In version 3 of SymmetricEncryption, the following changes have been made that
+may have backward compatibility issues:
+
+* SymmetricEncryption.decrypt no longer rotates through all the decryption keys
+  when previous ciphers fail to decrypt the encrypted string.
+  In a very small, yet significant number of cases it was possible to decrypt data
+  using the incorrect key. Clearly the data returned was garbage, but it still
+  returned a string of data instead of throwing an exception.
+  See SymmetricEncryption.select_cipher to supply your own custom logic to
+  determine the correct cipher to use when the encrypted string does not have a
+  header and multiple ciphers are defined.
+
+* Configuration file format prior to V1 is no longer supported
+
+* New configuration option has been added to support setting encryption keys
+  from environment variables
+
+* Cipher.parse_magic_header! now returns a Struct instead of an Array
+
+* New config options :encrypted_key and :encrypted_iv to support setting
+  the encryption key in environment variables
 
 Meta
 ----
