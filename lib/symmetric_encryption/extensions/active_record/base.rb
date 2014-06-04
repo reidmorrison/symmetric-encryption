@@ -42,51 +42,9 @@ module ActiveRecord #:nodoc:
         define_attribute_methods rescue nil
 
         options   = params.last.is_a?(Hash) ? params.pop.dup : {}
-        random_iv = options.delete(:random_iv) || false
-        compress  = options.delete(:compress) || false
-        type      = options.delete(:type) || :string
-
-        raise "Invalid type: #{type.inspect}. Valid types: #{SymmetricEncryption::COERCION_TYPES.inspect}" unless SymmetricEncryption::COERCION_TYPES.include?(type)
-
-        # For backward compatibility
-        if options.delete(:marshal) == true
-          warn("The :marshal option has been deprecated in favor of :type. For example: attr_encrypted name, type: :yaml")
-          raise "Marshal is depreacted and cannot be used in conjunction with :type, just use :type. For #{params.inspect}" if type != :string
-          type = :yaml
-        end
-
-        options.each {|option| warn "Ignoring unknown option #{option.inspect} supplied to attr_encrypted with #{params.inspect}"}
-
-        if const_defined?(:EncryptedAttributes, _search_ancestors = false)
-          mod = const_get(:EncryptedAttributes)
-        else
-          mod = const_set(:EncryptedAttributes, Module.new)
-          include mod
-        end
 
         params.each do |attribute|
-          # Generate unencrypted attribute with getter and setter
-          mod.module_eval(<<-UNENCRYPTED, __FILE__, __LINE__ + 1)
-            # Returns the decrypted value for the encrypted attribute
-            # The decrypted value is cached and is only decrypted if the encrypted value has changed
-            # If this method is not called, then the encrypted value is never decrypted
-            def #{attribute}
-              if @stored_encrypted_#{attribute} != self.encrypted_#{attribute}
-                @#{attribute} = ::SymmetricEncryption.decrypt(self.encrypted_#{attribute},version=nil,:#{type}).freeze
-                @stored_encrypted_#{attribute} = self.encrypted_#{attribute}
-              end
-              @#{attribute}
-            end
-
-            # Set the un-encrypted attribute
-            # Also updates the encrypted field with the encrypted value
-            def #{attribute}=(value)
-              v = SymmetricEncryption::coerce(value, :#{type})
-              self.encrypted_#{attribute} = @stored_encrypted_#{attribute} = ::SymmetricEncryption.encrypt(v,#{random_iv},#{compress},:#{type})
-              @#{attribute} = v.freeze
-            end
-          UNENCRYPTED
-
+          SymmetricEncryption::Generator.generate_decrypted_accessors(self, attribute, "encrypted_#{attribute}", options)
           encrypted_attributes[attribute.to_sym] = "encrypted_#{attribute}".to_sym
         end
       end
@@ -180,8 +138,10 @@ module ActiveRecord #:nodoc:
         method_missing_without_attr_encrypted(method, *args, &block)
       end
 
-      alias_method_chain :method_missing, :attr_encrypted
-
+      # Dynamic finders dropped in Rails 4.1
+      if ActiveRecord::VERSION::STRING.to_f < 4.1
+        alias_method_chain :method_missing, :attr_encrypted
+      end
     end
   end
 end

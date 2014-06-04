@@ -31,10 +31,10 @@ end
 class User < ActiveRecord::Base
   attr_encrypted :bank_account_number
   attr_encrypted :social_security_number
-  attr_encrypted :string,      random_iv: true
-  attr_encrypted :long_string, random_iv: true, compress: true
-  attr_encrypted :data_yaml,   random_iv: true, compress: true, type: :yaml
-  attr_encrypted :data_json,   random_iv: true, compress: true, type: :json
+  attr_encrypted :string,         random_iv: true
+  attr_encrypted :long_string,    random_iv: true, compress: true
+  attr_encrypted :data_yaml,      random_iv: true, compress: true, type: :yaml
+  attr_encrypted :data_json,      random_iv: true, compress: true, type: :json
 
   attr_encrypted :integer_value,  type: :integer
   attr_encrypted :float_value,    type: :float
@@ -45,17 +45,15 @@ class User < ActiveRecord::Base
   attr_encrypted :true_value,     type: :boolean
   attr_encrypted :false_value,    type: :boolean
 
-  validates :encrypted_bank_account_number, symmetric_encryption: true
+  validates :encrypted_bank_account_number,    symmetric_encryption: true
   validates :encrypted_social_security_number, symmetric_encryption: true
 
   attr_encrypted :text,           type: :string
   attr_encrypted :number,         type: :integer
-  validates :text, format: { with: /\A[a-zA-Z ]+\z/, message: "only allows letters" }, presence: true
-  validates :number, presence: true
-end
 
-# Load Symmetric Encryption keys
-SymmetricEncryption.load!(File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
+  validates      :text, format: { with: /\A[a-zA-Z ]+\z/, message: "only allows letters" }, presence: true
+  validates      :number, presence: true
+end
 
 # Initialize the database connection
 config_file = File.join(File.dirname(__FILE__), 'config', 'database.yml')
@@ -67,12 +65,10 @@ raise("Environment 'test' not defined in test/config/database.yml") unless cfg
 User.establish_connection(cfg)
 
 #
-# Unit Test for attr_encrypted and validation aspects of SymmetricEncryption
+# Unit Test for attr_encrypted extensions in ActiveRecord
 #
-class AttrEncryptedTest < Test::Unit::TestCase
-
-
-  context 'the SymmetricEncryption Library' do
+class ActiveRecordTest < Test::Unit::TestCase
+  context 'ActiveRecord' do
     INTEGER_VALUE  = 12
     FLOAT_VALUE    = 88.12345
     DECIMAL_VALUE  = BigDecimal.new("22.51")

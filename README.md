@@ -76,7 +76,7 @@ is available when reading back the encrypted file/stream. The key is placed
 in a header on the file in encrypted form using the current global key/cipher.
 
 The ActiveRecord attr_encrypted method supports the :random_iv => true option.
-Similarly for Mongoid the :random_iv => true option can be added.
+Similarly for MongoMapper and Mongoid the :random_iv => true option can be added.
 
 Note that encrypting the same input string with the same key and :random_iv => true
 option will result in different encrypted output every time it is encrypted.
@@ -86,6 +86,7 @@ option will result in different encrypted output every time it is encrypted.
 * Encryption of passwords in configuration files
 * Encryption of ActiveRecord model attributes by prefixing attributes / column
   names with encrypted_
+* Encryption of MongoMapper keys by using :encrypted_key
 * Encryption of Mongoid model fields by adding :encrypted option to field
   definitions
 * Externalization of symmetric encryption keys so that they are not in the
@@ -110,8 +111,8 @@ option will result in different encrypted output every time it is encrypted.
 * Add the encryption header to all encrypted strings.
   See the _always_add_header_ option in the configuration file.
 
-* Add `random_iv: true` for all ActiveRecord attributes and Mongoid fields
-  which are not used in indexes and will not be used as part of a query.
+* Add `random_iv: true` for all ActiveRecord attributes, MongoMapper keys, and
+  Mongoid fields which are not used in indexes and will not be used as part of a query.
 
 ## Binary Data
 
@@ -202,6 +203,54 @@ Each type maps to the built-in Ruby types as follows:
 - :json      => Uses JSON serialization, useful for hashes and arrays
 - :yaml      => Uses YAML serialization, useful for hashes and arrays
 
+### MongoMapper Example
+
+To encrypt a field in a MongoMapper document, use `encrypted_key` instead of `key`
+when specifying a key.
+
+```ruby
+  field :encrypted_age,                    type: String, encrypted: {type: :integer}
+end
+
+# User model MongoMapper
+class User
+  include MongoMapper::Document
+
+  key           :name,                   String
+  encrypted_key :bank_account_number,    String
+  encrypted_key :social_security_number, String
+  encrypted_key :life_history,           String, encrypted: { random_iv: true, compress: true }
+
+  # Encrypted fields are _always_ stored in Mongo as a String
+  # To get the result back as an Integer, Symmetric Encryption will automatically
+  # perform the necessary conversions
+  encrypted_key :integer_value,          Integer
+  encrypted_key :float_value,            Float
+  encrypted_key :decimal_value,          BigDecimal
+  encrypted_key :datetime_value,         DateTime
+  encrypted_key :time_value,             Time
+  encrypted_key :date_value,             Date
+  encrypted_key :true_value,             Boolean
+  encrypted_key :data_json,              Hash, encrypted: {random_iv: true, compress: true}
+  # By default Hash is saved as JSON, to save as YAML add the type specifier:
+  encrypted_key :data_yaml,              Hash, encrypted: {random_iv: true, compress: true, type: :yaml}
+
+  # Optionally add validation to ensure that encrypted fields are in fact encrypted
+  # before the data is saved
+  validates :encrypted_bank_account_number,    symmetric_encryption: true
+  validates :encrypted_social_security_number, symmetric_encryption: true
+end
+
+# Create a new user document
+User.create(bank_account_number: '12345')
+
+# When finding a document, always use the encrypted form of the field name
+user = User.where(encrypted_bank_account_number: SymmetricEncryption.encrypt('12345')).first
+
+# Fields can be accessed using their unencrypted names
+puts user.bank_account_number
+```
+
 ### Mongoid Example
 
 To encrypt a field in a Mongoid document, just add "encrypted: true" at the end
@@ -234,8 +283,6 @@ user = User.where(encrypted_bank_account_number: SymmetricEncryption.encrypt('12
 # Fields can be accessed using their unencrypted names
 puts user.bank_account_number
 ```
-
-Note: At this time Symmetric Encryption only supports Mongoid fields with a type of String
 
 ### Validation Example
 

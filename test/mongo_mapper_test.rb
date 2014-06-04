@@ -1,43 +1,44 @@
-require File.dirname(__FILE__) + '/test_helper'
+$LOAD_PATH.unshift File.dirname(__FILE__)
+require 'mongo_mapper'
+require 'test_helper'
+require 'symmetric_encryption/extensions/mongo_mapper/plugins/encrypted_key'
 
-Mongoid.logger = SemanticLogger[Mongoid]
-filename = defined?(Mongoid::VERSION) ? "test/config/mongoid_v3.yml" : "test/config/mongoid_v2.yml"
-Mongoid.load!(filename)
+# Initialize MongoMapper
+config_file = File.join('test', 'config', 'mongo_mapper.yml')
+config = YAML.load(ERB.new(File.read(config_file)).result)
+MongoMapper.setup(config, 'test', logger: SemanticLogger['Mongo'])
 
-class MongoidUser
-  include Mongoid::Document
+class MongoMapperUser
+  include MongoMapper::Document
 
-  field :name,                             type: String
-  field :encrypted_bank_account_number,    type: String,  encrypted: true
-  field :encrypted_social_security_number, type: String,  encrypted: true
-  field :encrypted_string,                 type: String,  encrypted: {random_iv: true}
-  field :encrypted_long_string,            type: String,  encrypted: {random_iv: true, compress: true}
+  key           :name,                   String
+  encrypted_key :bank_account_number,    String
+  encrypted_key :social_security_number, String
+  encrypted_key :string,                 String, encrypted: { random_iv: true }
+  encrypted_key :long_string,            String, encrypted: { random_iv: true, compress: true }
 
-  field :encrypted_integer_value,  type: String, encrypted: {type: :integer}
-  field :aiv,                      type: String, encrypted: {type: :integer, decrypt_as: :aliased_integer_value}
-  field :encrypted_float_value,    type: String, encrypted: {type: :float}
-  field :encrypted_decimal_value,  type: String, encrypted: {type: :decimal}
-  field :encrypted_datetime_value, type: String, encrypted: {type: :datetime}
-  field :encrypted_time_value,     type: String, encrypted: {type: :time}
-  field :encrypted_date_value,     type: String, encrypted: {type: :date}
-  field :encrypted_true_value,     type: String, encrypted: {type: :boolean}
-  field :encrypted_false_value,    type: String, encrypted: {type: :boolean}
-  field :encrypted_data_yaml,      type: String, encrypted: {random_iv: true, compress: true, type: :yaml}
-  field :encrypted_data_json,      type: String, encrypted: {random_iv: true, compress: true, type: :json}
+  # Valid Types: String, Integer, Float, BigDecimal, DateTime, Time, Date, Hash
+  encrypted_key :integer_value,          Integer
+  encrypted_key :aliased_integer_value,  Integer, encrypted: { encrypt_as: :aiv }
+  encrypted_key :float_value,            Float
+  encrypted_key :decimal_value,          BigDecimal
+  encrypted_key :datetime_value,         DateTime
+  encrypted_key :time_value,             Time
+  encrypted_key :date_value,             Date
+  encrypted_key :true_value,             Boolean
+  encrypted_key :false_value,            Boolean
+  encrypted_key :data_json,              Hash, encrypted: {random_iv: true, compress: true}
+  encrypted_key :data_yaml,              Hash, encrypted: {random_iv: true, compress: true, type: :yaml}
 
-  # TODO Validates should work
-  #validates :encrypted_bank_account_number, symmetric_encrypted: true
-  #validates :encrypted_social_security_number, symmetric_encrypted: true
+  validates :encrypted_bank_account_number,    symmetric_encryption: true
+  validates :encrypted_social_security_number, symmetric_encryption: true
 end
 
-# Load Symmetric Encryption keys
-SymmetricEncryption.load!(File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
-
 #
-# Unit Tests for field encrypted and validation aspects of SymmetricEncryption
+# Unit Tests for MongoMapper
 #
-class FieldEncryptedTest < Test::Unit::TestCase
-  context 'the SymmetricEncryption Library' do
+class MongoMapperTest < Test::Unit::TestCase
+  context 'MongoMapperUser' do
     setup do
       @bank_account_number = "1234567890"
       @bank_account_number_encrypted = "QEVuQwIAL94ArJeFlJrZp6SYsvoOGA=="
@@ -65,8 +66,8 @@ class FieldEncryptedTest < Test::Unit::TestCase
       @date_value = Date.new(1927, 04, 02)
       @h = { a: 'A', b: 'B' }
 
-      @user = MongoidUser.new(
-        encrypted_bank_account_number:   @bank_account_number_encrypted,
+      @user = MongoMapperUser.new(
+        encrypted_bank_account_number:    @bank_account_number_encrypted,
         encrypted_social_security_number: @social_security_number_encrypted,
         name:                            "Joe Bloggs",
         # data type specific fields
@@ -151,7 +152,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
     end
 
     should "encrypt" do
-      user = MongoidUser.new
+      user = MongoMapperUser.new
       user.bank_account_number = @bank_account_number
       assert_equal @bank_account_number, user.bank_account_number
       assert_equal @bank_account_number_encrypted, user.encrypted_bank_account_number
@@ -168,7 +169,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
     end
 
     should "all paths should lead to the same result, check uninitialized" do
-      user = MongoidUser.new
+      user = MongoMapperUser.new
       assert_equal nil, user.social_security_number
       assert_equal @bank_account_number, (user.social_security_number = @bank_account_number)
       assert_equal @bank_account_number, user.social_security_number
@@ -180,7 +181,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
     end
 
     should "allow unencrypted values to be passed to the constructor" do
-      user = MongoidUser.new(bank_account_number: @bank_account_number, social_security_number: @social_security_number)
+      user = MongoMapperUser.new(bank_account_number: @bank_account_number, social_security_number: @social_security_number)
       assert_equal @bank_account_number, user.bank_account_number
       assert_equal @social_security_number, user.social_security_number
       assert_equal @bank_account_number_encrypted, user.encrypted_bank_account_number
@@ -188,7 +189,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
     end
 
     should "allow both encrypted and unencrypted values to be passed to the constructor" do
-      user = MongoidUser.new(encrypted_bank_account_number: @bank_account_number_encrypted, social_security_number: @social_security_number)
+      user = MongoMapperUser.new(encrypted_bank_account_number: @bank_account_number_encrypted, social_security_number: @social_security_number)
       assert_equal @bank_account_number, user.bank_account_number
       assert_equal @social_security_number, user.social_security_number
       assert_equal @bank_account_number_encrypted, user.encrypted_bank_account_number
@@ -198,7 +199,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
     context "data types" do
       setup do
         @user.save!
-        @user_clone = MongoidUser.find(@user.id)
+        @user_clone = MongoMapperUser.find(@user.id)
       end
 
       context "aliased fields" do
@@ -215,7 +216,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
         end
 
         should "coerce data type before save" do
-          u = MongoidUser.new(integer_value: "5")
+          u = MongoMapperUser.new(integer_value: "5")
           assert_equal 5, u.integer_value
           assert u.integer_value.kind_of?(Integer)
         end
@@ -246,7 +247,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
         end
 
         should "coerce data type before save" do
-          u = MongoidUser.new(float_value: "5.6")
+          u = MongoMapperUser.new(float_value: "5.6")
           assert_equal 5.6, u.float_value
           assert u.float_value.kind_of?(Float)
         end
@@ -277,7 +278,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
         end
 
         should "coerce data type before save" do
-          u = MongoidUser.new(decimal_value: "99.95")
+          u = MongoMapperUser.new(decimal_value: "99.95")
           assert_equal BigDecimal.new("99.95"), u.decimal_value
           assert u.decimal_value.kind_of?(BigDecimal)
         end
@@ -309,7 +310,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
 
         should "coerce data type before save" do
           now = Time.now
-          u = MongoidUser.new(datetime_value: now)
+          u = MongoMapperUser.new(datetime_value: now)
           assert_equal now, u.datetime_value
           assert u.datetime_value.kind_of?(DateTime)
         end
@@ -341,7 +342,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
 
         should "coerce data type before save" do
           now = Time.now
-          u = MongoidUser.new(time_value: now)
+          u = MongoMapperUser.new(time_value: now)
           assert_equal now, u.time_value
           assert u.time_value.kind_of?(Time)
         end
@@ -373,7 +374,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
 
         should "coerce data type before save" do
           now = Time.now
-          u = MongoidUser.new(date_value: now)
+          u = MongoMapperUser.new(date_value: now)
           assert_equal now.to_date, u.date_value
           assert u.date_value.kind_of?(Date)
         end
@@ -404,7 +405,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
         end
 
         should "coerce data type before save" do
-          u = MongoidUser.new(true_value: "1")
+          u = MongoMapperUser.new(true_value: "1")
           assert_equal true, u.true_value
           assert u.true_value.kind_of?(TrueClass)
         end
@@ -435,7 +436,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
         end
 
         should "coerce data type before save" do
-          u = MongoidUser.new(false_value: "0")
+          u = MongoMapperUser.new(false_value: "0")
           assert_equal false, u.false_value
           assert u.false_value.kind_of?(FalseClass)
         end
@@ -475,7 +476,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
         end
 
         should "not coerce data type (leaves as hash) before save" do
-          u = MongoidUser.new(data_json: @h)
+          u = MongoMapperUser.new(data_json: @h)
           assert_equal @h, u.data_json
           assert u.data_json.kind_of?(Hash)
         end
@@ -507,7 +508,7 @@ class FieldEncryptedTest < Test::Unit::TestCase
         end
 
         should "not coerce data type (leaves as hash) before save" do
-          u = MongoidUser.new(data_yaml: @h)
+          u = MongoMapperUser.new(data_yaml: @h)
           assert_equal @h, u.data_yaml
           assert u.data_yaml.kind_of?(Hash)
         end

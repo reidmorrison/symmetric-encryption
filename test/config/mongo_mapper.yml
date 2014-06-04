@@ -1,0 +1,7 @@
+test:
+  uri: mongodb://localhost:27017/symmetric_encryption_test
+  options:
+    :w:               1
+    :pool_size:       5
+    :pool_timeout:    5
+    :connect_timeout: 5
