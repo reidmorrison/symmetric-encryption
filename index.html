@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link href='https://fonts.googleapis.com/css?family=Architects+Daughter' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
+    <title>Symmetric-encryption by reidmorrison</title>
+  </head>
+
+  <body>
+    <header>
+      <div class="inner">
+        <h1>Symmetric-encryption</h1>
+        <h2>Symmetric Encryption for Ruby Projects using OpenSSL </h2>
+        <a href="https://github.com/reidmorrison/symmetric-encryption" class="button"><small>View project on</small>GitHub</a>
+      </div>
+    </header>
+
+    <div id="content-wrapper">
+      <div class="inner clearfix">
+        <section id="main-content">
+          <h1>
+<a name="symmetric-encryption-" class="anchor" href="#symmetric-encryption-"><span class="octicon octicon-link"></span></a>symmetric-encryption <a href="http://travis-ci.org/reidmorrison/symmetric-encryption"><img src="https://secure.travis-ci.org/reidmorrison/symmetric-encryption.png?branch=master" alt="Build Status"></a>
+</h1>
+
+<ul>
+<li><a href="http://github.com/reidmorrison/symmetric-encryption">http://github.com/reidmorrison/symmetric-encryption</a></li>
+</ul><h2>
+<a name="introduction" class="anchor" href="#introduction"><span class="octicon octicon-link"></span></a>Introduction</h2>
+
+<p>Any project that wants to meet PCI compliance has to ensure that the data is encrypted
+whilst in flight and at rest. Amongst many other other requirements all passwords
+in configuration files have to be encrypted</p>
+
+<p>This Gem helps achieve compliance by supporting encryption of data in a simple
+and consistent way</p>
+
+<p>Symmetric Encryption uses OpenSSL to encrypt and decrypt data, and can therefore
+expose all the encryption algorithms supported by OpenSSL.</p>
+
+<h2>
+<a name="security" class="anchor" href="#security"><span class="octicon octicon-link"></span></a>Security</h2>
+
+<p>Many solutions that encrypt data require the encryption keys to be stored in the
+applications source code or leave it up to the developer to secure the keys on
+the application servers. symmetric-encryption takes care of securing the
+symmetric encryption keys.</p>
+
+<p>The following steps are used to secure the symmetric encryption keys using symmetric-encryption:</p>
+
+<ul>
+<li>Symmetric Encryption keys are stored in files that are not part of the application,
+its source code, or even stored in its source control system. These files can be
+created, managed and further secured by System Administrators. This prevents
+developers having or needing to have access to the symmetric encryption keys</li>
+<li>The Operating System security features limit access to the Symmetric Encryption
+key files to System Administrators and the userid under which the Rails application runs.</li>
+<li>The files in which the Symmetric Encryption keys are stored are further
+encrypted using RSA 2048 bit encryption</li>
+</ul><p>In order for anyone to decrypt the data being encrypted in the database, they
+would need access to ALL of the following:</p>
+
+<ul>
+<li>A copy of the files containing the Symmetric Encryption Keys which are secured
+by the Operating System</li>
+<li>The application source code containing the RSA private key to decrypt the above files</li>
+<li>The userid and password for the database to copy the encrypted data itself,
+or an unsecured copy or export of the database contents</li>
+</ul><p>A major feature of symmetric encryption is that it makes the encryption and decryption
+automatically available when the Rails application is started. This includes all
+rake tasks and the Rails console. In this way data can be encrypted or decrypted as
+part of any rake task.</p>
+
+<p>From a security perspective it is important then to properly secure the system so that
+no hacker can switch to and run as the rails user and thereby gain access to the
+encryption and decryption capabilities</p>
+
+<p>It is not necessary to encrypt the IV (initialization vector), and it can be placed
+directly in the configuration file. The encryption key must be kept secure and
+must never be placed in the configuration file or other Rails source file in production.
+The IV should be generated using the rails generator described below to ensure
+it is a truly random key from the key space.</p>
+
+<h2>
+<a name="limitations" class="anchor" href="#limitations"><span class="octicon octicon-link"></span></a>Limitations</h2>
+
+<p>By default symmetric encryption uses the same initialization vector (IV) and
+encryption key to encrypt data using the SymmetricEncryption.encrypt call.
+This technique is required in cases where the encrypted data is used as a key
+to lookup for example a Social Security Number, since for the same input data it
+must always return the same encrypted result. The drawback is that this
+technique is not considered secure when encypting large amounts of data.</p>
+
+<p>For non-key fields, such as storing encrypted raw responses,
+use the :random_iv =&gt; true option where possible so that a
+randomly generated IV is used and included in every encrypted string.</p>
+
+<p>The Symmetric Encryption streaming interface SymmetricEncryption::Writer avoids this
+problem by using a random IV and key in every file/stream by default.
+The random IV and key are stored in the header of the output stream so that it
+is available when reading back the encrypted file/stream. The key is placed
+in a header on the file in encrypted form using the current global key/cipher.</p>
+
+<p>The ActiveRecord attr_encrypted method supports the :random_iv =&gt; true option.
+Similarly for MongoMapper and Mongoid the :random_iv =&gt; true option can be added.</p>
+
+<p>Note that encrypting the same input string with the same key and :random_iv =&gt; true
+option will result in different encrypted output every time it is encrypted.</p>
+
+<h2>
+<a name="features" class="anchor" href="#features"><span class="octicon octicon-link"></span></a>Features</h2>
+
+<ul>
+<li>Encryption of passwords in configuration files</li>
+<li>Encryption of ActiveRecord model attributes by prefixing attributes / column
+names with encrypted_</li>
+<li>Encryption of MongoMapper keys by using :encrypted_key</li>
+<li>Encryption of Mongoid model fields by adding :encrypted option to field
+definitions</li>
+<li>Externalization of symmetric encryption keys so that they are not in the
+source code, or the source code control system</li>
+<li>Validator for ActiveRecord Models to ensure fields contain encrypted data</li>
+<li>Stream based encryption and decryption so that large files can be read or
+written with encryption, along with a random key and IV for every file</li>
+<li>Stream based encryption and decryption also supports compression and decompression
+on the fly</li>
+<li>When :compress =&gt; true option is specified Symmetric Encryption will transparently
+compress the data prior to decryption. When decrypting compressed data Symmetric
+Encryption will transparently decompress the data after decryption based on the
+header stored in the encrypted data</li>
+<li>Uses built-in support in Ruby for OpenSSL and Zlib for high performance and
+maximum portability without introducing any additional dependencies</li>
+<li>Drop in replacement for attr_encrypted. Just remove the attr_encrypted gem</li>
+<li>For maximum security supports fully random keys and initialization vectors
+extracted from the entire encryption key space</li>
+</ul><h2>
+<a name="recommendations" class="anchor" href="#recommendations"><span class="octicon octicon-link"></span></a>Recommendations</h2>
+
+<ul>
+<li><p>Add the encryption header to all encrypted strings.
+See the <em>always_add_header</em> option in the configuration file.</p></li>
+<li><p>Add <code>random_iv: true</code> for all ActiveRecord attributes, MongoMapper keys, and
+Mongoid fields which are not used in indexes and will not be used as part of a query.</p></li>
+</ul><h2>
+<a name="binary-data" class="anchor" href="#binary-data"><span class="octicon octicon-link"></span></a>Binary Data</h2>
+
+<p>On decryption an attempt is made to encode the data as UTF-8, if it fails it
+will be returned as BINARY encoded.</p>
+
+<h2>
+<a name="examples" class="anchor" href="#examples"><span class="octicon octicon-link"></span></a>Examples</h2>
+
+<h3>
+<a name="encryption-example" class="anchor" href="#encryption-example"><span class="octicon octicon-link"></span></a>Encryption Example</h3>
+
+<div class="highlight highlight-ruby"><pre><span class="no">SymmetricEncryption</span><span class="o">.</span><span class="n">encrypt</span> <span class="s2">"Sensitive data"</span>
+</pre></div>
+
+<h3>
+<a name="decryption-example" class="anchor" href="#decryption-example"><span class="octicon octicon-link"></span></a>Decryption Example</h3>
+
+<div class="highlight highlight-ruby"><pre><span class="no">SymmetricEncryption</span><span class="o">.</span><span class="n">decrypt</span> <span class="s2">"JqLJOi6dNjWI9kX9lSL1XQ==</span><span class="se">\n</span><span class="s2">"</span>
+</pre></div>
+
+<h3>
+<a name="activerecord-example" class="anchor" href="#activerecord-example"><span class="octicon octicon-link"></span></a>ActiveRecord Example</h3>
+
+<div class="highlight highlight-ruby"><pre><span class="k">class</span> <span class="nc">User</span> <span class="o">&lt;</span> <span class="no">ActiveRecord</span><span class="o">::</span><span class="no">Base</span>
+  <span class="c1"># Requires table users to have a column called encrypted_bank_account_number</span>
+  <span class="n">attr_encrypted</span> <span class="ss">:bank_account_number</span>
+
+  <span class="c1"># Requires users table to have a column called encrypted_social_security_number</span>
+  <span class="c1">#</span>
+  <span class="c1"># Note: Encrypting the same value twice will result in the _same_ encrypted value</span>
+  <span class="c1">#       when :random_iv =&gt; false, or is not specified</span>
+  <span class="n">attr_encrypted</span> <span class="ss">:social_security_number</span>
+
+  <span class="c1"># By specifying the type as :integer the value will be returned as an integer and</span>
+  <span class="c1"># can be set as an integer, even though it is stored in the database as an</span>
+  <span class="c1"># encrypted string</span>
+  <span class="c1">#</span>
+  <span class="c1"># Requires users table to have a column called encrypted_age of type string</span>
+  <span class="n">attr_encrypted</span> <span class="ss">:age</span><span class="p">,</span>         <span class="ss">type</span><span class="p">:</span> <span class="n">integer</span>
+
+  <span class="c1"># Since string and long_string are not used in the where clause of any SQL</span>
+  <span class="c1"># queries it is better to ensure that the encrypted value is always different</span>
+  <span class="c1"># by encrypting every value with a random Initialization Vector.</span>
+  <span class="c1">#</span>
+  <span class="c1"># Note: Encrypting the same value twice will result in different encrypted</span>
+  <span class="c1">#       values when :random_iv is true</span>
+  <span class="n">attr_encrypted</span> <span class="ss">:string</span><span class="p">,</span>      <span class="ss">random_iv</span><span class="p">:</span> <span class="kp">true</span>
+
+  <span class="c1"># Long encrypted strings can also be compressed prior to encryption to save</span>
+  <span class="c1"># disk space</span>
+  <span class="n">attr_encrypted</span> <span class="ss">:long_string</span><span class="p">,</span> <span class="ss">random_iv</span><span class="p">:</span> <span class="kp">true</span><span class="p">,</span> <span class="ss">compress</span><span class="p">:</span> <span class="kp">true</span>
+
+  <span class="c1"># By specifying the type as :json the value will be serialized to JSON</span>
+  <span class="c1"># before encryption and deserialized from JSON after decryption.</span>
+  <span class="c1">#</span>
+  <span class="c1"># It is sometimes useful to use compression on large fields, so we can enable</span>
+  <span class="c1"># compression before the string is encrypted</span>
+  <span class="c1">#</span>
+  <span class="c1"># Requires users table to have a column called encrypted_values of type string</span>
+  <span class="n">attr_encrypted</span> <span class="ss">:values</span><span class="p">,</span>      <span class="ss">type</span><span class="p">:</span> <span class="ss">:json</span><span class="p">,</span> <span class="ss">compress</span><span class="p">:</span> <span class="kp">true</span>
+
+  <span class="n">validates</span> <span class="ss">:encrypted_bank_account_number</span><span class="p">,</span> <span class="ss">symmetric_encryption</span><span class="p">:</span> <span class="kp">true</span>
+  <span class="n">validates</span> <span class="ss">:encrypted_social_security_number</span><span class="p">,</span> <span class="ss">symmetric_encryption</span><span class="p">:</span> <span class="kp">true</span>
+<span class="k">end</span>
+
+<span class="c1"># Create a new user instance assigning a bank account number</span>
+<span class="n">user</span> <span class="o">=</span> <span class="no">User</span><span class="o">.</span><span class="n">new</span>
+<span class="n">user</span><span class="o">.</span><span class="n">bank_account_number</span> <span class="o">=</span> <span class="s1">'12345'</span>
+
+<span class="c1"># Saves the bank_account_number in the column encrypted_bank_account_number in</span>
+<span class="c1"># encrypted form</span>
+<span class="n">user</span><span class="o">.</span><span class="n">save!</span>
+
+<span class="c1"># Short example using create</span>
+<span class="no">User</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="ss">bank_account_number</span><span class="p">:</span> <span class="s1">'12345'</span><span class="p">)</span>
+</pre></div>
+
+<p>Several types are supported for ActiveRecord models when encrypting or decrypting data.
+Each type maps to the built-in Ruby types as follows:</p>
+
+<ul>
+<li>:string    =&gt; String</li>
+<li>:integer   =&gt; Integer</li>
+<li>:float     =&gt; Float</li>
+<li>:decimal   =&gt; BigDecimal</li>
+<li>:datetime  =&gt; DateTime</li>
+<li>:time      =&gt; Time</li>
+<li>:date      =&gt; Date</li>
+<li>:json      =&gt; Uses JSON serialization, useful for hashes and arrays</li>
+<li>:yaml      =&gt; Uses YAML serialization, useful for hashes and arrays</li>
+</ul><h3>
+<a name="mongomapper-example" class="anchor" href="#mongomapper-example"><span class="octicon octicon-link"></span></a>MongoMapper Example</h3>
+
+<p>To encrypt a field in a MongoMapper document, use <code>encrypted_key</code> instead of <code>key</code>
+when specifying a key.</p>
+
+<div class="highlight highlight-ruby"><pre>  <span class="n">field</span> <span class="ss">:encrypted_age</span><span class="p">,</span>                    <span class="ss">type</span><span class="p">:</span> <span class="nb">String</span><span class="p">,</span> <span class="ss">encrypted</span><span class="p">:</span> <span class="p">{</span><span class="ss">type</span><span class="p">:</span> <span class="ss">:integer</span><span class="p">}</span>
+<span class="k">end</span>
+
+<span class="c1"># User model MongoMapper</span>
+<span class="k">class</span> <span class="nc">User</span>
+  <span class="kp">include</span> <span class="no">MongoMapper</span><span class="o">::</span><span class="no">Document</span>
+
+  <span class="n">key</span>           <span class="ss">:name</span><span class="p">,</span>                   <span class="nb">String</span>
+  <span class="n">encrypted_key</span> <span class="ss">:bank_account_number</span><span class="p">,</span>    <span class="nb">String</span>
+  <span class="n">encrypted_key</span> <span class="ss">:social_security_number</span><span class="p">,</span> <span class="nb">String</span>
+  <span class="n">encrypted_key</span> <span class="ss">:life_history</span><span class="p">,</span>           <span class="nb">String</span><span class="p">,</span> <span class="ss">encrypted</span><span class="p">:</span> <span class="p">{</span> <span class="ss">random_iv</span><span class="p">:</span> <span class="kp">true</span><span class="p">,</span> <span class="ss">compress</span><span class="p">:</span> <span class="kp">true</span> <span class="p">}</span>
+
+  <span class="c1"># Encrypted fields are _always_ stored in Mongo as a String</span>
+  <span class="c1"># To get the result back as an Integer, Symmetric Encryption will automatically</span>
+  <span class="c1"># perform the necessary conversions</span>
+  <span class="n">encrypted_key</span> <span class="ss">:integer_value</span><span class="p">,</span>          <span class="nb">Integer</span>
+  <span class="n">encrypted_key</span> <span class="ss">:float_value</span><span class="p">,</span>            <span class="nb">Float</span>
+  <span class="n">encrypted_key</span> <span class="ss">:decimal_value</span><span class="p">,</span>          <span class="no">BigDecimal</span>
+  <span class="n">encrypted_key</span> <span class="ss">:datetime_value</span><span class="p">,</span>         <span class="no">DateTime</span>
+  <span class="n">encrypted_key</span> <span class="ss">:time_value</span><span class="p">,</span>             <span class="no">Time</span>
+  <span class="n">encrypted_key</span> <span class="ss">:date_value</span><span class="p">,</span>             <span class="no">Date</span>
+  <span class="n">encrypted_key</span> <span class="ss">:true_value</span><span class="p">,</span>             <span class="no">Boolean</span>
+  <span class="n">encrypted_key</span> <span class="ss">:data_json</span><span class="p">,</span>              <span class="no">Hash</span><span class="p">,</span> <span class="ss">encrypted</span><span class="p">:</span> <span class="p">{</span><span class="ss">random_iv</span><span class="p">:</span> <span class="kp">true</span><span class="p">,</span> <span class="ss">compress</span><span class="p">:</span> <span class="kp">true</span><span class="p">}</span>
+  <span class="c1"># By default Hash is saved as JSON, to save as YAML add the type specifier:</span>
+  <span class="n">encrypted_key</span> <span class="ss">:data_yaml</span><span class="p">,</span>              <span class="no">Hash</span><span class="p">,</span> <span class="ss">encrypted</span><span class="p">:</span> <span class="p">{</span><span class="ss">random_iv</span><span class="p">:</span> <span class="kp">true</span><span class="p">,</span> <span class="ss">compress</span><span class="p">:</span> <span class="kp">true</span><span class="p">,</span> <span class="ss">type</span><span class="p">:</span> <span class="ss">:yaml</span><span class="p">}</span>
+
+  <span class="c1"># Optionally add validation to ensure that encrypted fields are in fact encrypted</span>
+  <span class="c1"># before the data is saved</span>
+  <span class="n">validates</span> <span class="ss">:encrypted_bank_account_number</span><span class="p">,</span>    <span class="ss">symmetric_encryption</span><span class="p">:</span> <span class="kp">true</span>
+  <span class="n">validates</span> <span class="ss">:encrypted_social_security_number</span><span class="p">,</span> <span class="ss">symmetric_encryption</span><span class="p">:</span> <span class="kp">true</span>
+<span class="k">end</span>
+
+<span class="c1"># Create a new user document</span>
+<span class="no">User</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="ss">bank_account_number</span><span class="p">:</span> <span class="s1">'12345'</span><span class="p">)</span>
+
+<span class="c1"># When finding a document, always use the encrypted form of the field name</span>
+<span class="n">user</span> <span class="o">=</span> <span class="no">User</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="ss">encrypted_bank_account_number</span><span class="p">:</span> <span class="no">SymmetricEncryption</span><span class="o">.</span><span class="n">encrypt</span><span class="p">(</span><span class="s1">'12345'</span><span class="p">))</span><span class="o">.</span><span class="n">first</span>
+
+<span class="c1"># Fields can be accessed using their unencrypted names</span>
+<span class="nb">puts</span> <span class="n">user</span><span class="o">.</span><span class="n">bank_account_number</span>
+</pre></div>
+
+<h3>
+<a name="mongoid-example" class="anchor" href="#mongoid-example"><span class="octicon octicon-link"></span></a>Mongoid Example</h3>
+
+<p>To encrypt a field in a Mongoid document, just add "encrypted: true" at the end
+of the field specifier. The field name must currently begin with "encrypted_"</p>
+
+<div class="highlight highlight-ruby"><pre><span class="c1"># User model in Mongoid</span>
+<span class="k">class</span> <span class="nc">User</span>
+  <span class="kp">include</span> <span class="no">Mongoid</span><span class="o">::</span><span class="no">Document</span>
+
+  <span class="n">field</span> <span class="ss">:name</span><span class="p">,</span>                             <span class="ss">type</span><span class="p">:</span> <span class="nb">String</span>
+  <span class="n">field</span> <span class="ss">:encrypted_bank_account_number</span><span class="p">,</span>    <span class="ss">type</span><span class="p">:</span> <span class="nb">String</span><span class="p">,</span>  <span class="ss">encrypted</span><span class="p">:</span> <span class="kp">true</span>
+  <span class="n">field</span> <span class="ss">:encrypted_social_security_number</span><span class="p">,</span> <span class="ss">type</span><span class="p">:</span> <span class="nb">String</span><span class="p">,</span>  <span class="ss">encrypted</span><span class="p">:</span> <span class="kp">true</span>
+  <span class="n">field</span> <span class="ss">:encrypted_life_history</span><span class="p">,</span>           <span class="ss">type</span><span class="p">:</span> <span class="nb">String</span><span class="p">,</span>  <span class="ss">encrypted</span><span class="p">:</span> <span class="p">{</span><span class="ss">compress</span><span class="p">:</span> <span class="kp">true</span><span class="p">,</span> <span class="ss">random_iv</span><span class="p">:</span> <span class="kp">true</span><span class="p">}</span>
+
+  <span class="c1"># Encrypted fields are _always_ stored in Mongo as a String</span>
+  <span class="c1"># To get the result back as an Integer, Symmetric Encryption can do the</span>
+  <span class="c1"># necessary conversions by specifying the internal type as an option</span>
+  <span class="c1"># to :encrypted</span>
+  <span class="c1"># #see SymmetricEncryption::COERCION_TYPES for full list of types</span>
+  <span class="n">field</span> <span class="ss">:encrypted_age</span><span class="p">,</span>                    <span class="ss">type</span><span class="p">:</span> <span class="nb">String</span><span class="p">,</span> <span class="ss">encrypted</span><span class="p">:</span> <span class="p">{</span><span class="ss">type</span><span class="p">:</span> <span class="ss">:integer</span><span class="p">}</span>
+<span class="k">end</span>
+
+<span class="c1"># Create a new user document</span>
+<span class="no">User</span><span class="o">.</span><span class="n">create</span><span class="p">(</span><span class="ss">bank_account_number</span><span class="p">:</span> <span class="s1">'12345'</span><span class="p">)</span>
+
+<span class="c1"># When finding a document, always use the encrypted form of the field name</span>
+<span class="n">user</span> <span class="o">=</span> <span class="no">User</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="ss">encrypted_bank_account_number</span><span class="p">:</span> <span class="no">SymmetricEncryption</span><span class="o">.</span><span class="n">encrypt</span><span class="p">(</span><span class="s1">'12345'</span><span class="p">))</span><span class="o">.</span><span class="n">first</span>
+
+<span class="c1"># Fields can be accessed using their unencrypted names</span>
+<span class="nb">puts</span> <span class="n">user</span><span class="o">.</span><span class="n">bank_account_number</span>
+</pre></div>
+
+<h3>
+<a name="validation-example" class="anchor" href="#validation-example"><span class="octicon octicon-link"></span></a>Validation Example</h3>
+
+<div class="highlight highlight-ruby"><pre><span class="k">class</span> <span class="nc">MyModel</span> <span class="o">&lt;</span> <span class="no">ActiveRecord</span><span class="o">::</span><span class="no">Base</span>
+  <span class="n">validates</span> <span class="ss">:encrypted_ssn</span><span class="p">,</span> <span class="ss">symmetric_encryption</span><span class="p">:</span> <span class="kp">true</span>
+<span class="k">end</span>
+
+<span class="n">m</span> <span class="o">=</span> <span class="no">MyModel</span><span class="o">.</span><span class="n">new</span>
+<span class="n">m</span><span class="o">.</span><span class="n">valid?</span>
+<span class="c1">#  =&gt; false</span>
+<span class="n">m</span><span class="o">.</span><span class="n">encrypted_ssn</span> <span class="o">=</span> <span class="no">SymmetricEncryption</span><span class="o">.</span><span class="n">encrypt</span><span class="p">(</span><span class="s1">'123456789'</span><span class="p">)</span>
+<span class="n">m</span><span class="o">.</span><span class="n">valid?</span>
+<span class="c1">#  =&gt; true</span>
+</pre></div>
+
+<h3>
+<a name="encrypting-passwords-in-configuration-files" class="anchor" href="#encrypting-passwords-in-configuration-files"><span class="octicon octicon-link"></span></a>Encrypting Passwords in configuration files</h3>
+
+<p>Passwords can be encrypted in any YAML configuration file.</p>
+
+<p>For example config/database.yml</p>
+
+<div class="highlight highlight-yaml"><pre><span class="nn">---</span>
+<span class="l-Scalar-Plain">production</span><span class="p-Indicator">:</span>
+  <span class="l-Scalar-Plain">adapter</span><span class="p-Indicator">:</span>  <span class="l-Scalar-Plain">mysql</span>
+  <span class="l-Scalar-Plain">host</span><span class="p-Indicator">:</span>     <span class="l-Scalar-Plain">db1w</span>
+  <span class="l-Scalar-Plain">database</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">myapp_production</span>
+  <span class="l-Scalar-Plain">username</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">admin</span>
+  <span class="l-Scalar-Plain">password</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">&lt;%= SymmetricEncryption.try_decrypt "JqLJOi6dNjWI9kX9lSL1XQ==\n" %&gt;</span>
+</pre></div>
+
+<p>Note: Use SymmetricEncryption.try_decrypt method which will return nil if it
+  fails to decrypt the value, which is essential when the encryption keys differ
+  between environments</p>
+
+<p>Note: In order for the above technique to work in other YAML configuration files
+  the YAML file must be processed using ERB prior to passing to YAML. For example</p>
+
+<div class="highlight highlight-ruby"><pre>    <span class="n">config_file</span> <span class="o">=</span> <span class="no">Rails</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s1">'config'</span><span class="p">,</span> <span class="s1">'redis.yml'</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="s2">"redis config not found. Create a config file at: config/redis.yml"</span> <span class="k">unless</span> <span class="n">config_file</span><span class="o">.</span><span class="n">file?</span>
+
+    <span class="n">cfg</span> <span class="o">=</span> <span class="no">YAML</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="no">ERB</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="no">File</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">config_file</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">)</span><span class="o">.</span><span class="n">result</span><span class="p">)</span><span class="o">[</span><span class="no">Rails</span><span class="o">.</span><span class="n">env</span><span class="o">]</span>
+    <span class="k">raise</span><span class="p">(</span><span class="s2">"Environment </span><span class="si">#{</span><span class="no">Rails</span><span class="o">.</span><span class="n">env</span><span class="si">}</span><span class="s2"> not defined in redis.yml"</span><span class="p">)</span> <span class="k">unless</span> <span class="n">cfg</span>
+</pre></div>
+
+<h3>
+<a name="large-file-encryption" class="anchor" href="#large-file-encryption"><span class="octicon octicon-link"></span></a>Large File Encryption</h3>
+
+<p>Example: Read and decrypt a line at a time from a file</p>
+
+<div class="highlight highlight-ruby"><pre><span class="no">SymmetricEncryption</span><span class="o">::</span><span class="no">Reader</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">'encrypted_file'</span><span class="p">)</span> <span class="k">do</span> <span class="o">|</span><span class="n">file</span><span class="o">|</span>
+  <span class="n">file</span><span class="o">.</span><span class="n">each_line</span> <span class="k">do</span> <span class="o">|</span><span class="n">line</span><span class="o">|</span>
+     <span class="nb">puts</span> <span class="n">line</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+</pre></div>
+
+<p>Example: Encrypt and write data to a file</p>
+
+<div class="highlight highlight-ruby"><pre><span class="no">SymmetricEncryption</span><span class="o">::</span><span class="no">Writer</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">'encrypted_file'</span><span class="p">)</span> <span class="k">do</span> <span class="o">|</span><span class="n">file</span><span class="o">|</span>
+  <span class="n">file</span><span class="o">.</span><span class="n">write</span> <span class="s2">"Hello World</span><span class="se">\n</span><span class="s2">"</span>
+  <span class="n">file</span><span class="o">.</span><span class="n">write</span> <span class="s2">"Keep this secret"</span>
+<span class="k">end</span>
+</pre></div>
+
+<p>Example: Compress, Encrypt and write data to a file</p>
+
+<div class="highlight highlight-ruby"><pre><span class="no">SymmetricEncryption</span><span class="o">::</span><span class="no">Writer</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">'encrypted_compressed.zip'</span><span class="p">,</span> <span class="ss">compress</span><span class="p">:</span> <span class="kp">true</span><span class="p">)</span> <span class="k">do</span> <span class="o">|</span><span class="n">file</span><span class="o">|</span>
+  <span class="n">file</span><span class="o">.</span><span class="n">write</span> <span class="s2">"Hello World</span><span class="se">\n</span><span class="s2">"</span>
+  <span class="n">file</span><span class="o">.</span><span class="n">write</span> <span class="s2">"Compress this</span><span class="se">\n</span><span class="s2">"</span>
+  <span class="n">file</span><span class="o">.</span><span class="n">write</span> <span class="s2">"Keep this safe and secure</span><span class="se">\n</span><span class="s2">"</span>
+<span class="k">end</span>
+</pre></div>
+
+<h3>
+<a name="standalone-test" class="anchor" href="#standalone-test"><span class="octicon octicon-link"></span></a>Standalone test</h3>
+
+<p>Before generating keys we can use SymmetricEncryption in a standalone test environment:</p>
+
+<div class="highlight highlight-ruby"><pre><span class="c1"># Use test encryption keys</span>
+<span class="no">SymmetricEncryption</span><span class="o">.</span><span class="n">cipher</span> <span class="o">=</span> <span class="no">SymmetricEncryption</span><span class="o">::</span><span class="no">Cipher</span><span class="o">.</span><span class="n">new</span><span class="p">(</span>
+  <span class="ss">key</span><span class="p">:</span>         <span class="s1">'1234567890ABCDEF1234567890ABCDEF'</span><span class="p">,</span>
+  <span class="ss">iv</span><span class="p">:</span>          <span class="s1">'1234567890ABCDEF'</span><span class="p">,</span>
+  <span class="ss">cipher_name</span><span class="p">:</span> <span class="s1">'aes-128-cbc'</span>
+<span class="p">)</span>
+<span class="n">encrypted</span> <span class="o">=</span> <span class="no">SymmetricEncryption</span><span class="o">.</span><span class="n">encrypt</span><span class="p">(</span><span class="s1">'hello world'</span><span class="p">)</span>
+<span class="nb">puts</span> <span class="no">SymmetricEncryption</span><span class="o">.</span><span class="n">decrypt</span><span class="p">(</span><span class="n">encrypted</span><span class="p">)</span>
+</pre></div>
+
+<h3>
+<a name="rake-tasks" class="anchor" href="#rake-tasks"><span class="octicon octicon-link"></span></a>Rake Tasks</h3>
+
+<p>For PCI compliance developers should not be the ones creating or encrypting
+passwords. The following rake tasks can be used by system administrators to
+generate and encrypt passwords for databases, or external web calls.
+It is safe to pass the encrypted password for say MySQL to the developers
+who can then put it in the config files which are kept in source control.</p>
+
+<p>Generate a random password and display its encrypted form:</p>
+
+<pre><code>rake symmetric_encryption:random_password
+</code></pre>
+
+<p>Encrypt a known value, such as a password:</p>
+
+<pre><code>rake symmetric_encryption:encrypt
+</code></pre>
+
+<p>Note: Passwords must be encrypted in the environment in which they will be used.
+  Since each environment should have its own symmetric encryption keys</p>
+
+<p>Note: To use the rake task 'symmetric_encryption:encrypt' the gem 'highline'
+  must first be installed by adding to bundler or installing directly:</p>
+
+<div class="highlight highlight-ruby"><pre><span class="n">gem</span> <span class="n">install</span> <span class="s1">'highline'</span>
+</pre></div>
+
+<p>Encrypt a file</p>
+
+<pre><code>INFILE="Gemfile.lock" OUTFILE="Gemfile.lock.encrypted" rake symmetric_encryption:encrypt_file
+</code></pre>
+
+<p>Encrypt and compress a file</p>
+
+<pre><code>INFILE="Gemfile.lock" OUTFILE="Gemfile.lock.encrypted" COMPRESS=1 rake symmetric_encryption:encrypt_file
+</code></pre>
+
+<p>Decrypt a file encrypted and optionally compressed using symmetric encryption</p>
+
+<pre><code>INFILE="Gemfile.lock.encrypted" OUTFILE="Gemfile.lock2" rake symmetric_encryption:decrypt_file
+</code></pre>
+
+<p>When decrypting a compressed file it is not necessary to specify whether the file was compressed
+since the header embedded in the file will indicate whether it was compressed</p>
+
+<p>The file header also contains a random key and iv used to encrypt the files contents.
+The key and iv is encrypted with the global encryption key being used by the symmetric
+encryption installation.</p>
+
+<h2>
+<a name="dependencies" class="anchor" href="#dependencies"><span class="octicon octicon-link"></span></a>Dependencies</h2>
+
+<ul>
+<li>Ruby 1.9.3 (or above) Or, JRuby 1.7.3 (or above)</li>
+<li>Optional: To log to MongoDB, Mongo Ruby Driver 1.5.2 or above</li>
+</ul><h2>
+<a name="installation" class="anchor" href="#installation"><span class="octicon octicon-link"></span></a>Installation</h2>
+
+<h3>
+<a name="add-to-an-existing-rails-project" class="anchor" href="#add-to-an-existing-rails-project"><span class="octicon octicon-link"></span></a>Add to an existing Rails project</h3>
+
+<p>Add the following line to Gemfile</p>
+
+<div class="highlight highlight-ruby"><pre><span class="n">gem</span> <span class="s1">'symmetric-encryption'</span>
+</pre></div>
+
+<p>Install the Gem with bundler</p>
+
+<pre><code>bundle install
+</code></pre>
+
+<h2>
+<a name="rails-configuration" class="anchor" href="#rails-configuration"><span class="octicon octicon-link"></span></a>Rails Configuration</h2>
+
+<p>If deploying to Heroku skip to the section "Rails Configuration for a Heroku deployment" below</p>
+
+<h3>
+<a name="creating-the-configuration-file" class="anchor" href="#creating-the-configuration-file"><span class="octicon octicon-link"></span></a>Creating the configuration file</h3>
+
+<p>The configuration file contains the path to the production encryption key files.
+Generally in development and test the files are not created, so supply the full path
+to these files in production. Once the config file has been generated it can be
+modified as needed.</p>
+
+<p>Generate the configuration file:</p>
+
+<pre><code>rails generate symmetric_encryption:config /etc/rails/keys
+</code></pre>
+
+<p>Note: Ignore the warning about "Symmetric Encryption config not found" since it is
+being generated</p>
+
+<h4>
+<a name="save-to-version-control" class="anchor" href="#save-to-version-control"><span class="octicon octicon-link"></span></a>Save to version control</h4>
+
+<p>This configuration file should be checked into the source code control system.
+It does Not include the Symmetric Encryption keys. They will be generated in the
+next step.</p>
+
+<h3>
+<a name="generating-and-securing-the-symmetric-encryption-keys" class="anchor" href="#generating-and-securing-the-symmetric-encryption-keys"><span class="octicon octicon-link"></span></a>Generating and securing the Symmetric Encryption keys</h3>
+
+<p>Once development and testing is complete we need to generate secure encryption
+key files for production. It is recommended that the step below be run on only
+one of the production servers. The generated key files must then be copied to
+all the production web servers.</p>
+
+<p>Note: Do not run this step more than once, otherwise new keys will be generated
+and any encrypted data will no longer be accessible.</p>
+
+<p>Note: Do not run this step on more than one server in each environment otherwise
+each server will be encrypting with it's own key and the servers will not be able
+to decrypt data encrypted on another server. Just copy the generated files to each
+server</p>
+
+<p>The symmetric encryption key consists of the key itself and an optional
+initialization vector.</p>
+
+<p>To generate the keys run the following Rake task once only in each environment:</p>
+
+<pre><code>rails generate symmetric_encryption:new_keys production
+</code></pre>
+
+<p>Replace 'production' as necessary for each environment.</p>
+
+<p>Make sure that the current user has read and write access to the folder listed
+in the config file option key_filename.</p>
+
+<p>Note: Ignore the warning about the key files "not found or readable" since they
+are being generated</p>
+
+<p>Once the Symmetric Encryption keys have been generated, secure them further by
+making the files read-only to the Rails user and not readable by any other user.
+Change ownership of the keys to the rails user and only give it access to read the key files:</p>
+
+<pre><code>chown rails /etc/rails/keys/*
+chmod 0400 /etc/rails/keys/*
+</code></pre>
+
+<p>Change 'rails' above to the userid under which your Rails processes are run
+and update the path to the one supplied when generating the config file or
+look in the config file itself</p>
+
+<p>When running multiple Rails servers in a particular environment copy the same
+key files to every server in that environment. I.e. All Rails servers in each
+environment must run the same encryption keys.</p>
+
+<p>Note: The generate step above must only be run once in each environment</p>
+
+<h2>
+<a name="rails-configuration-for-a-heroku-deployment" class="anchor" href="#rails-configuration-for-a-heroku-deployment"><span class="octicon octicon-link"></span></a>Rails Configuration for a Heroku deployment</h2>
+
+<p>Deploying to Heroku requires the encrypted key to be stored in an environment
+variable rather than as a file on disk.</p>
+
+<p>Generate the configuration file:</p>
+
+<pre><code>rails g symmetric_encryption:heroku_config
+</code></pre>
+
+<p>Note: Ignore the warning about "Symmetric Encryption config not found" since it is
+being generated.</p>
+
+<p>Note: The encrypted keys for the release and production environments are displayed on
+screen and must be entered manually as environment variables into Heroku so that the
+application can find them when it starts.</p>
+
+<h4>
+<a name="save-to-version-control-1" class="anchor" href="#save-to-version-control-1"><span class="octicon octicon-link"></span></a>Save to version control</h4>
+
+<p>This configuration file should be checked into the source code control system.
+It does Not include the Symmetric Encryption keys.</p>
+
+<h2>
+<a name="using-in-non-rails-environments" class="anchor" href="#using-in-non-rails-environments"><span class="octicon octicon-link"></span></a>Using in non-Rails environments</h2>
+
+<p>SymmetricEncryption can also be used in non-Rails environment.</p>
+
+<p>Install SymmetricEncryption</p>
+
+<pre><code>gem install symmetric-encryption
+</code></pre>
+
+<p>Manually create a symmetric-encryption.yml configuration file based on the
+one supplied in examples/symmetric-encryption.yml.</p>
+
+<p>At application startup, run the code below to initialize symmetric-encryption prior to
+attempting to encrypt or decrypt any data</p>
+
+<div class="highlight highlight-ruby"><pre><span class="nb">require</span> <span class="s1">'symmetric-encryption'</span>
+<span class="no">SymmetricEncryption</span><span class="o">.</span><span class="n">load!</span><span class="p">(</span><span class="s1">'config/symmetric-encryption.yml'</span><span class="p">,</span> <span class="s1">'production'</span><span class="p">)</span>
+</pre></div>
+
+<p>Parameters:</p>
+
+<ul>
+<li>Filename of the configuration file created above</li>
+<li>Name of the environment to load the configuration for</li>
+</ul><p>To manually generate the symmetric encryption keys, run the code below</p>
+
+<div class="highlight highlight-ruby"><pre><span class="nb">require</span> <span class="s1">'symmetric-encryption'</span>
+<span class="no">SymmetricEncryption</span><span class="o">.</span><span class="n">generate_symmetric_key_files</span><span class="p">(</span><span class="s1">'config/symmetric-encryption.yml'</span><span class="p">,</span> <span class="s1">'production'</span><span class="p">)</span>
+</pre></div>
+
+<p>Parameters:</p>
+
+<ul>
+<li>Filename of the configuration file created above</li>
+<li>Name of the environment to load the configuration for</li>
+</ul><h2>
+<a name="supporting-multiple-encryption-keys" class="anchor" href="#supporting-multiple-encryption-keys"><span class="octicon octicon-link"></span></a>Supporting Multiple Encryption Keys</h2>
+
+<p>According to the PCI Compliance documentation: "Cryptographic keys must be changed on an annual basis."</p>
+
+<p>During the transition period of moving from one encryption key to another
+symmetric-encryption supports multiple Symmetric Encryption keys. If decryption
+with the current key fails, any previous keys will also be tried automatically.</p>
+
+<p>By default the latest key is used for encrypting data. Another key can be specified
+for encryption so that old data can be looked in queries, etc.</p>
+
+<p>Since just the Symmetric Encryption keys are being changed, we can still continue to
+use the same RSA Private key for gaining access to the Symmetric Encryption Keys</p>
+
+<h3>
+<a name="configuring-multiple-symmetric-encryption-keys" class="anchor" href="#configuring-multiple-symmetric-encryption-keys"><span class="octicon octicon-link"></span></a>Configuring multiple Symmetric Encryption keys</h3>
+
+<p>Create a configuration file in config/symmetric-encryption.yml per the following example:</p>
+
+<div class="highlight highlight-yaml"><pre><span class="c1">#</span>
+<span class="c1"># Symmetric Encryption for Ruby</span>
+<span class="c1">#</span>
+<span class="nn">---</span>
+<span class="c1"># For the development and test environments the test symmetric encryption keys</span>
+<span class="c1"># can be placed directly in the source code.</span>
+<span class="c1"># And therefore no RSA private key is required</span>
+<span class="l-Scalar-Plain">development</span><span class="p-Indicator">:</span> <span class="nl">&amp;development_defaults</span>
+  <span class="l-Scalar-Plain">key</span><span class="p-Indicator">:</span>    <span class="l-Scalar-Plain">1234567890ABCDEF1234567890ABCDEF</span>
+  <span class="l-Scalar-Plain">iv</span><span class="p-Indicator">:</span>     <span class="l-Scalar-Plain">1234567890ABCDEF</span>
+  <span class="l-Scalar-Plain">cipher_name</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">aes-128-cbc</span>
+
+<span class="l-Scalar-Plain">test</span><span class="p-Indicator">:</span>
+  <span class="l-Scalar-Plain">&lt;&lt;</span><span class="p-Indicator">:</span> <span class="nv">*development_defaults</span>
+
+<span class="l-Scalar-Plain">production</span><span class="p-Indicator">:</span>
+  <span class="c1"># Since the key to encrypt and decrypt with must NOT be stored along with the</span>
+  <span class="c1"># source code, we only hold a RSA key that is used to unlock the file</span>
+  <span class="c1"># containing the actual symmetric encryption key</span>
+  <span class="c1">#</span>
+  <span class="c1"># Sample RSA Key, DO NOT use this RSA key, generate a new one using</span>
+  <span class="c1">#    openssl genrsa 2048</span>
+  <span class="l-Scalar-Plain">private_rsa_key</span><span class="p-Indicator">:</span> <span class="p-Indicator">|</span>
+     <span class="no">-----BEGIN RSA PRIVATE KEY-----</span>
+     <span class="no">MIIEpAIBAAKCAQEAxIL9H/jYUGpA38v6PowRSRJEo3aNVXULNM/QNRpx2DTf++KH</span>
+     <span class="no">6DcuFTFcNSSSxG9n4y7tKi755be8N0uwCCuOzvXqfWmXYjbLwK3Ib2vm0btpHyvA</span>
+     <span class="no">qxgqeJOOCxKdW/cUFLWn0tACUcEjVCNfWEGaFyvkOUuR7Ub9KfhbW9cZO3BxZMUf</span>
+     <span class="no">IPGlHl/gWyf484sXygd+S7cpDTRRzo9RjG74DwfE0MFGf9a1fTkxnSgeOJ6asTOy</span>
+     <span class="no">fp9tEToUlbglKaYGpOGHYQ9TV5ZsyJ9jRUyb4SP5wK2eK6dHTxTcHvT03kD90Hv4</span>
+     <span class="no">WeKIXv3WOjkwNEyMdpnJJfSDb5oquQvCNi7ZSQIDAQABAoIBAQCbzR7TUoBugU+e</span>
+     <span class="no">ICLvpC2wOYOh9kRoFLwlyv3QnH7WZFWRZzFJszYeJ1xr5etXQtyjCnmOkGAg+WOI</span>
+     <span class="no">k8GlOKOpAuA/PpB/leJFiYL4lBwU/PmDdTT0cdx6bMKZlNCeMW8CXGQKiFDOcMqJ</span>
+     <span class="no">0uGtH5YD+RChPIEeFsJxnC8SyZ9/t2ra7XnMGiCZvRXIUDSEIIsRx/mOymJ7bL+h</span>
+     <span class="no">Lbp46IfXf6ZuIzwzoIk0JReV/r+wdmkAVDkrrMkCmVS4/X1wN/Tiik9/yvbsh/CL</span>
+     <span class="no">ztC55eSIEjATkWxnXfPASZN6oUfQPEveGH3HzNjdncjH/Ho8FaNMIAfFpBhhLPi9</span>
+     <span class="no">nG5sbH+BAoGBAOdoUyVoAA/QUa3/FkQaa7Ajjehe5MR5k6VtaGtcxrLiBjrNR7x+</span>
+     <span class="no">nqlZlGvWDMiCz49dgj+G1Qk1bbYrZLRX/Hjeqy5dZOGLMfgf9eKUmS1rDwAzBMcj</span>
+     <span class="no">M9jnnJEBx8HIlNzaR6wzp3GMd0rrccs660A8URvzkgo9qNbvMLq9vyUtAoGBANll</span>
+     <span class="no">SY1Iv9uaIz8klTXU9YzYtsfUmgXzw7K8StPdbEbo8F1J3JPJB4D7QHF0ObIaSWuf</span>
+     <span class="no">suZqLsvWlYGuJeyX2ntlBN82ORfvUdOrdrbDlmPyj4PfFVl0AK3U3Ai374DNrjKR</span>
+     <span class="no">hF6YFm4TLDaJhUjeV5C43kbE1N2FAMS9LYtPJ44NAoGAFDGHZ/E+aCLerddfwwun</span>
+     <span class="no">MBS6MnftcLPHTZ1RimTrNfsBXipBw1ItWEvn5s0kCm9X24PmdNK4TnhqHYaF4DL5</span>
+     <span class="no">ZjbQK1idEA2Mi8GGPIKJJ2x7P6I0HYiV4qy7fe/w1ZlCXE90B7PuPbtrQY9wO7Ll</span>
+     <span class="no">ipJ45X6I1PnyfOcckn8yafUCgYACtPAlgjJhWZn2v03cTbqA9nHQKyV/zXkyUIXd</span>
+     <span class="no">/XPLrjrP7ouAi5A8WuSChR/yx8ECRgrEM65Be3qBEtoGCB4AS1G0NcigM6qhKBFi</span>
+     <span class="no">VS0aMXr3+V8argcUIwJaWW/x+p2go48yXlJpLHPweeXe8mXEt4iM+QZte6p2yKQ4</span>
+     <span class="no">h9PGQQKBgQCqSydmXBnXGIVTp2sH/2GnpxLYnDBpcJE0tM8bJ42HEQQgRThIChsn</span>
+     <span class="no">PnGA91G9MVikYapgI0VYBHQOTsz8rTIUzsKwXG+TIaK+W84nxH5y6jUkjqwxZmAz</span>
+     <span class="no">r1URaMAun2PfAB4g2N/kEZTExgeOGqXjFhvvjdzl97ux2cTyZhaTXg==</span>
+     <span class="no">-----END RSA PRIVATE KEY-----</span>
+
+  <span class="c1"># List Symmetric Key files in the order of current / latest first</span>
+  <span class="l-Scalar-Plain">ciphers</span><span class="p-Indicator">:</span>
+     <span class="p-Indicator">-</span>
+        <span class="c1"># Filename containing Symmetric Encryption Key encrypted using the</span>
+        <span class="c1"># RSA public key derived from the private key above</span>
+        <span class="l-Scalar-Plain">key_filename</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">/etc/rails/.rails.key</span>
+        <span class="l-Scalar-Plain">iv_filename</span><span class="p-Indicator">:</span>  <span class="l-Scalar-Plain">/etc/rails/.rails.iv</span>
+
+        <span class="c1"># Encryption cipher_name</span>
+        <span class="c1">#   Recommended values:</span>
+        <span class="c1">#      aes-256-cbc</span>
+        <span class="c1">#         256 AES CBC Algorithm. Very strong</span>
+        <span class="c1">#         Ruby 1.8.7 MRI Approximately 100,000 encryptions or decryptions per second</span>
+        <span class="c1">#         JRuby 1.6.7 with Ruby 1.8.7 Approximately 22,000 encryptions or decryptions per second</span>
+        <span class="c1">#      aes-128-cbc</span>
+        <span class="c1">#         128 AES CBC Algorithm. Less strong.</span>
+        <span class="c1">#         Ruby 1.8.7 MRI Approximately 100,000 encryptions or decryptions per second</span>
+        <span class="c1">#         JRuby 1.6.7 with Ruby 1.8.7 Approximately 22,000 encryptions or decryptions per second</span>
+        <span class="l-Scalar-Plain">cipher_name</span><span class="p-Indicator">:</span>  <span class="l-Scalar-Plain">aes-256-cbc</span>
+
+     <span class="p-Indicator">-</span>
+        <span class="c1"># OPTIONAL:</span>
+        <span class="c1">#</span>
+        <span class="c1"># Any previous Symmetric Encryption Keys</span>
+        <span class="c1">#</span>
+        <span class="c1"># Only used when old data still exists that requires old decryption keys</span>
+        <span class="c1"># to be used</span>
+        <span class="l-Scalar-Plain">key_filename</span><span class="p-Indicator">:</span> <span class="l-Scalar-Plain">/etc/rails/.rails_old.key</span>
+        <span class="l-Scalar-Plain">iv_filename</span><span class="p-Indicator">:</span>  <span class="l-Scalar-Plain">/etc/rails/.rails_old.iv</span>
+        <span class="l-Scalar-Plain">cipher_name</span><span class="p-Indicator">:</span>  <span class="l-Scalar-Plain">aes-256-cbc</span>
+</pre></div>
+
+<h2>
+<a name="new-features-in-v11-and-v2" class="anchor" href="#new-features-in-v11-and-v2"><span class="octicon octicon-link"></span></a>New features in V1.1 and V2</h2>
+
+<ul>
+<li><p>Ability to randomly generate a new initialization vector (iv) with every
+encryption and put the iv in the encrypted data as its header, without having
+to use SymmetricEncryption::Writer</p></li>
+<li><p>With file encryption randomly generate a new key and initialization vector (iv) with every
+file encryption and put the key and iv in the encrypted data as its header which
+is encrypted using the global key and iv</p></li>
+<li><p>Support for compression via SymmetricEncryption.encrypt, attr_encrypted and Mongoid
+fields</p></li>
+<li><p>SymmetricEncryption.encrypt has two additional optional parameters:</p></li>
+</ul><pre><code>   random_iv [true|false]
+     Whether the encypted value should use a random IV every time the
+     field is encrypted.
+     It is recommended to set this to true where feasible. If the encrypted
+     value could be used as part of a SQL where clause, or as part
+     of any lookup, then it must be false.
+     Setting random_iv to true will result in a different encrypted output for
+     the same input string.
+     Note: Only set to true if the field will never be used as part of
+       the where clause in an SQL query.
+     Note: When random_iv is true it will add a 8 byte header, plus the bytes
+       to store the random IV in every returned encrypted string, prior to the
+       encoding if any.
+     Default: false
+     Highly Recommended where feasible: true
+
+   compress [true|false]
+     Whether to compress str before encryption
+     Should only be used for large strings since compression overhead and
+     the overhead of adding the 'magic' header may exceed any benefits of
+     compression
+     Note: Adds a 6 byte header prior to encoding, only if :random_iv is false
+     Default: false
+</code></pre>
+
+<h2>
+<a name="upgrading-from-earlier-versions-to-symmetricencryption-v3" class="anchor" href="#upgrading-from-earlier-versions-to-symmetricencryption-v3"><span class="octicon octicon-link"></span></a>Upgrading from earlier versions to SymmetricEncryption V3</h2>
+
+<p>In version 3 of SymmetricEncryption, the following changes have been made that
+may have backward compatibility issues:</p>
+
+<ul>
+<li><p>SymmetricEncryption.decrypt no longer rotates through all the decryption keys
+when previous ciphers fail to decrypt the encrypted string.
+In a very small, yet significant number of cases it was possible to decrypt data
+using the incorrect key. Clearly the data returned was garbage, but it still
+returned a string of data instead of throwing an exception.
+See SymmetricEncryption.select_cipher to supply your own custom logic to
+determine the correct cipher to use when the encrypted string does not have a
+header and multiple ciphers are defined.</p></li>
+<li><p>Configuration file format prior to V1 is no longer supported</p></li>
+<li><p>New configuration option has been added to support setting encryption keys
+from environment variables</p></li>
+<li><p>Cipher.parse_magic_header! now returns a Struct instead of an Array</p></li>
+<li><p>New config options :encrypted_key and :encrypted_iv to support setting
+the encryption key in environment variables</p></li>
+</ul><h2>
+<a name="meta" class="anchor" href="#meta"><span class="octicon octicon-link"></span></a>Meta</h2>
+
+<ul>
+<li>Code: <code>git clone git://github.com/reidmorrison/symmetric-encryption.git</code>
+</li>
+<li>Home: <a href="https://github.com/reidmorrison/symmetric-encryption">https://github.com/reidmorrison/symmetric-encryption</a>
+</li>
+<li>Issues: <a href="http://github.com/reidmorrison/symmetric-encryption/issues">http://github.com/reidmorrison/symmetric-encryption/issues</a>
+</li>
+<li>Gems: <a href="http://rubygems.org/gems/symmetric-encryption">http://rubygems.org/gems/symmetric-encryption</a>
+</li>
+</ul><p>This project uses <a href="http://semver.org/">Semantic Versioning</a>.</p>
+
+<h2>
+<a name="author" class="anchor" href="#author"><span class="octicon octicon-link"></span></a>Author</h2>
+
+<p><a href="https://github.com/reidmorrison">Reid Morrison</a></p>
+
+<h2>
+<a name="contributors" class="anchor" href="#contributors"><span class="octicon octicon-link"></span></a>Contributors</h2>
+
+<ul>
+<li><a href="https://github.com/mscottford">M. Scott Ford</a></li>
+<li><a href="https://github.com/astjohn">Adam St. John</a></li>
+</ul><h2>
+<a name="license" class="anchor" href="#license"><span class="octicon octicon-link"></span></a>License</h2>
+
+<p>Copyright 2012, 2013, 2014 Reid Morrison</p>
+
+<p>Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at</p>
+
+<pre><code>http://www.apache.org/licenses/LICENSE-2.0
+</code></pre>
+
+<p>Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.</p>
+
+<h2>
+<a name="disclaimer" class="anchor" href="#disclaimer"><span class="octicon octicon-link"></span></a>Disclaimer</h2>
+
+<p>Although this library has assisted in meeting PCI Compliance and has passed
+previous PCI audits, it in no way guarantees that PCI Compliance will be
+achieved by anyone using this library.</p>
+        </section>
+
+        <aside id="sidebar">
+          <a href="https://github.com/reidmorrison/symmetric-encryption/zipball/master" class="button">
+            <small>Download</small>
+            .zip file
+          </a>
+          <a href="https://github.com/reidmorrison/symmetric-encryption/tarball/master" class="button">
+            <small>Download</small>
+            .tar.gz file
+          </a>
+
+          <p class="repo-owner"><a href="https://github.com/reidmorrison/symmetric-encryption"></a> is maintained by <a href="https://github.com/reidmorrison">reidmorrison</a>.</p>
+
+          <p>This page was generated by <a href="https://pages.github.com">GitHub Pages</a> using the Architect theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.</p>
+        </aside>
+      </div>
+    </div>
+
+            <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-52339082-3");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+  </body>
+</html>
