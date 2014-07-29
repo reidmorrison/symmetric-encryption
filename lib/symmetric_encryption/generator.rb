@@ -2,7 +2,7 @@ module SymmetricEncryption
   module Generator
     # Common internal method for generating accessors for decrypted accessors
     # Primarily used by extensions
-    def self.generate_decrypted_accessors(model, decrypted_name, encrypted_name, options, params)
+    def self.generate_decrypted_accessors(model, decrypted_name, encrypted_name, options)
 
       random_iv      = options.delete(:random_iv) || false
       compress       = options.delete(:compress) || false
@@ -15,7 +15,7 @@ module SymmetricEncryption
         type = :yaml
       end
 
-      options.each {|option| warn "Ignoring unknown option #{option.inspect} supplied when encrypting #{decrypted_name} with #{params.inspect}"}
+      options.each {|option| warn "Ignoring unknown option #{option.inspect} supplied when encrypting #{decrypted_name}"}
 
       raise "Invalid type: #{type.inspect}. Valid types: #{SymmetricEncryption::COERCION_TYPES.inspect}" unless SymmetricEncryption::COERCION_TYPES.include?(type)
 

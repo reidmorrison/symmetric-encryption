@@ -44,7 +44,7 @@ module ActiveRecord #:nodoc:
         options   = params.last.is_a?(Hash) ? params.pop.dup : {}
 
         params.each do |attribute|
-          SymmetricEncryption::Generator.generate_decrypted_accessors(self, attribute, "encrypted_#{attribute}", options, params)
+          SymmetricEncryption::Generator.generate_decrypted_accessors(self, attribute, "encrypted_#{attribute}", options)
           encrypted_attributes[attribute.to_sym] = "encrypted_#{attribute}".to_sym
         end
       end
