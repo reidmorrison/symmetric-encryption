@@ -13,6 +13,7 @@ ActiveRecord::Schema.define version: 0 do
     t.text   :encrypted_data_yaml
     t.text   :encrypted_data_json
     t.string :name
+    t.string :encrypted_unsupported_option
 
     t.string :encrypted_integer_value
     t.string :encrypted_float_value
@@ -35,6 +36,7 @@ class User < ActiveRecord::Base
   attr_encrypted :long_string,    random_iv: true, compress: true
   attr_encrypted :data_yaml,      random_iv: true, compress: true, type: :yaml
   attr_encrypted :data_json,      random_iv: true, compress: true, type: :json
+  attr_encrypted :unsupported_option, bad_option: :unsupported
 
   attr_encrypted :integer_value,  type: :integer
   attr_encrypted :float_value,    type: :float
@@ -160,6 +162,13 @@ class ActiveRecordTest < Test::Unit::TestCase
       user.bank_account_number = @bank_account_number
       assert_equal @bank_account_number, user.bank_account_number
       assert_equal @bank_account_number_encrypted, user.encrypted_bank_account_number
+    end
+
+    should 'encrypt with unsupported option' do
+      user = User.new
+      user.unsupported_option = @bank_account_number
+      assert_equal @bank_account_number, user.unsupported_option
+      assert_equal @bank_account_number_encrypted, user.encrypted_unsupported_option
     end
 
     should 'allow lookups using unencrypted or encrypted column name' do
