@@ -15,7 +15,7 @@ module SymmetricEncryption
         type = :yaml
       end
 
-      options.each {|option| warn "Ignoring unknown option #{option.inspect} supplied when encrypting #{decrypted_name} with #{params.inspect}"}
+      options.each {|option| warn "Ignoring unknown option #{option.inspect} supplied when encrypting #{decrypted_name}"}
 
       raise "Invalid type: #{type.inspect}. Valid types: #{SymmetricEncryption::COERCION_TYPES.inspect}" unless SymmetricEncryption::COERCION_TYPES.include?(type)
 
