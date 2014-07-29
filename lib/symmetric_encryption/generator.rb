@@ -2,7 +2,7 @@ module SymmetricEncryption
   module Generator
     # Common internal method for generating accessors for decrypted accessors
     # Primarily used by extensions
-    def self.generate_decrypted_accessors(model, decrypted_name, encrypted_name, options)
+    def self.generate_decrypted_accessors(model, decrypted_name, encrypted_name, options, params)
 
       random_iv      = options.delete(:random_iv) || false
       compress       = options.delete(:compress) || false
