@@ -180,12 +180,14 @@ module SymmetricEncryption
       data = nil
       if length
         return '' if length == 0
-        return nil if @ios.eof? && (@read_buffer.length == 0)
+        return nil if eof?
         # Read length bytes
         while (@read_buffer.length < length) && !@ios.eof?
           read_block
         end
-        if @read_buffer.length > length
+        if @read_buffer.length == 0
+          data = nil
+        elsif @read_buffer.length > length
           data = @read_buffer.slice!(0..length-1)
         else
           data = @read_buffer

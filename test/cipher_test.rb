@@ -1,8 +1,8 @@
-require File.dirname(__FILE__) + '/test_helper'
+require_relative 'test_helper'
 
 # Unit Test for SymmetricEncryption::Cipher
 #
-class CipherTest < Test::Unit::TestCase
+class CipherTest < Minitest::Test
   context 'standalone' do
 
     should "allow setting the cipher_name" do
@@ -36,7 +36,7 @@ class CipherTest < Test::Unit::TestCase
         iv:          '1234567890ABCDEF',
         encoding:    :none
       )
-      assert_raise OpenSSL::Cipher::CipherError do
+      assert_raises OpenSSL::Cipher::CipherError do
         cipher.decrypt('bad data')
       end
     end

@@ -17,4 +17,5 @@ Gem::Specification.new do |s|
   s.test_files  = Dir["test/**/*"]
   s.license     = "Apache License V2.0"
   s.add_dependency 'coercible', '>= 1.0.0'
+  s.required_ruby_version = '>= 2.0.0'
 end

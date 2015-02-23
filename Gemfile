@@ -1,48 +1,29 @@
 source 'https://rubygems.org'
 
-gem 'rake'
-gem 'sync_attr'
-gem 'thread_safe'
+gemspec
 
-# Used by rake task for user to enter text to be encrypted
+# Optional gem used by rake task for user to enter text to be encrypted
 gem 'highline'
-gem 'coercible'
 
-if RUBY_VERSION.to_f == 1.9
-  gem 'activerecord', '~> 3.0'
-  gem 'mongoid', '~> 3.0'
-elsif RUBY_VERSION.to_f == 2.0
-  # attr_encrypted
-  gem 'activerecord', '>= 4.0'
-  # For Mongoid encryption extensions
-  gem 'bson'
-  gem 'mongoid', '>= 4.0.0.alpha1'
-else
-  # attr_encrypted
-  gem 'activerecord', '>= 4.0'
-  gem 'bson', '~>1.0'
-  gem 'bson_ext', :platform => :ruby
-  gem 'mongo_mapper'
-end
-
+# Optional Gems
+gem 'activerecord'
 gem 'semantic_logger'
 
-gem 'sqlite3', :platform => :ruby
-gem 'jdbc-sqlite3', :platform => :jruby
-gem 'activerecord-jdbcsqlite3-adapter', :platform => :jruby
+gem 'sqlite3', platform: :ruby
+gem 'jdbc-sqlite3', platform: :jruby
+gem 'activerecord-jdbcsqlite3-adapter', platform: :jruby
 
-group :development do
-  gem 'awesome_print'
-  gem 'travis-lint'
-end
+# BSON V1
+gem 'mongo_ha'
+gem 'mongo_mapper'
+gem 'bson_ext', platform: :ruby
 
-group :test do
-  if RUBY_VERSION.to_f == 1.9
-    gem 'minitest', '~> 3.0'
-    gem 'shoulda', '~> 2.0'
-  else
-    gem 'minitest', '~> 4.0'
-    gem 'shoulda'
-  end
-  gem 'mocha'
-end
+# BSON V2
+#gem 'mongoid', '~> 4.0'
+
+gem 'rake'
+gem 'minitest'
+gem 'minitest-reporters'
+gem 'minitest-stub_any_instance'
+gem 'shoulda-context'
+gem 'awesome_print'

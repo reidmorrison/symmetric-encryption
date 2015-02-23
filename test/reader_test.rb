@@ -1,9 +1,9 @@
-require File.dirname(__FILE__) + '/test_helper'
+require_relative 'test_helper'
 require 'stringio'
 
 # Unit Test for SymmetricEncrypted::ReaderStream
 #
-class ReaderTest < Test::Unit::TestCase
+class ReaderTest < Minitest::Test
   context SymmetricEncryption::Reader do
     setup do
       @data = [
@@ -143,14 +143,14 @@ class ReaderTest < Test::Unit::TestCase
 
           should ".empty?" do
             assert_equal (@data_size==0), SymmetricEncryption::Reader.empty?(@filename)
-            assert_raise Errno::ENOENT do
+            assert_raises Errno::ENOENT do
               SymmetricEncryption::Reader.empty?('missing_file')
             end
           end
 
           should ".header_present?" do
             assert_equal @header, SymmetricEncryption::Reader.header_present?(@filename)
-            assert_raise Errno::ENOENT do
+            assert_raises Errno::ENOENT do
               SymmetricEncryption::Reader.header_present?('missing_file')
             end
           end
@@ -174,8 +174,6 @@ class ReaderTest < Test::Unit::TestCase
           end
 
           should "#read(size)" do
-            data = nil
-            eof = nil
             file = SymmetricEncryption::Reader.open(@filename)
             eof = file.eof?
             data = file.read(4096)
@@ -205,15 +203,23 @@ class ReaderTest < Test::Unit::TestCase
           end
 
           should "#gets(nil,size)" do
-            data = nil
-            eof = nil
             file = SymmetricEncryption::Reader.open(@filename)
             eof = file.eof?
             data = file.gets(nil,4096)
             file.close
 
             assert_equal @eof, eof
-            assert_equal (@data_size > 0 ? @data_str : nil), data
+            if @data_size > 0
+              assert_equal @data_str, data
+            else
+              # On JRuby Zlib::GzipReader.new(file) returns '' instead of nil
+              # on an empty file
+              if defined?(JRuby) && options[:compress] && (usecase == :empty)
+                assert_equal '', data
+              else
+                assert_equal nil, data
+              end
+            end
           end
 
           should "#gets(delim)" do
@@ -303,7 +309,7 @@ class ReaderTest < Test::Unit::TestCase
 
       should "decrypt from file in a single read with different version" do
         # Should fail since file was encrypted using version 0 key
-        assert_raise OpenSSL::Cipher::CipherError do
+        assert_raises OpenSSL::Cipher::CipherError do
           SymmetricEncryption::Reader.open(@filename, version: 2) {|file| file.read}
         end
       end

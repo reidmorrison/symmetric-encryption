@@ -1,8 +1,8 @@
-require File.dirname(__FILE__) + '/test_helper'
+require_relative 'test_helper'
 
 # Unit Test for SymmetricEncryption
 #
-class SymmetricEncryptionTest < Test::Unit::TestCase
+class SymmetricEncryptionTest < Minitest::Test
   context 'SymmetricEncryption' do
 
     context 'configuration' do
@@ -276,6 +276,19 @@ class SymmetricEncryptionTest < Test::Unit::TestCase
             assert_equal @is_broken, SymmetricEncryption.decrypt(encrypted, version=nil, type=:boolean)
           end
         end
+
+        context "when yaml" do
+          setup do
+            @test = { :a => :b }
+          end
+
+          should "encrypt and decrypt a false value to and from a boolean" do
+            assert encrypted = SymmetricEncryption.encrypt(@test, random_iv=false, compress=false, type=:yaml)
+            assert_equal true, SymmetricEncryption.encrypted?(encrypted)
+            assert_equal @test, SymmetricEncryption.decrypt(encrypted, version=nil, type=:yaml)
+          end
+        end
+
       end
     end
 

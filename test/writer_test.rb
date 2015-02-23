@@ -1,9 +1,9 @@
-require File.dirname(__FILE__) + '/test_helper'
+require_relative 'test_helper'
 require 'stringio'
 
 # Unit Test for Symmetric::EncryptedStream
 #
-class WriterTest < Test::Unit::TestCase
+class WriterTest < Minitest::Test
   context SymmetricEncryption::Writer do
     setup do
       @data = [

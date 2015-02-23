@@ -1,7 +1,7 @@
-$LOAD_PATH.unshift File.dirname(__FILE__)
-if defined?(MongoMapper)
-  require 'test_helper'
-  require 'symmetric_encryption/extensions/mongo_mapper/plugins/encrypted_key'
+begin
+  require 'mongo_mapper'
+  require_relative 'test_helper'
+  require_relative '../lib/symmetric_encryption/extensions/mongo_mapper/plugins/encrypted_key'
 
   # Initialize MongoMapper
   config_file = File.join('test', 'config', 'mongo_mapper.yml')
@@ -37,7 +37,7 @@ if defined?(MongoMapper)
   #
   # Unit Tests for MongoMapper
   #
-  class MongoMapperTest < Test::Unit::TestCase
+  class MongoMapperTest < Minitest::Test
     context 'MongoMapperUser' do
       setup do
         @bank_account_number = "1234567890"
@@ -537,4 +537,6 @@ if defined?(MongoMapper)
 
     end
   end
+rescue LoadError
+  puts "Not running MongoMapper tests because mongo_mapper gem is not installed!!!"
 end

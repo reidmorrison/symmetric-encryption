@@ -1,5 +1,9 @@
-require File.dirname(__FILE__) + '/test_helper'
-if defined?(Mongoid)
+begin
+  require 'mongoid'
+  require_relative 'test_helper'
+  require_relative '../lib/symmetric_encryption/extensions/mongoid/encrypted'
+  ENV['RACK_ENV'] = 'test'
+
   Mongoid.logger = SemanticLogger[Mongoid]
   filename = defined?(Mongoid::VERSION) ? "test/config/mongoid_v3.yml" : "test/config/mongoid_v2.yml"
   Mongoid.load!(filename)
@@ -14,7 +18,7 @@ if defined?(Mongoid)
     field :encrypted_long_string,            type: String,  encrypted: {random_iv: true, compress: true}
 
     field :encrypted_integer_value,          type: String, encrypted: {type: :integer}
-    field :aiv,                              type: String, encrypted: {type: :integer, encrypt_as: :aliased_integer_value}
+    field :aiv,                              type: String, encrypted: {type: :integer, decrypt_as: :aliased_integer_value}
     field :encrypted_float_value,            type: String, encrypted: {type: :float}
     field :encrypted_decimal_value,          type: String, encrypted: {type: :decimal}
     field :encrypted_datetime_value,         type: String, encrypted: {type: :datetime}
@@ -32,7 +36,7 @@ if defined?(Mongoid)
   #
   # Unit Tests for field encrypted and validation aspects of SymmetricEncryption
   #
-  class MongoidTest < Test::Unit::TestCase
+  class MongoidTest < Minitest::Test
     context 'Mongoid' do
       setup do
         @bank_account_number = "1234567890"
@@ -532,4 +536,7 @@ if defined?(Mongoid)
 
     end
   end
+
+rescue LoadError
+  puts "Not running Mongoid tests because mongoid gem is not installed!!!"
 end

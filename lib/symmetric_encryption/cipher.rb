@@ -85,18 +85,18 @@ module SymmetricEncryption
     #     Recommended: true
     #
     def initialize(params={})
-      parms              = params.dup
-      @key               = parms.delete(:key)
-      @iv                = parms.delete(:iv)
-      @cipher_name       = parms.delete(:cipher_name) || parms.delete(:cipher) || 'aes-256-cbc'
-      @version           = parms.delete(:version)
-      @always_add_header = parms.delete(:always_add_header) || false
-      @encoding          = (parms.delete(:encoding) || :base64).to_sym
+      params             = params.dup
+      @key               = params.delete(:key)
+      @iv                = params.delete(:iv)
+      @cipher_name       = params.delete(:cipher_name) || params.delete(:cipher) || 'aes-256-cbc'
+      @version           = params.delete(:version)
+      @always_add_header = params.delete(:always_add_header) || false
+      @encoding          = (params.delete(:encoding) || :base64).to_sym
 
       raise "Missing mandatory parameter :key" unless @key
       raise "Invalid Encoding: #{@encoding}" unless ENCODINGS.include?(@encoding)
       raise "Cipher version has a valid rage of 0 to 255. #{@version} is too high, or negative" if (@version.to_i > 255) || (@version.to_i < 0)
-      parms.each_pair {|k,v| warn "SymmetricEncryption::Cipher Ignoring unknown option #{k.inspect} = #{v.inspect}"}
+      raise ArgumentError.new("SymmetricEncryption::Cipher Invalid options #{params.inspect}") if params.size > 0
     end
 
     # Encrypt and then encode a string
