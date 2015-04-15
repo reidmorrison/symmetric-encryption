@@ -77,7 +77,7 @@ module SymmetricEncryption
     #   csv.close if csv
     # end
     def self.open(filename_or_stream, options={}, &block)
-      raise "options must be a hash" unless options.respond_to?(:each_pair)
+      raise(ArgumentError, 'options must be a hash') unless options.respond_to?(:each_pair)
       mode     = options.fetch(:mode, 'rb')
       compress = options.fetch(:compress, false)
       ios      = filename_or_stream.is_a?(String) ? ::File.open(filename_or_stream, mode) : filename_or_stream
@@ -115,7 +115,7 @@ module SymmetricEncryption
       @version        = options[:version]
       @header_present = false
 
-      raise "Buffer size cannot be smaller than 128" unless @buffer_size >= 128
+      raise(ArgumentError, 'Buffer size cannot be smaller than 128') unless @buffer_size >= 128
 
       read_header
     end
@@ -303,7 +303,7 @@ module SymmetricEncryption
         rewind
         offset = size + amount
       else
-        raise "unknown whence:#{whence} supplied to seek()"
+        raise(ArgumentError, "unknown whence:#{whence} supplied to seek()")
       end
       read(offset) if offset > 0
       0

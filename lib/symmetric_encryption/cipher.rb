@@ -93,10 +93,10 @@ module SymmetricEncryption
       @always_add_header = params.delete(:always_add_header) || false
       @encoding          = (params.delete(:encoding) || :base64).to_sym
 
-      raise "Missing mandatory parameter :key" unless @key
-      raise "Invalid Encoding: #{@encoding}" unless ENCODINGS.include?(@encoding)
-      raise "Cipher version has a valid rage of 0 to 255. #{@version} is too high, or negative" if (@version.to_i > 255) || (@version.to_i < 0)
-      raise ArgumentError.new("SymmetricEncryption::Cipher Invalid options #{params.inspect}") if params.size > 0
+      raise(ArgumentError, "Missing mandatory parameter :key") unless @key
+      raise(ArgumentError, "Invalid Encoding: #{@encoding}") unless ENCODINGS.include?(@encoding)
+      raise(ArgumentError, "Cipher version has a valid range of 0 to 255. #{@version} is too high, or negative") if (@version.to_i > 255) || (@version.to_i < 0)
+      raise(ArgumentError, "SymmetricEncryption::Cipher Invalid options #{params.inspect}") if params.size > 0
     end
 
     # Encrypt and then encode a string
@@ -286,7 +286,7 @@ module SymmetricEncryption
       # otherwise to decrypt the data following the header
       version       = flags & 0b0000_0000_1111_1111
       decryption_cipher = SymmetricEncryption.cipher(version)
-      raise "Cipher with version:#{version.inspect} not found in any of the configured SymmetricEncryption ciphers" unless decryption_cipher
+      raise(SymmetricEncryption::CipherError, "Cipher with version:#{version.inspect} not found in any of the configured SymmetricEncryption ciphers") unless decryption_cipher
       iv, key, cipher_name   = nil
 
       if include_iv

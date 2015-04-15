@@ -11,7 +11,7 @@ namespace :symmetric_encryption do
     begin
       require 'highline'
     rescue LoadError
-      raise "Please install gem highline before using the command line task to encrypt an entered string.\n   gem install \"highline\""
+      raise(SymmetricEncryption::ConfigError, "Please install gem highline before using the command line task to encrypt an entered string.\n   gem install \"highline\"")
     end
     password1 = nil
     password2 = 0

@@ -99,7 +99,7 @@ Mongoid::Fields.option :encrypted do |model, field, options|
     end
 
     if decrypted_field_name.nil?
-      raise "SymmetricEncryption for Mongoid. Encryption enabled for field #{encrypted_field_name}. It must either start with 'encrypted_' or the option :decrypt_as must be supplied"
+      raise(ArgumentError, "SymmetricEncryption for Mongoid. Encryption enabled for field #{encrypted_field_name}. It must either start with 'encrypted_' or the option :decrypt_as must be supplied")
     end
 
     SymmetricEncryption::Generator.generate_decrypted_accessors(model, decrypted_field_name, encrypted_field_name, options)

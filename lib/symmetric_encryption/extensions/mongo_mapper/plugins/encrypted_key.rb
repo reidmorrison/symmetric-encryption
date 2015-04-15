@@ -112,7 +112,7 @@ module MongoMapper
           encrypted_key_name = options.delete(:encrypt_as) || "encrypted_#{key_name}"
           options[:type]     = COERCION_MAP[type] unless [:yaml, :json].include?(options[:type])
 
-          raise "Invalid type: #{type.inspect}. Valid types: #{COERCION_MAP.keys.join(',')}" unless options[:type]
+          raise(ArgumentError, "Invalid type: #{type.inspect}. Valid types: #{COERCION_MAP.keys.join(',')}") unless options[:type]
 
           SymmetricEncryption::Generator.generate_decrypted_accessors(self, key_name, encrypted_key_name, options)
 

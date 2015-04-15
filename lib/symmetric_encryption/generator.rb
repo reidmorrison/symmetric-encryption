@@ -8,8 +8,8 @@ module SymmetricEncryption
       compress  = options.delete(:compress) || false
       type      = options.delete(:type) || :string
 
-      raise ArgumentError.new("SymmetricEncryption Invalid options #{options.inspect} when encrypting '#{decrypted_name}'") if options.size > 0
-      raise ArgumentError.new("Invalid type: #{type.inspect}. Valid types: #{SymmetricEncryption::COERCION_TYPES.inspect}") unless SymmetricEncryption::COERCION_TYPES.include?(type)
+      raise(ArgumentError, "SymmetricEncryption Invalid options #{options.inspect} when encrypting '#{decrypted_name}'") if options.size > 0
+      raise(ArgumentError, "Invalid type: #{type.inspect}. Valid types: #{SymmetricEncryption::COERCION_TYPES.inspect}") unless SymmetricEncryption::COERCION_TYPES.include?(type)
 
       if model.const_defined?(:EncryptedAttributes, _search_ancestors = false)
         mod = model.const_get(:EncryptedAttributes)

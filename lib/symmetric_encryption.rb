@@ -6,6 +6,7 @@ require 'coercible'
 require 'symmetric_encryption/version'
 require 'symmetric_encryption/cipher'
 require 'symmetric_encryption/symmetric_encryption'
+require 'symmetric_encryption/exception'
 
 module SymmetricEncryption
   autoload :Reader,    'symmetric_encryption/reader'

@@ -99,7 +99,7 @@ module SymmetricEncryption
     #    csv.close if csv
     #  end
     def self.open(filename_or_stream, options={}, &block)
-      raise "options must be a hash" unless options.respond_to?(:each_pair)
+      raise(ArgumentError, 'options must be a hash') unless options.respond_to?(:each_pair)
       mode = options.fetch(:mode, 'wb')
       compress = options.fetch(:compress, false)
       ios = filename_or_stream.is_a?(String) ? ::File.open(filename_or_stream, mode) : filename_or_stream
@@ -119,19 +119,19 @@ module SymmetricEncryption
       header      = options.fetch(:header, true)
       random_key  = options.fetch(:random_key, true)
       random_iv   = options.fetch(:random_iv, random_key)
-      raise "When :random_key is true, :random_iv must also be true" if random_key && !random_iv
+      raise(ArgumentError, 'When :random_key is true, :random_iv must also be true') if random_key && !random_iv
       # Compress is only used at this point for setting the flag in the header
       compress    = options.fetch(:compress, false)
       version     = options[:version]
       cipher_name = options[:cipher_name]
-      raise "Cannot supply a :cipher_name unless both :random_key and :random_iv are true" if cipher_name && !random_key && !random_iv
+      raise(ArgumentError, 'Cannot supply a :cipher_name unless both :random_key and :random_iv are true') if cipher_name && !random_key && !random_iv
 
       # Force header if compressed or using random iv, key
       header = true if compress || random_key || random_iv
 
       # Cipher to encrypt the random_key, or the entire file
       cipher = SymmetricEncryption.cipher(version)
-      raise "Cipher with version:#{version} not found in any of the configured SymmetricEncryption ciphers" unless cipher
+      raise(SymmetricEncryption::CipherError, "Cipher with version:#{version} not found in any of the configured SymmetricEncryption ciphers") unless cipher
 
       @stream_cipher = ::OpenSSL::Cipher.new(cipher_name || cipher.cipher_name)
       @stream_cipher.encrypt

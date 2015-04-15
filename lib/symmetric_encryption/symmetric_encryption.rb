@@ -38,7 +38,7 @@ module SymmetricEncryption
   #     cipher: 'aes-128-cbc'
   #   )
   def self.cipher=(cipher)
-    raise "Cipher must be similar to SymmetricEncryption::Ciphers" unless cipher.nil? || (cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt))
+    raise(ArgumentError, 'Cipher must respond to :encrypt and :decrypt') unless cipher.nil? || (cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt))
     @@cipher = cipher
   end
 
@@ -47,7 +47,7 @@ module SymmetricEncryption
   #   Returns the primary cipher if no match was found and version == 0
   #   Returns nil if no match was found and version != 0
   def self.cipher(version = nil)
-    raise "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data" unless @@cipher
+    raise(SymmetricEncryption::ConfigError, 'Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data') unless @@cipher
     return @@cipher if version.nil? || (@@cipher.version == version)
     secondary_ciphers.find {|c| c.version == version} || (@@cipher if version == 0)
   end
@@ -59,9 +59,9 @@ module SymmetricEncryption
 
   # Set the Secondary Symmetric Ciphers Array to be used
   def self.secondary_ciphers=(secondary_ciphers)
-    raise "secondary_ciphers must be a collection" unless secondary_ciphers.respond_to? :each
+    raise(ArgumentError, "secondary_ciphers must be a collection") unless secondary_ciphers.respond_to? :each
     secondary_ciphers.each do |cipher|
-      raise "secondary_ciphers can only consist of SymmetricEncryption::Ciphers" unless cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt)
+      raise(ArgumentError, "secondary_ciphers can only consist of SymmetricEncryption::Ciphers") unless cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt)
     end
     @@secondary_ciphers = secondary_ciphers
   end
@@ -106,7 +106,7 @@ module SymmetricEncryption
   #       the incorrect key. Clearly the data returned is garbage, but it still
   #       successfully returns a string of data
   def self.decrypt(encrypted_and_encoded_string, version=nil, type=:string)
-    raise "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data" unless @@cipher
+    raise(SymmetricEncryption::ConfigError, 'Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data') unless @@cipher
     return encrypted_and_encoded_string if encrypted_and_encoded_string.nil? || (encrypted_and_encoded_string == '')
 
     str = encrypted_and_encoded_string.to_s
@@ -176,7 +176,7 @@ module SymmetricEncryption
   #       the coercible gem is available in the path.
   #     Default: :string
   def self.encrypt(str, random_iv=false, compress=false, type=:string)
-    raise "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data" unless @@cipher
+    raise(SymmetricEncryption::ConfigError, 'Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data') unless @@cipher
 
     # Encrypt and then encode the supplied string
     @@cipher.encrypt(coerce_to_string(str, type), random_iv, compress)
@@ -194,10 +194,10 @@ module SymmetricEncryption
   # WARNING: It is possible to decrypt data using the wrong key, so the value
   #          returned should not be relied upon
   def self.try_decrypt(str)
-    raise "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data" unless @@cipher
+    raise(SymmetricEncryption::ConfigError, 'Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data') unless @@cipher
     begin
       decrypt(str)
-    rescue OpenSSL::Cipher::CipherError
+    rescue OpenSSL::Cipher::CipherError, SymmetricEncryption::CipherError
       nil
     end
   end
@@ -210,7 +210,7 @@ module SymmetricEncryption
   #          symmetric encryption header. In some cases data decrypted using the
   #          wrong key will decrypt and return garbage
   def self.encrypted?(encrypted_data)
-    raise "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data" unless @@cipher
+    raise(SymmetricEncryption::ConfigError, 'Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data') unless @@cipher
 
     # For now have to decrypt it fully
     result = try_decrypt(encrypted_data)
@@ -276,7 +276,7 @@ module SymmetricEncryption
 
     # RSA key to decrypt key files
     private_rsa_key = config.delete('private_rsa_key')
-    raise "The configuration file must contain a 'private_rsa_key' parameter to generate symmetric keys" unless private_rsa_key
+    raise(SymmetricEncryption::ConfigError, "The configuration file must contain a 'private_rsa_key' parameter to generate symmetric keys") unless private_rsa_key
     rsa_key = OpenSSL::PKey::RSA.new(private_rsa_key)
 
     # Check if config file contains 1 or multiple ciphers
@@ -411,7 +411,7 @@ module SymmetricEncryption
 
     # Load Encrypted Symmetric keys
     if key_filename = config.delete(:key_filename)
-      raise "Missing mandatory config parameter :private_rsa_key when :key_filename is supplied" unless rsa
+      raise(SymmetricEncryption::ConfigError, "Missing mandatory config parameter :private_rsa_key when :key_filename is supplied") unless rsa
       encrypted_key = begin
         File.open(key_filename, 'rb'){|f| f.read}
       rescue Errno::ENOENT
@@ -423,7 +423,7 @@ module SymmetricEncryption
     end
 
     if iv_filename = config.delete(:iv_filename)
-      raise "Missing mandatory config parameter :private_rsa_key when :iv_filename is supplied" unless rsa
+      raise(SymmetricEncryption::ConfigError, "Missing mandatory config parameter :private_rsa_key when :iv_filename is supplied") unless rsa
       encrypted_iv = begin
         File.open(iv_filename, 'rb'){|f| f.read} if iv_filename
       rescue Errno::ENOENT
@@ -435,7 +435,7 @@ module SymmetricEncryption
     end
 
     if encrypted_key = config.delete(:encrypted_key)
-      raise "Missing mandatory config parameter :private_rsa_key when :encrypted_key is supplied" unless rsa
+      raise(SymmetricEncryption::ConfigError, "Missing mandatory config parameter :private_rsa_key when :encrypted_key is supplied") unless rsa
       # Decode value first using encoding specified
       encrypted_key = ::Base64.decode64(encrypted_key)
       if !encrypted_key || encrypted_key.empty?
@@ -447,7 +447,7 @@ module SymmetricEncryption
     end
 
     if encrypted_iv = config.delete(:encrypted_iv)
-      raise "Missing mandatory config parameter :private_rsa_key when :encrypted_iv is supplied" unless rsa
+      raise(SymmetricEncryption::ConfigError, "Missing mandatory config parameter :private_rsa_key when :encrypted_iv is supplied") unless rsa
       # Decode value first using encoding specified
       encrypted_iv = ::Base64.decode64(encrypted_iv)
       if !encrypted_key || encrypted_key.empty?
