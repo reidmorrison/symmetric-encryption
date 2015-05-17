@@ -7,7 +7,7 @@ whilst in flight and at rest. Amongst many other requirements all passwords
 in configuration files have to be encrypted.
 
 This Gem helps achieve compliance by supporting encryption of data in a simple
-and consistent way for Ruby and Roby on Rails projects.
+and consistent way for Ruby and Ruby on Rails projects.
 
 Symmetric Encryption uses OpenSSL to encrypt and decrypt data, and can therefore
 expose all the encryption algorithms supported by OpenSSL.
