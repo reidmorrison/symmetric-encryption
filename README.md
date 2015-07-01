@@ -1,4 +1,4 @@
-symmetric-encryption [![Build Status](https://secure.travis-ci.org/reidmorrison/symmetric-encryption.png?branch=master)](http://travis-ci.org/reidmorrison/symmetric-encryption)
+symmetric-encryption [![Build Status](https://secure.travis-ci.org/reidmorrison/symmetric-encryption.png?branch=master)](http://travis-ci.org/reidmorrison/symmetric-encryption) ![](http://ruby-gem-downloads-badge.herokuapp.com/symmetric-encryption?type=total)
 ====================
 
 * http://github.com/reidmorrison/symmetric-encryption
