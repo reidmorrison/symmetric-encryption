@@ -87,7 +87,7 @@ module SymmetricEncryption
         file = Zlib::GzipReader.new(file) if !file.eof? && (file.compressed? || compress)
         block ? block.call(file) : file
       ensure
-        file.close if block && file
+        file.close if block && file && (file.respond_to?(:closed?) && !file.closed?)
       end
     end
 
@@ -114,6 +114,7 @@ module SymmetricEncryption
       @buffer_size    = options.fetch(:buffer_size, 4096).to_i
       @version        = options[:version]
       @header_present = false
+      @closed         = false
 
       raise(ArgumentError, 'Buffer size cannot be smaller than 128') unless @buffer_size >= 128
 
@@ -153,7 +154,9 @@ module SymmetricEncryption
     # rather than creating an instance of Symmetric::EncryptedStream directly to
     # ensure that the encrypted stream is closed before the stream itself is closed
     def close(close_child_stream = true)
+      return if closed?
       @ios.close if close_child_stream
+      @closed = true
     end
 
     # Flush the read stream
@@ -353,6 +356,10 @@ module SymmetricEncryption
       buf = @ios.read(@buffer_size)
       @read_buffer << @stream_cipher.update(buf) if buf && buf.length > 0
       @read_buffer << @stream_cipher.final if @ios.eof?
+    end
+
+    def closed?
+      @closed || @ios.respond_to?(:closed?) && @ios.closed?
     end
 
   end

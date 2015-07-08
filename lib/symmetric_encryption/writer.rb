@@ -109,7 +109,7 @@ module SymmetricEncryption
         file = Zlib::GzipWriter.new(file) if compress
         block ? block.call(file) : file
       ensure
-        file.close if block && file
+        file.close if block && file && (file.respond_to?(:closed?) && !file.closed?)
       end
     end
 
@@ -152,6 +152,7 @@ module SymmetricEncryption
             cipher_name))
       end
       @size = 0
+      @closed = false
     end
 
     # Close the IO Stream
@@ -167,11 +168,13 @@ module SymmetricEncryption
     # rather than creating an instance of Symmetric::EncryptedStream directly to
     # ensure that the encrypted stream is closed before the stream itself is closed
     def close(close_child_stream = true)
+      return if closed?
       if size > 0
         final = @stream_cipher.final
         @ios.write(final) if final.length > 0
       end
       @ios.close if close_child_stream
+      @closed = true
     end
 
     # Write to the IO Stream as encrypted data
@@ -202,6 +205,10 @@ module SymmetricEncryption
     #  Needed by XLS gem
     def flush
       @ios.flush
+    end
+
+    def closed?
+      @closed || @ios.respond_to?(:closed?) && @ios.closed?
     end
 
     # Returns [Integer] the number of unencrypted and uncompressed bytes
