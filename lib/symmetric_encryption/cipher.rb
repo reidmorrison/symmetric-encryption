@@ -93,7 +93,7 @@ module SymmetricEncryption
       @always_add_header = params.delete(:always_add_header) || false
       @encoding          = (params.delete(:encoding) || :base64).to_sym
 
-      raise(ArgumentError, "Missing mandatory parameter :key") unless @key
+      raise(ArgumentError, 'Missing mandatory parameter :key') unless @key
       raise(ArgumentError, "Invalid Encoding: #{@encoding}") unless ENCODINGS.include?(@encoding)
       raise(ArgumentError, "Cipher version has a valid range of 0 to 255. #{@version} is too high, or negative") if (@version.to_i > 255) || (@version.to_i < 0)
       raise(ArgumentError, "SymmetricEncryption::Cipher Invalid options #{params.inspect}") if params.size > 0
@@ -277,17 +277,17 @@ module SymmetricEncryption
       #    Cipher name it UTF8 text
 
       # Remove header and extract flags
-      _, flags      = buffer.slice!(0..MAGIC_HEADER_SIZE+1).unpack(MAGIC_HEADER_UNPACK)
-      compressed    = (flags & 0b1000_0000_0000_0000) != 0
-      include_iv    = (flags & 0b0100_0000_0000_0000) != 0
-      include_key   = (flags & 0b0010_0000_0000_0000) != 0
-      include_cipher= (flags & 0b0001_0000_0000_0000) != 0
+      _, flags          = buffer.slice!(0..MAGIC_HEADER_SIZE+1).unpack(MAGIC_HEADER_UNPACK)
+      compressed        = (flags & 0b1000_0000_0000_0000) != 0
+      include_iv        = (flags & 0b0100_0000_0000_0000) != 0
+      include_key       = (flags & 0b0010_0000_0000_0000) != 0
+      include_cipher    = (flags & 0b0001_0000_0000_0000) != 0
       # Version of the key to use to decrypt the key if present,
       # otherwise to decrypt the data following the header
-      version       = flags & 0b0000_0000_1111_1111
+      version           = flags & 0b0000_0000_1111_1111
       decryption_cipher = SymmetricEncryption.cipher(version)
       raise(SymmetricEncryption::CipherError, "Cipher with version:#{version.inspect} not found in any of the configured SymmetricEncryption ciphers") unless decryption_cipher
-      iv, key, cipher_name   = nil
+      iv, key, cipher_name = nil
 
       if include_iv
         len = buffer.slice!(0..1).unpack('v').first
@@ -298,7 +298,7 @@ module SymmetricEncryption
         key = decryption_cipher.binary_decrypt(buffer.slice!(0..len-1), header=false)
       end
       if include_cipher
-        len    = buffer.slice!(0..1).unpack('v').first
+        len         = buffer.slice!(0..1).unpack('v').first
         cipher_name = buffer.slice!(0..len-1)
       end
 
@@ -330,14 +330,14 @@ module SymmetricEncryption
       # Ruby V2 named parameters would be perfect here
 
       # Version number of supplied encryption key, or use the global cipher version if none was supplied
-      flags = iv || key ? (SymmetricEncryption.cipher.version || 0) : (version || 0) # Same as 0b0000_0000_0000_0000
+      flags  = iv || key ? (SymmetricEncryption.cipher.version || 0) : (version || 0) # Same as 0b0000_0000_0000_0000
 
       # If the data is to be compressed before being encrypted, set the
       # compressed bit in the flags word
-      flags |= 0b1000_0000_0000_0000 if compressed
-      flags |= 0b0100_0000_0000_0000 if iv
-      flags |= 0b0010_0000_0000_0000 if key
-      flags |= 0b0001_0000_0000_0000 if cipher_name
+      flags  |= 0b1000_0000_0000_0000 if compressed
+      flags  |= 0b0100_0000_0000_0000 if iv
+      flags  |= 0b0010_0000_0000_0000 if key
+      flags  |= 0b0001_0000_0000_0000 if cipher_name
       header = "#{MAGIC_HEADER}#{[flags].pack('v')}".force_encoding(SymmetricEncryption::BINARY_ENCODING)
       if iv
         header << [iv.length].pack('v')
@@ -378,10 +378,10 @@ module SymmetricEncryption
       openssl_cipher = ::OpenSSL::Cipher.new(self.cipher_name)
       openssl_cipher.encrypt
       openssl_cipher.key = @key
-      add_header = always_add_header || random_iv || compress if add_header.nil?
-      result = if add_header
+      add_header         = always_add_header || random_iv || compress if add_header.nil?
+      result             = if add_header
         # Random iv and compress both add the magic header
-        iv = random_iv ? openssl_cipher.random_iv : @iv
+        iv                = random_iv ? openssl_cipher.random_iv : @iv
         openssl_cipher.iv = iv if iv
         # Set the binary indicator on the header if string is Binary Encoded
         self.class.build_header(version, compress, random_iv ? iv : nil, nil, nil) +
@@ -429,23 +429,23 @@ module SymmetricEncryption
       return str if str.empty?
 
       if header || self.class.has_header?(str)
-        str = str.dup
+        str    = str.dup
         header ||= self.class.parse_header!(str)
 
         openssl_cipher = ::OpenSSL::Cipher.new(header.cipher_name || self.cipher_name)
         openssl_cipher.decrypt
         openssl_cipher.key = header.key || @key
-        iv = header.iv || @iv
-        openssl_cipher.iv = iv if iv
-        result = openssl_cipher.update(str)
+        iv                 = header.iv || @iv
+        openssl_cipher.iv  = iv if iv
+        result             = openssl_cipher.update(str)
         result << openssl_cipher.final
         header.compressed ? Zlib::Inflate.inflate(result) : result
       else
         openssl_cipher = ::OpenSSL::Cipher.new(self.cipher_name)
         openssl_cipher.decrypt
         openssl_cipher.key = @key
-        openssl_cipher.iv = @iv if @iv
-        result = openssl_cipher.update(str)
+        openssl_cipher.iv  = @iv if @iv
+        result             = openssl_cipher.update(str)
         result << openssl_cipher.final
       end
     end

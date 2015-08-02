@@ -17,7 +17,7 @@ module SymmetricEncryption #:nodoc:
     config.symmetric_encryption = ::SymmetricEncryption
 
     rake_tasks do
-      load "symmetric_encryption/railties/symmetric_encryption.rake"
+      load 'symmetric_encryption/railties/symmetric_encryption.rake'
     end
 
     # Initialize Symmetry. This will look for a symmetry.yml in the config
@@ -35,7 +35,7 @@ module SymmetricEncryption #:nodoc:
     config.before_configuration do
       # Check if already configured
       unless ::SymmetricEncryption.cipher?
-        config_file = Rails.root.join("config", "symmetric-encryption.yml")
+        config_file = Rails.root.join('config', 'symmetric-encryption.yml')
         if config_file.file?
           ::SymmetricEncryption.load!(config_file, Rails.env)
         else

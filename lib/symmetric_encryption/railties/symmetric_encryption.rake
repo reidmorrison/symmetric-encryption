@@ -17,11 +17,11 @@ namespace :symmetric_encryption do
     password2 = 0
 
     while password1 != password2
-      password1 = HighLine.new.ask("Enter the value to encrypt:") { |q| q.echo = "*" }
-      password2 = HighLine.new.ask("Re-enter the value to encrypt:") { |q| q.echo = "*" }
+      password1 = HighLine.new.ask('Enter the value to encrypt:') { |q| q.echo = '*' }
+      password2 = HighLine.new.ask('Re-enter the value to encrypt:') { |q| q.echo = '*' }
 
       if (password1 != password2)
-        puts "Passwords do not match, please try again"
+        puts 'Passwords do not match, please try again'
       end
     end
     puts "\nEncrypted: #{SymmetricEncryption.encrypt(password1)}\n\n"
@@ -51,7 +51,7 @@ namespace :symmetric_encryption do
       end
       puts "\n#{output_filename} now contains the decrypted contents of #{input_filename}\n\n"
     else
-      puts "Missing input and/or output filename. Usage:"
+      puts 'Missing input and/or output filename. Usage:'
       puts '  INFILE="encrypted_filename" OUTFILE="filename" rake symmetric_encryption:decrypt_file'
     end
   end
@@ -74,9 +74,9 @@ namespace :symmetric_encryption do
       end
       puts "\n#{output_filename} now contains the encrypted #{"and compressed " if compress}contents of #{input_filename}\n\n"
     else
-      puts "Missing input and/or output filename. Usage:"
+      puts 'Missing input and/or output filename. Usage:'
       puts '  INFILE="filename" OUTFILE="encrypted_filename" rake symmetric_encryption:encrypt_file'
-      puts "To compress the file before encrypting:"
+      puts 'To compress the file before encrypting:'
       puts '  COMPRESS=1 INFILE="filename" OUTFILE="encrypted_filename" rake symmetric_encryption:encrypt_file'
     end
   end

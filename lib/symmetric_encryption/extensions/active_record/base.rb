@@ -41,7 +41,7 @@ module ActiveRecord #:nodoc:
         # Ignore failures since the table may not yet actually exist
         define_attribute_methods rescue nil
 
-        options   = params.last.is_a?(Hash) ? params.pop.dup : {}
+        options = params.last.is_a?(Hash) ? params.pop.dup : {}
 
         params.each do |attribute|
           SymmetricEncryption::Generator.generate_decrypted_accessors(self, attribute, "encrypted_#{attribute}", options)
@@ -129,7 +129,7 @@ module ActiveRecord #:nodoc:
           attribute_names.each_with_index do |attribute, index|
             encrypted_name = "encrypted_#{attribute}"
             if method_defined? encrypted_name.to_sym
-              args[index] = ::SymmetricEncryption.encrypt(args[index])
+              args[index]            = ::SymmetricEncryption.encrypt(args[index])
               attribute_names[index] = encrypted_name
             end
           end

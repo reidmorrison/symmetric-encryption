@@ -89,7 +89,7 @@
 # @return [ Field ] The generated field
 Mongoid::Fields.option :encrypted do |model, field, options|
   if options != false
-    options = options.is_a?(Hash) ? options.dup : {}
+    options              = options.is_a?(Hash) ? options.dup : {}
     encrypted_field_name = field.name
 
     # Support overriding the name of the decrypted attribute

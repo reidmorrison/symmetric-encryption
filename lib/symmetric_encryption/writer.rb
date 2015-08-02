@@ -100,9 +100,9 @@ module SymmetricEncryption
     #  end
     def self.open(filename_or_stream, options={}, &block)
       raise(ArgumentError, 'options must be a hash') unless options.respond_to?(:each_pair)
-      mode = options.fetch(:mode, 'wb')
+      mode     = options.fetch(:mode, 'wb')
       compress = options.fetch(:compress, false)
-      ios = filename_or_stream.is_a?(String) ? ::File.open(filename_or_stream, mode) : filename_or_stream
+      ios      = filename_or_stream.is_a?(String) ? ::File.open(filename_or_stream, mode) : filename_or_stream
 
       begin
         file = self.new(ios, options)
@@ -114,11 +114,11 @@ module SymmetricEncryption
     end
 
     # Encrypt data before writing to the supplied stream
-    def initialize(ios,options={})
-      @ios        = ios
-      header      = options.fetch(:header, true)
-      random_key  = options.fetch(:random_key, true)
-      random_iv   = options.fetch(:random_iv, random_key)
+    def initialize(ios, options={})
+      @ios       = ios
+      header     = options.fetch(:header, true)
+      random_key = options.fetch(:random_key, true)
+      random_iv  = options.fetch(:random_iv, random_key)
       raise(ArgumentError, 'When :random_key is true, :random_iv must also be true') if random_key && !random_iv
       # Compress is only used at this point for setting the flag in the header
       compress    = options.fetch(:compress, false)
@@ -137,21 +137,21 @@ module SymmetricEncryption
       @stream_cipher.encrypt
 
       key = random_key ? @stream_cipher.random_key : cipher.send(:key)
-      iv = random_iv ? @stream_cipher.random_iv : cipher.send(:iv)
+      iv  = random_iv ? @stream_cipher.random_iv : cipher.send(:iv)
 
       @stream_cipher.key = key
-      @stream_cipher.iv = iv if iv
+      @stream_cipher.iv  = iv if iv
 
       # Write the Encryption header including the random iv, key, and cipher
       if header
         @ios.write(Cipher.build_header(
             cipher.version,
             compress,
-            random_iv  ? iv : nil,
+            random_iv ? iv : nil,
             random_key ? key : nil,
             cipher_name))
       end
-      @size = 0
+      @size   = 0
       @closed = false
     end
 
@@ -182,8 +182,8 @@ module SymmetricEncryption
     def write(data)
       return unless data
 
-      bytes = data.to_s
-      @size += bytes.size
+      bytes   = data.to_s
+      @size   += bytes.size
       partial = @stream_cipher.update(bytes)
       @ios.write(partial) if partial.length > 0
       data.length
