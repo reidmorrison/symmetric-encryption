@@ -121,6 +121,8 @@ class ActiveRecordTest < Minitest::Test
       assert_equal true, @user.respond_to?(:data_yaml)
       assert_equal true, @user.respond_to?(:data_json)
       assert_equal false, @user.respond_to?(:encrypted_name)
+      assert_equal true, @user.respond_to?(:encrypted_bank_account_number_changed?)
+      assert_equal true, @user.respond_to?(:bank_account_number_changed?)
     end
 
     should 'have unencrypted values' do
@@ -470,7 +472,19 @@ class ActiveRecordTest < Minitest::Test
             assert_equal new_value, @user.data_yaml
           end
         end
+      end
 
+      context 'changed?' do
+        should 'return false if it was not changed' do
+          assert_equal false, @user.encrypted_bank_account_number_changed?
+          assert_equal false, @user.bank_account_number_changed?
+        end
+
+        should 'return true if it was changed' do
+          @user.bank_account_number = '15424623'
+          assert_equal true, @user.encrypted_bank_account_number_changed?
+          assert_equal true, @user.bank_account_number_changed?
+        end
       end
     end
   end

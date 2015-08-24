@@ -195,10 +195,35 @@ begin
         assert_equal @social_security_number_encrypted, user.encrypted_social_security_number
       end
 
+      context 'changed?' do
+        setup do
+          @user.save!
+        end
+
+        teardown do
+          @user.destroy if @user
+        end
+
+        should 'return false if it was not changed' do
+          assert_equal false, @user.encrypted_bank_account_number_changed?
+          assert_equal false, @user.bank_account_number_changed?
+        end
+
+        should 'return true if it was changed' do
+          @user.bank_account_number = '15424623'
+          assert_equal true, @user.encrypted_bank_account_number_changed?
+          assert_equal true, @user.bank_account_number_changed?
+        end
+      end
+
       context "data types" do
         setup do
           @user.save!
           @user_clone = MongoidUser.find(@user.id)
+        end
+
+        teardown do
+          @user.destroy if @user
         end
 
         context "aliased fields" do

@@ -40,6 +40,10 @@ module SymmetricEncryption
           @#{decrypted_name}
         end
 
+        # Map changes to encrypted value to unencrypted equivalent
+        def #{decrypted_name}_changed?
+          #{encrypted_name}_changed?
+        end
       EOS
     end
   end
