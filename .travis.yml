@@ -2,14 +2,12 @@ language: ruby
 bundler_args: --without development
 
 rvm:
+  - 1.9
   - 2.0
   - 2.2
   - jruby-1.7
-
-matrix:
-  allow_failures:
-    - rvm: jruby-1.7
-  fast_finish: true
+  - jruby-9.0.0.0
+  - rbx
 
 services:
   - mongodb
