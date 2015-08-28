@@ -4,8 +4,8 @@ require 'stringio'
 # Unit Test for Symmetric::EncryptedStream
 #
 class WriterTest < Minitest::Test
-  context SymmetricEncryption::Writer do
-    setup do
+  describe SymmetricEncryption::Writer do
+    before do
       @data = [
         "Hello World\n",
         "Keep this secret\n",
@@ -21,11 +21,11 @@ class WriterTest < Minitest::Test
       @filename = '._test'
     end
 
-    teardown do
+    after do
       File.delete(@filename) if File.exist?(@filename)
     end
 
-    should "encrypt to string stream" do
+    it "encrypt to string stream" do
       stream = StringIO.new
       file = SymmetricEncryption::Writer.new(stream, header: false, random_key: false, random_iv: false)
       written_len = @data.inject(0) {|sum,str| sum + file.write(str)}
@@ -38,7 +38,7 @@ class WriterTest < Minitest::Test
       assert_equal @data_encrypted, result
     end
 
-    should "encrypt to string stream using .open" do
+    it "encrypt to string stream using .open" do
       written_len = 0
       stream = StringIO.new
       SymmetricEncryption::Writer.open(stream) do |file|
@@ -48,7 +48,7 @@ class WriterTest < Minitest::Test
       assert_equal @data_len, written_len
     end
 
-    should "encrypt to file using .open" do
+    it "encrypt to file using .open" do
       written_len = nil
       SymmetricEncryption::Writer.open(@filename, header: false, random_key: false, random_iv: false) do |file|
         written_len = @data.inject(0) {|sum,str| sum + file.write(str)}

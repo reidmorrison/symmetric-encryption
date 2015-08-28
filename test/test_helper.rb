@@ -4,8 +4,6 @@ $LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
 require 'yaml'
 require 'minitest/autorun'
 require 'minitest/reporters'
-require 'minitest/stub_any_instance'
-require 'shoulda/context'
 require 'semantic_logger'
 # Since we want both the AR and Mongoid extensions loaded we need to require them first
 require 'active_record'

@@ -3,15 +3,15 @@ require_relative 'test_helper'
 # Unit Test for SymmetricEncryption
 #
 class SymmetricEncryptionTest < Minitest::Test
-  context 'SymmetricEncryption' do
+  describe 'SymmetricEncryption' do
 
-    context 'configuration' do
-      setup do
+    describe 'configuration' do
+      before do
         @ciphers = SymmetricEncryption.send(:read_config, File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
         @cipher_v2, @cipher_v1, @cipher_v0 = @ciphers
       end
 
-      should "match config file for first cipher" do
+      it "match config file for first cipher" do
         cipher = SymmetricEncryption.cipher
         assert @cipher_v2.send(:key)
         assert @cipher_v2.send(:iv)
@@ -21,7 +21,7 @@ class SymmetricEncryptionTest < Minitest::Test
         assert_equal false, SymmetricEncryption.secondary_ciphers.include?(cipher)
       end
 
-      should "match config file for v1 cipher" do
+      it "match config file for v1 cipher" do
         cipher = SymmetricEncryption.cipher(2)
         assert @cipher_v2.cipher_name
         assert @cipher_v2.version
@@ -30,7 +30,7 @@ class SymmetricEncryptionTest < Minitest::Test
         assert_equal false, SymmetricEncryption.secondary_ciphers.include?(cipher)
       end
 
-      should "match config file for v0 cipher" do
+      it "match config file for v0 cipher" do
         cipher = SymmetricEncryption.cipher(0)
         assert @cipher_v0.cipher_name
         assert @cipher_v0.version
@@ -41,8 +41,8 @@ class SymmetricEncryptionTest < Minitest::Test
     end
 
     SymmetricEncryption::Cipher::ENCODINGS.each do |encoding|
-      context "encoding: #{encoding}" do
-        setup do
+      describe "encoding: #{encoding}" do
+        before do
           @social_security_number = "987654321"
           @social_security_number_encrypted =
             case encoding
@@ -63,21 +63,21 @@ class SymmetricEncryptionTest < Minitest::Test
           SymmetricEncryption.cipher.encoding = encoding
         end
 
-        teardown do
+        after do
           SymmetricEncryption.cipher.encoding = @encoding
         end
 
-        should "encrypt simple string" do
+        it "encrypt simple string" do
           assert_equal @social_security_number_encrypted, SymmetricEncryption.encrypt(@social_security_number)
         end
 
-        should "decrypt string" do
+        it "decrypt string" do
           assert decrypted = SymmetricEncryption.decrypt(@social_security_number_encrypted)
           assert_equal @social_security_number, decrypted
           assert_equal Encoding.find('utf-8'), decrypted.encoding, decrypted
         end
 
-        should 'return BINARY encoding for non-UTF-8 encrypted data' do
+        it 'return BINARY encoding for non-UTF-8 encrypted data' do
           assert_equal Encoding.find('binary'), @non_utf8.encoding
           assert_equal true, @non_utf8.valid_encoding?
           assert encrypted = SymmetricEncryption.encrypt(@non_utf8)
@@ -87,31 +87,31 @@ class SymmetricEncryptionTest < Minitest::Test
           assert_equal @non_utf8, decrypted
         end
 
-        should "return nil when encrypting nil" do
+        it "return nil when encrypting nil" do
           assert_equal nil, SymmetricEncryption.encrypt(nil)
         end
 
-        should "return '' when encrypting ''" do
+        it "return '' when encrypting ''" do
           assert_equal '', SymmetricEncryption.encrypt('')
         end
 
-        should "return nil when decrypting nil" do
+        it "return nil when decrypting nil" do
           assert_equal nil, SymmetricEncryption.decrypt(nil)
         end
 
-        should "return '' when decrypting ''" do
+        it "return '' when decrypting ''" do
           assert_equal '', SymmetricEncryption.decrypt('')
         end
 
-        should "determine if string is encrypted" do
+        it "determine if string is encrypted" do
           assert_equal true, SymmetricEncryption.encrypted?(@social_security_number_encrypted)
           assert_equal false, SymmetricEncryption.encrypted?(@social_security_number)
         end
       end
     end
 
-    context "using select_cipher" do
-      setup do
+    describe "using select_cipher" do
+      before do
         @social_security_number = "987654321"
         # Encrypt data without a header and encode with base64 which has a trailing '\n'
         @encrypted_0_ssn = SymmetricEncryption.cipher(0).encode(SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number,false,false,false))
@@ -123,43 +123,43 @@ class SymmetricEncryptionTest < Minitest::Test
         end
       end
 
-      teardown do
+      after do
         # Clear out select_cipher
         SymmetricEncryption.select_cipher
       end
 
-      should "decrypt string without a header using an old cipher" do
+      it "decrypt string without a header using an old cipher" do
         assert_equal @social_security_number, SymmetricEncryption.decrypt(@encrypted_0_ssn)
       end
     end
 
-    context "without select_cipher" do
-      setup do
+    describe "without select_cipher" do
+      before do
         @social_security_number = "987654321"
         # Encrypt data without a header and encode with base64 which has a trailing '\n'
         assert @encrypted_0_ssn = SymmetricEncryption.cipher(0).encode(SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number,false,false,false))
       end
 
-      should "decrypt string without a header using an old cipher" do
+      it "decrypt string without a header using an old cipher" do
         assert_raises OpenSSL::Cipher::CipherError do
           SymmetricEncryption.decrypt(@encrypted_0_ssn)
         end
       end
     end
 
-    context "random iv" do
-      setup do
+    describe "random iv" do
+      before do
         @social_security_number = "987654321"
       end
 
-      should "encrypt and then decrypt using random iv" do
+      it "encrypt and then decrypt using random iv" do
         # Encrypt with random iv
         assert encrypted = SymmetricEncryption.encrypt(@social_security_number, random_iv=true)
         assert_equal true, SymmetricEncryption.encrypted?(encrypted)
         assert_equal @social_security_number, SymmetricEncryption.decrypt(encrypted)
       end
 
-      should "encrypt and then decrypt using random iv with compression" do
+      it "encrypt and then decrypt using random iv with compression" do
         # Encrypt with random iv and compress
         assert encrypted = SymmetricEncryption.encrypt(@social_security_number, random_iv=true, compress=true)
         assert_equal true, SymmetricEncryption.encrypted?(encrypted)
@@ -167,122 +167,122 @@ class SymmetricEncryptionTest < Minitest::Test
       end
     end
 
-    context "data types" do
-      context "string" do
-        setup do
+    describe "data types" do
+      describe "string" do
+        before do
           @social_security_number = "987654321"
         end
 
-        should "encrypt and decrypt value to and from a string" do
+        it "encrypt and decrypt value to and from a string" do
           assert encrypted = SymmetricEncryption.encrypt(@social_security_number, random_iv=false, compress=false, type=:string)
           assert_equal true, SymmetricEncryption.encrypted?(encrypted)
           assert_equal @social_security_number, SymmetricEncryption.decrypt(encrypted, version=nil, type=:string)
         end
       end
 
-      context "integer" do
-        setup do
+      describe "integer" do
+        before do
           @age = 21
         end
 
-        should "encrypt and decrypt value to and from an integer" do
+        it "encrypt and decrypt value to and from an integer" do
           assert encrypted = SymmetricEncryption.encrypt(@age, random_iv=false, compress=false, type=:integer)
           assert_equal true, SymmetricEncryption.encrypted?(encrypted)
           assert_equal @age, SymmetricEncryption.decrypt(encrypted, version=nil, type=:integer)
         end
       end
 
-      context "float" do
-        setup do
+      describe "float" do
+        before do
           @miles = 2.5
         end
 
-        should "encrypt and decrypt value to and from a float" do
+        it "encrypt and decrypt value to and from a float" do
           assert encrypted = SymmetricEncryption.encrypt(@miles, random_iv=false, compress=false, type=:float)
           assert_equal true, SymmetricEncryption.encrypted?(encrypted)
           assert_equal @miles, SymmetricEncryption.decrypt(encrypted, version=nil, type=:float)
         end
       end
 
-      context "decimal" do
-        setup do
+      describe "decimal" do
+        before do
           @account_balance = BigDecimal.new("12.58")
         end
 
-        should "encrypt and decrypt value to and from a BigDecimal" do
+        it "encrypt and decrypt value to and from a BigDecimal" do
           assert encrypted = SymmetricEncryption.encrypt(@account_balance, random_iv=false, compress=false, type=:decimal)
           assert_equal true, SymmetricEncryption.encrypted?(encrypted)
           assert_equal @account_balance, SymmetricEncryption.decrypt(encrypted, version=nil, type=:decimal)
         end
       end
 
-      context "datetime" do
-        setup do
+      describe "datetime" do
+        before do
           @checked_in_at = DateTime.new(2001, 11, 26, 20, 55, 54, "-5")
         end
 
-        should "encrypt and decrypt value to and from a DateTime" do
+        it "encrypt and decrypt value to and from a DateTime" do
           assert encrypted = SymmetricEncryption.encrypt(@checked_in_at, random_iv=false, compress=false, type=:datetime)
           assert_equal true, SymmetricEncryption.encrypted?(encrypted)
           assert_equal @checked_in_at, SymmetricEncryption.decrypt(encrypted, version=nil, type=:datetime)
         end
       end
 
-      context "time" do
-        setup do
+      describe "time" do
+        before do
           @closing_time = Time.new(2013, 01, 01, 22, 30, 00, "-04:00")
         end
 
-        should "encrypt and decrypt value to and from a Time" do
+        it "encrypt and decrypt value to and from a Time" do
           assert encrypted = SymmetricEncryption.encrypt(@closing_time, random_iv=false, compress=false, type=:time)
           assert_equal true, SymmetricEncryption.encrypted?(encrypted)
           assert_equal @closing_time, SymmetricEncryption.decrypt(encrypted, version=nil, type=:time)
         end
       end
 
-      context "date" do
-        setup do
+      describe "date" do
+        before do
           @birthdate = Date.new(1927, 04, 01)
         end
 
-        should "encrypt and decrypt value to and from a Date" do
+        it "encrypt and decrypt value to and from a Date" do
           assert encrypted = SymmetricEncryption.encrypt(@birthdate, random_iv=false, compress=false, type=:date)
           assert_equal true, SymmetricEncryption.encrypted?(encrypted)
           assert_equal @birthdate, SymmetricEncryption.decrypt(encrypted, version=nil, type=:date)
         end
       end
 
-      context "boolean" do
-        context "when true" do
-          setup do
+      describe "boolean" do
+        describe "when true" do
+          before do
             @is_working = true
           end
 
-          should "encrypt and decrypt a true value to and from a boolean" do
+          it "encrypt and decrypt a true value to and from a boolean" do
             assert encrypted = SymmetricEncryption.encrypt(@is_working, random_iv=false, compress=false, type=:boolean)
             assert_equal true, SymmetricEncryption.encrypted?(encrypted)
             assert_equal @is_working, SymmetricEncryption.decrypt(encrypted, version=nil, type=:boolean)
           end
         end
 
-        context "when false" do
-          setup do
+        describe "when false" do
+          before do
             @is_broken = false
           end
 
-          should "encrypt and decrypt a false value to and from a boolean" do
+          it "encrypt and decrypt a false value to and from a boolean" do
             assert encrypted = SymmetricEncryption.encrypt(@is_broken, random_iv=false, compress=false, type=:boolean)
             assert_equal true, SymmetricEncryption.encrypted?(encrypted)
             assert_equal @is_broken, SymmetricEncryption.decrypt(encrypted, version=nil, type=:boolean)
           end
         end
 
-        context "when yaml" do
-          setup do
+        describe "when yaml" do
+          before do
             @test = { :a => :b }
           end
 
-          should "encrypt and decrypt a false value to and from a boolean" do
+          it "encrypt and decrypt a false value to and from a boolean" do
             assert encrypted = SymmetricEncryption.encrypt(@test, random_iv=false, compress=false, type=:yaml)
             assert_equal true, SymmetricEncryption.encrypted?(encrypted)
             assert_equal @test, SymmetricEncryption.decrypt(encrypted, version=nil, type=:yaml)

@@ -4,8 +4,8 @@ require 'stringio'
 # Unit Test for SymmetricEncrypted::ReaderStream
 #
 class ReaderTest < Minitest::Test
-  context SymmetricEncryption::Reader do
-    setup do
+  describe SymmetricEncryption::Reader do
+    before do
       @data = [
         "Hello World\n",
         "Keep this secret\n",
@@ -33,19 +33,19 @@ class ReaderTest < Minitest::Test
     end
 
     [true, false].each do |header|
-      context header do
-        setup do
+      describe header do
+        before do
           @data_encrypted = header ? @data_encrypted_with_header : @data_encrypted_without_header
         end
 
-        should "#read()" do
+        it "#read()" do
           stream = StringIO.new(@data_encrypted)
           # Version 0 supplied if the file/stream does not have a header
           decrypted = SymmetricEncryption::Reader.open(stream, version: 0) {|file| file.read}
           assert_equal @data_str, decrypted
         end
 
-        should "#read(size) followed by #read()" do
+        it "#read(size) followed by #read()" do
           stream = StringIO.new(@data_encrypted)
           # Version 0 supplied if the file/stream does not have a header
           decrypted = SymmetricEncryption::Reader.open(stream, version: 0) do |file|
@@ -55,7 +55,7 @@ class ReaderTest < Minitest::Test
           assert_equal @data_str[10..-1], decrypted
         end
 
-        should "#each_line" do
+        it "#each_line" do
           stream = StringIO.new(@data_encrypted)
           i = 0
           # Version 0 supplied if the file/stream does not have a header
@@ -67,7 +67,7 @@ class ReaderTest < Minitest::Test
           end
         end
 
-        should "#read(size)" do
+        it "#read(size)" do
           stream = StringIO.new(@data_encrypted)
           i = 0
           # Version 0 supplied if the file/stream does not have a header
@@ -106,8 +106,8 @@ class ReaderTest < Minitest::Test
 
       [:data, :empty, :blank].each do |usecase|
 
-        context "read from #{usecase} file with options: #{options.inspect}" do
-          setup do
+        describe "read from #{usecase} file with options: #{options.inspect}" do
+          before do
             case usecase
             when :data
               # Create encrypted file
@@ -137,31 +137,31 @@ class ReaderTest < Minitest::Test
             @data_size = @data_str.length
           end
 
-          teardown do
+          after do
             File.delete(@filename) if File.exist?(@filename) && !@filename.end_with?('empty.csv')
           end
 
-          should ".empty?" do
+          it ".empty?" do
             assert_equal (@data_size==0), SymmetricEncryption::Reader.empty?(@filename)
             assert_raises Errno::ENOENT do
               SymmetricEncryption::Reader.empty?('missing_file')
             end
           end
 
-          should ".header_present?" do
+          it ".header_present?" do
             assert_equal @header, SymmetricEncryption::Reader.header_present?(@filename)
             assert_raises Errno::ENOENT do
               SymmetricEncryption::Reader.header_present?('missing_file')
             end
           end
 
-          should ".open return Zlib::GzipReader when compressed" do
+          it ".open return Zlib::GzipReader when compressed" do
             file = SymmetricEncryption::Reader.open(@filename)
             #assert_equal (@header && (options[:compress]||false)), file.is_a?(Zlib::GzipReader)
             file.close
           end
 
-          should "#read()" do
+          it "#read()" do
             data = nil
             eof = nil
             result = SymmetricEncryption::Reader.open(@filename) do |file|
@@ -173,7 +173,7 @@ class ReaderTest < Minitest::Test
             assert_equal @data_str, result
           end
 
-          should "#read(size)" do
+          it "#read(size)" do
             file = SymmetricEncryption::Reader.open(@filename)
             eof = file.eof?
             data = file.read(4096)
@@ -183,7 +183,7 @@ class ReaderTest < Minitest::Test
             assert_equal (@data_size > 0 ? @data_str : nil), data
           end
 
-          should "#each_line" do
+          it "#each_line" do
             decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
               i = 0
               file.each_line do |line|
@@ -193,7 +193,7 @@ class ReaderTest < Minitest::Test
             end
           end
 
-          should "#rewind" do
+          it "#rewind" do
             decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
               file.read
               file.rewind
@@ -202,7 +202,7 @@ class ReaderTest < Minitest::Test
             assert_equal @data_str, decrypted
           end
 
-          should "#gets(nil,size)" do
+          it "#gets(nil,size)" do
             file = SymmetricEncryption::Reader.open(@filename)
             eof = file.eof?
             data = file.gets(nil,4096)
@@ -222,7 +222,7 @@ class ReaderTest < Minitest::Test
             end
           end
 
-          should "#gets(delim)" do
+          it "#gets(delim)" do
             decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
               i = 0
               while line = file.gets("\n")
@@ -233,7 +233,7 @@ class ReaderTest < Minitest::Test
             end
           end
 
-          should "#gets(delim,size)" do
+          it "#gets(delim,size)" do
             decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
               i = 0
               while line = file.gets("\n",128)
@@ -247,8 +247,8 @@ class ReaderTest < Minitest::Test
       end
     end
 
-    context "reading from files with previous keys" do
-      setup do
+    describe "reading from files with previous keys" do
+      before do
         @filename = '_test'
         # Create encrypted file with old encryption key
         SymmetricEncryption::Writer.open(@filename, version: 0) do |file|
@@ -256,16 +256,16 @@ class ReaderTest < Minitest::Test
         end
       end
 
-      teardown do
+      after do
         File.delete(@filename) if File.exist?(@filename)
       end
 
-      should "decrypt from file in a single read" do
+      it "decrypt from file in a single read" do
         decrypted = SymmetricEncryption::Reader.open(@filename) {|file| file.read}
         assert_equal @data_str, decrypted
       end
 
-      should "decrypt from file a line at a time" do
+      it "decrypt from file a line at a time" do
         decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
           i = 0
           file.each_line do |line|
@@ -275,7 +275,7 @@ class ReaderTest < Minitest::Test
         end
       end
 
-      should "support rewind" do
+      it "support rewind" do
         decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
           file.read
           file.rewind
@@ -285,8 +285,8 @@ class ReaderTest < Minitest::Test
       end
     end
 
-    context "reading from files with previous keys without a header" do
-      setup do
+    describe "reading from files with previous keys without a header" do
+      before do
         @filename = '_test'
         # Create encrypted file with old encryption key
         SymmetricEncryption::Writer.open(@filename, version: 0, header: false, random_key: false) do |file|
@@ -294,7 +294,7 @@ class ReaderTest < Minitest::Test
         end
       end
 
-      teardown do
+      after do
         begin
           File.delete(@filename) if File.exist?(@filename)
         rescue Errno::EACCES
@@ -302,12 +302,12 @@ class ReaderTest < Minitest::Test
         end
       end
 
-      should "decrypt from file in a single read" do
+      it "decrypt from file in a single read" do
         decrypted = SymmetricEncryption::Reader.open(@filename, version: 0) {|file| file.read}
         assert_equal @data_str, decrypted
       end
 
-      should "decrypt from file in a single read with different version" do
+      it "decrypt from file in a single read with different version" do
         # Should fail since file was encrypted using version 0 key
         assert_raises OpenSSL::Cipher::CipherError do
           SymmetricEncryption::Reader.open(@filename, version: 2) {|file| file.read}

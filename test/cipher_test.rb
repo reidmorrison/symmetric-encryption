@@ -3,9 +3,9 @@ require_relative 'test_helper'
 # Unit Test for SymmetricEncryption::Cipher
 #
 class CipherTest < Minitest::Test
-  context 'standalone' do
+  describe 'standalone' do
 
-    should "allow setting the cipher_name" do
+    it "allow setting the cipher_name" do
       cipher = SymmetricEncryption::Cipher.new(
         cipher_name: 'aes-128-cbc',
         key:         '1234567890ABCDEF1234567890ABCDEF',
@@ -15,7 +15,7 @@ class CipherTest < Minitest::Test
       assert_equal 'aes-128-cbc', cipher.cipher_name
     end
 
-    should "not require an iv" do
+    it "not require an iv" do
       cipher = SymmetricEncryption::Cipher.new(
         key:      '1234567890ABCDEF1234567890ABCDEF',
         encoding: :none
@@ -29,7 +29,7 @@ class CipherTest < Minitest::Test
       assert_equal result, cipher.encrypt('Hello World')
     end
 
-    should "throw an exception on bad data" do
+    it "throw an exception on bad data" do
       cipher = SymmetricEncryption::Cipher.new(
         cipher_name: 'aes-128-cbc',
         key:         '1234567890ABCDEF1234567890ABCDEF',
@@ -45,8 +45,8 @@ class CipherTest < Minitest::Test
 
   [false, true].each do |always_add_header|
     SymmetricEncryption::Cipher::ENCODINGS.each do |encoding|
-      context "encoding: #{encoding} with#{'out' unless always_add_header} header" do
-        setup do
+      describe "encoding: #{encoding} with#{'out' unless always_add_header} header" do
+        before do
           @social_security_number = "987654321"
           @social_security_number_encrypted =
             case encoding
@@ -73,17 +73,17 @@ class CipherTest < Minitest::Test
           )
         end
 
-        should "encrypt simple string" do
+        it "encrypt simple string" do
           assert_equal @social_security_number_encrypted, @cipher.encrypt(@social_security_number)
         end
 
-        should "decrypt string" do
+        it "decrypt string" do
           assert decrypted = @cipher.decrypt(@social_security_number_encrypted)
           assert_equal @social_security_number, decrypted
           assert_equal Encoding.find('utf-8'), decrypted.encoding, decrypted
         end
 
-        should 'return BINARY encoding for non-UTF-8 encrypted data' do
+        it 'return BINARY encoding for non-UTF-8 encrypted data' do
           assert_equal Encoding.find('binary'), @non_utf8.encoding
           assert_equal true, @non_utf8.valid_encoding?
           assert encrypted = @cipher.encrypt(@non_utf8)
@@ -93,27 +93,27 @@ class CipherTest < Minitest::Test
           assert_equal @non_utf8, decrypted
         end
 
-        should "return nil when encrypting nil" do
+        it "return nil when encrypting nil" do
           assert_equal nil, @cipher.encrypt(nil)
         end
 
-        should "return '' when encrypting ''" do
+        it "return '' when encrypting ''" do
           assert_equal '', @cipher.encrypt('')
         end
 
-        should "return nil when decrypting nil" do
+        it "return nil when decrypting nil" do
           assert_equal nil, @cipher.decrypt(nil)
         end
 
-        should "return '' when decrypting ''" do
+        it "return '' when decrypting ''" do
           assert_equal '', @cipher.decrypt('')
         end
       end
     end
   end
 
-  context 'with configuration' do
-    setup do
+  describe 'with configuration' do
+    before do
       @cipher = SymmetricEncryption::Cipher.new(
         key:      '1234567890ABCDEF1234567890ABCDEF',
         iv:       '1234567890ABCDEF',
@@ -129,16 +129,16 @@ class CipherTest < Minitest::Test
       ]
     end
 
-    should "default to 'aes-256-cbc'" do
+    it "default to 'aes-256-cbc'" do
       assert_equal 'aes-256-cbc', @cipher.cipher_name
     end
 
-    context "with header" do
-      setup do
+    describe "with header" do
+      before do
         @social_security_number = "987654321"
       end
 
-      should "build and parse header" do
+      it "build and parse header" do
         assert random_key_pair = SymmetricEncryption::Cipher.random_key_pair('aes-128-cbc')
         assert binary_header = SymmetricEncryption::Cipher.build_header(SymmetricEncryption.cipher.version, compressed=true, random_key_pair[:iv], random_key_pair[:key], random_key_pair[:cipher_name])
         header = SymmetricEncryption::Cipher.parse_header!(binary_header)
@@ -154,17 +154,17 @@ class CipherTest < Minitest::Test
         assert_equal random_cipher.encrypt(string, false, false), cipher.encrypt(string, false, false), "Encrypted values differ"
       end
 
-      should "encrypt and then decrypt without a header" do
+      it "encrypt and then decrypt without a header" do
         assert encrypted = @cipher.binary_encrypt(@social_security_number,false,false,false)
         assert_equal @social_security_number, @cipher.decrypt(encrypted)
       end
 
-      should "encrypt and then decrypt using random iv" do
+      it "encrypt and then decrypt using random iv" do
         assert encrypted = @cipher.encrypt(@social_security_number, random_iv=true)
         assert_equal @social_security_number, @cipher.decrypt(encrypted)
       end
 
-      should "encrypt and then decrypt using random iv with compression" do
+      it "encrypt and then decrypt using random iv with compression" do
         assert encrypted = @cipher.encrypt(@social_security_number, random_iv=true, compress=true)
         assert_equal @social_security_number, @cipher.decrypt(encrypted)
       end

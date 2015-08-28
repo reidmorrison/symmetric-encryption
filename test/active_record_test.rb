@@ -69,7 +69,7 @@ User.establish_connection(cfg)
 # Unit Test for attr_encrypted extensions in ActiveRecord
 #
 class ActiveRecordTest < Minitest::Test
-  context 'ActiveRecord' do
+  describe 'ActiveRecord' do
     INTEGER_VALUE  = 12
     FLOAT_VALUE    = 88.12345
     DECIMAL_VALUE  = BigDecimal.new("22.51")
@@ -77,7 +77,7 @@ class ActiveRecordTest < Minitest::Test
     TIME_VALUE     = Time.new(2013, 01, 01, 22, 30, 00, "-04:00")
     DATE_VALUE     = Date.new(1927, 04, 02)
 
-    setup do
+    before do
       @bank_account_number = "1234567890"
       @bank_account_number_encrypted = "QEVuQwIAL94ArJeFlJrZp6SYsvoOGA=="
 
@@ -113,7 +113,7 @@ class ActiveRecordTest < Minitest::Test
       )
     end
 
-    should 'have encrypted methods' do
+    it 'have encrypted methods' do
       assert_equal true, @user.respond_to?(:encrypted_bank_account_number)
       assert_equal true, @user.respond_to?(:bank_account_number)
       assert_equal true, @user.respond_to?(:encrypted_social_security_number)
@@ -125,17 +125,17 @@ class ActiveRecordTest < Minitest::Test
       assert_equal true, @user.respond_to?(:bank_account_number_changed?)
     end
 
-    should 'have unencrypted values' do
+    it 'have unencrypted values' do
       assert_equal @bank_account_number, @user.bank_account_number
       assert_equal @social_security_number, @user.social_security_number
     end
 
-    should 'have encrypted values' do
+    it 'have encrypted values' do
       assert_equal @bank_account_number_encrypted, @user.encrypted_bank_account_number
       assert_equal @social_security_number_encrypted, @user.encrypted_social_security_number
     end
 
-    should 'support same iv' do
+    it 'support same iv' do
       @user.social_security_number = @social_security_number
       assert first_value = @user.social_security_number
       # Assign the same value
@@ -143,7 +143,7 @@ class ActiveRecordTest < Minitest::Test
       assert_equal first_value, @user.social_security_number
     end
 
-    should 'support a random iv' do
+    it 'support a random iv' do
       @user.string = @string
       assert first_value = @user.encrypted_string
       # Assign the same value
@@ -151,21 +151,21 @@ class ActiveRecordTest < Minitest::Test
       assert_equal true, first_value != @user.encrypted_string
     end
 
-    should 'support a random iv and compress' do
+    it 'support a random iv and compress' do
       @user.string = @long_string
       @user.long_string = @long_string
 
       assert_equal true, (@user.encrypted_long_string.length.to_f / @user.encrypted_string.length) < 0.8
     end
 
-    should 'encrypt' do
+    it 'encrypt' do
       user = User.new
       user.bank_account_number = @bank_account_number
       assert_equal @bank_account_number, user.bank_account_number
       assert_equal @bank_account_number_encrypted, user.encrypted_bank_account_number
     end
 
-    should 'allow lookups using unencrypted or encrypted column name' do
+    it 'allow lookups using unencrypted or encrypted column name' do
       if ActiveRecord::VERSION::STRING.to_f < 4.1
         @user.save!
 
@@ -177,19 +177,19 @@ class ActiveRecordTest < Minitest::Test
       end
     end
 
-    should 'all paths should lead to the same result' do
+    it 'all paths it lead to the same result' do
       assert_equal @bank_account_number_encrypted, (@user.encrypted_social_security_number = @bank_account_number_encrypted)
       assert_equal @bank_account_number, @user.social_security_number
       assert_equal @bank_account_number_encrypted, @user.encrypted_social_security_number
     end
 
-    should 'all paths should lead to the same result 2' do
+    it 'all paths it lead to the same result 2' do
       assert_equal @bank_account_number, (@user.social_security_number = @bank_account_number)
       assert_equal @bank_account_number_encrypted, @user.encrypted_social_security_number
       assert_equal @bank_account_number, @user.social_security_number
     end
 
-    should 'all paths should lead to the same result, check uninitialized' do
+    it 'all paths it lead to the same result, check uninitialized' do
       user = User.new
       assert_equal nil, user.social_security_number
       assert_equal @bank_account_number, (user.social_security_number = @bank_account_number)
@@ -201,7 +201,7 @@ class ActiveRecordTest < Minitest::Test
       assert_equal nil, user.encrypted_social_security_number
     end
 
-    should 'allow unencrypted values to be passed to the constructor' do
+    it 'allow unencrypted values to be passed to the constructor' do
       user = User.new(bank_account_number: @bank_account_number, social_security_number: @social_security_number)
       assert_equal @bank_account_number, user.bank_account_number
       assert_equal @social_security_number, user.social_security_number
@@ -209,13 +209,13 @@ class ActiveRecordTest < Minitest::Test
       assert_equal @social_security_number_encrypted, user.encrypted_social_security_number
     end
 
-    should 'return encrypted attributes for the class' do
+    it 'return encrypted attributes for the class' do
       expect = {social_security_number: :encrypted_social_security_number, bank_account_number: :encrypted_bank_account_number}
       result = User.encrypted_attributes
       expect.each_pair {|k,v| assert_equal expect[k], result[k]}
     end
 
-    should 'return encrypted keys for the class' do
+    it 'return encrypted keys for the class' do
       expect = [:social_security_number, :bank_account_number]
       result = User.encrypted_keys
       expect.each {|val| assert_equal true, result.include?(val)}
@@ -224,7 +224,7 @@ class ActiveRecordTest < Minitest::Test
       expect.each {|val| assert_equal true, User.encrypted_attribute?(val)}
     end
 
-    should 'return encrypted columns for the class' do
+    it 'return encrypted columns for the class' do
       expect = [:encrypted_social_security_number, :encrypted_bank_account_number]
       result = User.encrypted_columns
       expect.each {|val| assert_equal true, result.include?(val)}
@@ -233,7 +233,7 @@ class ActiveRecordTest < Minitest::Test
       expect.each {|val| assert_equal true, User.encrypted_column?(val)}
     end
 
-    should 'validate encrypted data' do
+    it 'validate encrypted data' do
       assert_equal true, @user.valid?
       @user.encrypted_bank_account_number = '123'
       assert_equal false, @user.valid?
@@ -244,7 +244,7 @@ class ActiveRecordTest < Minitest::Test
       assert_equal true, @user.valid?
     end
 
-    should 'validate un-encrypted string data' do
+    it 'validate un-encrypted string data' do
       assert_equal true, @user.valid?
       @user.text = '123'
       assert_equal false, @user.valid?
@@ -257,7 +257,7 @@ class ActiveRecordTest < Minitest::Test
       assert_equal ["only allows letters", "can't be blank"], @user.errors[:text]
     end
 
-    should 'validate un-encrypted integer data with coercion' do
+    it 'validate un-encrypted integer data with coercion' do
       assert_equal true, @user.valid?
       @user.number = '123'
       assert_equal true, @user.valid?
@@ -274,22 +274,22 @@ class ActiveRecordTest < Minitest::Test
       assert_equal ["can't be blank"], @user.errors[:number]
     end
 
-    context "with saved user" do
-      setup do
+    describe "with saved user" do
+      before do
         @user.save!
       end
 
-      teardown do
+      after do
         @user.destroy
       end
 
-      should "return correct data type before save" do
+      it "return correct data type before save" do
         u = User.new(integer_value: "5")
         assert_equal 5, u.integer_value
         assert u.integer_value.kind_of?(Integer)
       end
 
-      should "handle gsub! for non-encrypted_field" do
+      it "handle gsub! for non-encrypted_field" do
         @user.name.gsub!('a', 'v')
         new_name = @name.gsub('a', 'v')
         assert_equal new_name, @user.name
@@ -297,14 +297,14 @@ class ActiveRecordTest < Minitest::Test
         assert_equal new_name, @user.name
       end
 
-      should "prevent gsub! on non-encrypted value of encrypted_field" do
+      it "prevent gsub! on non-encrypted value of encrypted_field" do
         # can't modify frozen String
         assert_raises RuntimeError do
           @user.bank_account_number.gsub!('5', '4')
         end
       end
 
-      should "revert changes on reload" do
+      it "revert changes on reload" do
         new_bank_account_number = '444444444'
         @user.bank_account_number = new_bank_account_number
         assert_equal new_bank_account_number, @user.bank_account_number
@@ -315,7 +315,7 @@ class ActiveRecordTest < Minitest::Test
         assert_equal @bank_account_number, @user.bank_account_number
       end
 
-      should "revert changes to encrypted field on reload" do
+      it "revert changes to encrypted field on reload" do
         new_bank_account_number = '111111111'
         new_encrypted_bank_account_number = SymmetricEncryption.encrypt(new_bank_account_number)
         @user.encrypted_bank_account_number = new_encrypted_bank_account_number
@@ -328,8 +328,8 @@ class ActiveRecordTest < Minitest::Test
         assert_equal @bank_account_number, @user.bank_account_number
       end
 
-      context "data types" do
-        setup do
+      describe "data types" do
+        before do
           @user_clone = User.find(@user.id)
         end
 
@@ -343,8 +343,8 @@ class ActiveRecordTest < Minitest::Test
           { attribute: :true_value,     klass: TrueClass,  value: true,           new_value: false },
           { attribute: :false_value,    klass: FalseClass, value: false,          new_value: true },
         ].each do |value_test|
-          context "#{value_test[:klass]} values" do
-            setup do
+          describe "#{value_test[:klass]} values" do
+            before do
               @attribute = value_test[:attribute]
               @klass     = value_test[:klass]
               @value     = value_test[:value]
@@ -352,18 +352,18 @@ class ActiveRecordTest < Minitest::Test
               @new_value = value_test[:new_value]
             end
 
-            should "return correct data type" do
+            it "return correct data type" do
               assert_equal @value, @user_clone.send(@attribute)
               assert @user.clone.send(@attribute).kind_of?(@klass)
             end
 
-            should "coerce data type before save" do
+            it "coerce data type before save" do
               u = User.new(@attribute => @value)
               assert_equal @value, u.send(@attribute)
               assert u.send(@attribute).kind_of?(@klass), "Value supposed to be coerced into #{@klass}, but is #{u.send(@attribute).class.name}"
             end
 
-            should "permit replacing value with nil" do
+            it "permit replacing value with nil" do
               @user_clone.send("#{@attribute}=".to_sym, nil)
               @user_clone.save!
 
@@ -372,7 +372,7 @@ class ActiveRecordTest < Minitest::Test
               assert_nil @user.send("encrypted_#{@attribute}".to_sym)
             end
 
-            should "permit replacing value with an empty string" do
+            it "permit replacing value with an empty string" do
               @user_clone.send("#{@attribute}=".to_sym, '')
               @user_clone.save!
 
@@ -381,7 +381,7 @@ class ActiveRecordTest < Minitest::Test
               assert_nil @user.send("encrypted_#{@attribute}".to_sym)
             end
 
-            should "permit replacing value with a blank string" do
+            it "permit replacing value with a blank string" do
               @user_clone.send("#{@attribute}=".to_sym, '    ')
               @user_clone.save!
 
@@ -390,7 +390,7 @@ class ActiveRecordTest < Minitest::Test
               assert_nil @user.send("encrypted_#{@attribute}".to_sym)
             end
 
-            should "permit replacing value" do
+            it "permit replacing value" do
               @user_clone.send("#{@attribute}=".to_sym, @new_value)
               @user_clone.save!
 
@@ -400,8 +400,8 @@ class ActiveRecordTest < Minitest::Test
           end
         end
 
-        context "JSON Serialization" do
-          setup do
+        describe "JSON Serialization" do
+          before do
             # JSON Does not support symbols, so they will come back as strings
             # Convert symbols to string in the test
             @h.keys.each do |k|
@@ -410,18 +410,18 @@ class ActiveRecordTest < Minitest::Test
             end
           end
 
-          should "return correct data type" do
+          it "return correct data type" do
             assert_equal @h, @user_clone.data_json
             assert @user.clone.data_json.kind_of?(Hash)
           end
 
-          should "not coerce data type (leaves as hash) before save" do
+          it "not coerce data type (leaves as hash) before save" do
             u = User.new(data_json: @h)
             assert_equal @h, u.data_json
             assert u.data_json.kind_of?(Hash)
           end
 
-          should "permit replacing value with nil" do
+          it "permit replacing value with nil" do
             @user_clone.data_json = nil
             @user_clone.save!
 
@@ -430,7 +430,7 @@ class ActiveRecordTest < Minitest::Test
             assert_nil @user.encrypted_data_json
           end
 
-          should "permit replacing value" do
+          it "permit replacing value" do
             new_value = @h.clone
             new_value['c'] = 'C'
             @user_clone.data_json = new_value
@@ -441,19 +441,19 @@ class ActiveRecordTest < Minitest::Test
           end
         end
 
-        context "YAML Serialization" do
-          should "return correct data type" do
+        describe "YAML Serialization" do
+          it "return correct data type" do
             assert_equal @h, @user_clone.data_yaml
             assert @user.clone.data_yaml.kind_of?(Hash)
           end
 
-          should "not coerce data type (leaves as hash) before save" do
+          it "not coerce data type (leaves as hash) before save" do
             u = User.new(data_yaml: @h)
             assert_equal @h, u.data_yaml
             assert u.data_yaml.kind_of?(Hash)
           end
 
-          should "permit replacing value with nil" do
+          it "permit replacing value with nil" do
             @user_clone.data_yaml = nil
             @user_clone.save!
 
@@ -462,7 +462,7 @@ class ActiveRecordTest < Minitest::Test
             assert_nil @user.encrypted_data_yaml
           end
 
-          should "permit replacing value" do
+          it "permit replacing value" do
             new_value = @h.clone
             new_value[:c] = 'C'
             @user_clone.data_yaml = new_value
@@ -474,13 +474,13 @@ class ActiveRecordTest < Minitest::Test
         end
       end
 
-      context 'changed?' do
-        should 'return false if it was not changed' do
+      describe 'changed?' do
+        it 'return false if it was not changed' do
           assert_equal false, @user.encrypted_bank_account_number_changed?
           assert_equal false, @user.bank_account_number_changed?
         end
 
-        should 'return true if it was changed' do
+        it 'return true if it was changed' do
           @user.bank_account_number = '15424623'
           assert_equal true, @user.encrypted_bank_account_number_changed?
           assert_equal true, @user.bank_account_number_changed?
