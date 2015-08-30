@@ -8,6 +8,7 @@ require 'semantic_logger'
 # Since we want both the AR and Mongoid extensions loaded we need to require them first
 require 'active_record'
 require 'symmetric-encryption'
+require 'awesome_print'
 
 Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new
 

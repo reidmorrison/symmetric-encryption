@@ -10,7 +10,7 @@
 #  Mongoid.load!('config/mongoid.yml')
 #
 #  # Initialize SymmetricEncryption in a standalone environment. In a Rails app this is not required
-#  SymmetricEncryption.load!('config/symmetric-encryption.yml', 'test')
+#  SymmetricEncryption::Config.load!('config/symmetric-encryption.yml', 'test')
 #
 #  class Person
 #    include Mongoid::Document

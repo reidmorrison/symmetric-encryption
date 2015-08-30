@@ -37,7 +37,7 @@ module SymmetricEncryption #:nodoc:
       unless ::SymmetricEncryption.cipher?
         config_file = Rails.root.join('config', 'symmetric-encryption.yml')
         if config_file.file?
-          ::SymmetricEncryption.load!(config_file, Rails.env)
+          ::SymmetricEncryption::Config.load!(config_file, Rails.env)
         else
           puts "\nSymmetric Encryption config not found."
           puts "To generate one for the first time: rails generate symmetric_encryption:config\n\n"

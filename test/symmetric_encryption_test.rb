@@ -7,11 +7,12 @@ class SymmetricEncryptionTest < Minitest::Test
 
     describe 'configuration' do
       before do
-        @ciphers = SymmetricEncryption.send(:read_config, File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
+        config = SymmetricEncryption::Config.read_config(File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
+        @ciphers = SymmetricEncryption::Config.extract_ciphers(config)
         @cipher_v2, @cipher_v1, @cipher_v0 = @ciphers
       end
 
-      it "match config file for first cipher" do
+      it 'matches config file for first cipher' do
         cipher = SymmetricEncryption.cipher
         assert @cipher_v2.send(:key)
         assert @cipher_v2.send(:iv)
@@ -21,7 +22,7 @@ class SymmetricEncryptionTest < Minitest::Test
         assert_equal false, SymmetricEncryption.secondary_ciphers.include?(cipher)
       end
 
-      it "match config file for v1 cipher" do
+      it 'match config file for v1 cipher' do
         cipher = SymmetricEncryption.cipher(2)
         assert @cipher_v2.cipher_name
         assert @cipher_v2.version
@@ -30,7 +31,7 @@ class SymmetricEncryptionTest < Minitest::Test
         assert_equal false, SymmetricEncryption.secondary_ciphers.include?(cipher)
       end
 
-      it "match config file for v0 cipher" do
+      it 'match config file for v0 cipher' do
         cipher = SymmetricEncryption.cipher(0)
         assert @cipher_v0.cipher_name
         assert @cipher_v0.version
@@ -43,15 +44,15 @@ class SymmetricEncryptionTest < Minitest::Test
     SymmetricEncryption::Cipher::ENCODINGS.each do |encoding|
       describe "encoding: #{encoding}" do
         before do
-          @social_security_number = "987654321"
+          @social_security_number = '987654321'
           @social_security_number_encrypted =
             case encoding
           when :base64
             "QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA==\n"
           when :base64strict
-            "QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA=="
+            'QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA=='
           when :base16
-            "40456e4302004bef17d4d46ba9d7c4210c851d53ee54"
+            '40456e4302004bef17d4d46ba9d7c4210c851d53ee54'
           when :none
             "@EnC\x02\x00K\xEF\x17\xD4\xD4k\xA9\xD7\xC4!\f\x85\x1DS\xEET".force_encoding(Encoding.find("binary"))
           else

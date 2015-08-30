@@ -1,5 +1,4 @@
-symmetric-encryption [![Build Status](https://secure.travis-ci.org/reidmorrison/symmetric-encryption.png?branch=master)](http://travis-ci.org/reidmorrison/symmetric-encryption) ![](http://ruby-gem-downloads-badge.herokuapp.com/symmetric-encryption?type=total)
-====================
+# symmetric-encryption [![Build Status](https://secure.travis-ci.org/reidmorrison/symmetric-encryption.png?branch=master)](http://travis-ci.org/reidmorrison/symmetric-encryption) ![](http://ruby-gem-downloads-badge.herokuapp.com/symmetric-encryption?type=total)
 
 * http://github.com/reidmorrison/symmetric-encryption
 
@@ -18,6 +17,14 @@ expose all the encryption algorithms supported by OpenSSL.
 ## Documentation
 
 For complete documentation see: http://reidmorrison.github.io/symmetric-encryption/
+
+## Dependencies
+
+Symmetric Encryption works with the following Ruby interpreters:
+
+* Ruby 1.9.3, 2.0, 2.1, 2.2, or greater
+* Or, JRuby 1.7, 9.0.0, or greater
+* Or, Rubinius 2.5, or greater
 
 ## New features in V1.1 and V2
 
@@ -83,46 +90,20 @@ may have backward compatibility issues:
 * New config options :encrypted_key and :encrypted_iv to support setting
   the encryption key in environment variables
 
-Meta
-----
-
-* Code: `git clone git://github.com/reidmorrison/symmetric-encryption.git`
-* Home: <https://github.com/reidmorrison/symmetric-encryption>
-* Issues: <http://github.com/reidmorrison/symmetric-encryption/issues>
-* Gems: <http://rubygems.org/gems/symmetric-encryption>
+## Versioning
 
 This project uses [Semantic Versioning](http://semver.org/).
 
-Author
-------
+## Author
 
 [Reid Morrison](https://github.com/reidmorrison)
 
-Contributors
-------------
+## Contributors
 
 * [M. Scott Ford](https://github.com/mscottford)
 * [Adam St. John](https://github.com/astjohn)
 
-License
--------
-
-Copyright 2012, 2013, 2014, 2015 Reid Morrison
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-Disclaimer
-----------
+## Disclaimer
 
 Although this library has assisted in meeting PCI Compliance and has passed
 previous PCI audits, it in no way guarantees that PCI Compliance will be

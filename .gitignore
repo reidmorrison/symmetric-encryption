@@ -1,8 +1,6 @@
 .DS_Store
 *.gem
 .idea/*
-Gemfile.lock
-test.rb
 *.sqlite3
 .bundle
 *.log

@@ -9,6 +9,8 @@ require 'symmetric_encryption/symmetric_encryption'
 require 'symmetric_encryption/exception'
 
 module SymmetricEncryption
+  autoload :Coerce,    'symmetric_encryption/coerce'
+  autoload :Config,    'symmetric_encryption/config'
   autoload :Reader,    'symmetric_encryption/reader'
   autoload :Writer,    'symmetric_encryption/writer'
   autoload :Generator, 'symmetric_encryption/generator'

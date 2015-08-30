@@ -125,13 +125,11 @@ module SymmetricEncryption
         c.binary_decrypt(decoded)
       end
 
-    if defined?(Encoding)
-      # Try to force result to UTF-8 encoding, but if it is not valid, force it back to Binary
-      unless decrypted.force_encoding(SymmetricEncryption::UTF8_ENCODING).valid_encoding?
-        decrypted.force_encoding(SymmetricEncryption::BINARY_ENCODING)
-      end
+    # Try to force result to UTF-8 encoding, but if it is not valid, force it back to Binary
+    unless decrypted.force_encoding(SymmetricEncryption::UTF8_ENCODING).valid_encoding?
+      decrypted.force_encoding(SymmetricEncryption::BINARY_ENCODING)
     end
-    coerce_from_string(decrypted, type)
+    Coerce.coerce_from_string(decrypted, type)
   end
 
   # AES Symmetric Encryption of supplied string
@@ -180,7 +178,7 @@ module SymmetricEncryption
     raise(SymmetricEncryption::ConfigError, 'Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data') unless @@cipher
 
     # Encrypt and then encode the supplied string
-    @@cipher.encrypt(coerce_to_string(str, type), random_iv, compress)
+    @@cipher.encrypt(Coerce.coerce_to_string(str, type), random_iv, compress)
   end
 
   # Invokes decrypt
@@ -256,10 +254,7 @@ module SymmetricEncryption
   #    Which environments config to load. Usually: production, development, etc.
   #    Default: Rails.env
   def self.load!(filename=nil, environment=nil)
-    ciphers             = read_config(filename, environment)
-    @@cipher            = ciphers.shift
-    @@secondary_ciphers = ciphers
-    true
+    Config.load!(filename, environment)
   end
 
   # Generate new random symmetric keys for use with this Encryption library
@@ -272,48 +267,11 @@ module SymmetricEncryption
   #
   # Existing key files will be renamed if present
   def self.generate_symmetric_key_files(filename=nil, environment=nil)
-    config_filename = filename || File.join(Rails.root, 'config', 'symmetric-encryption.yml')
-    config          = YAML.load(ERB.new(File.new(config_filename).read).result)[environment || Rails.env]
+    config        = Config.read_config(filename, environment)
 
-    # RSA key to decrypt key files
-    private_rsa_key = config.delete('private_rsa_key')
-    raise(SymmetricEncryption::ConfigError, "The configuration file must contain a 'private_rsa_key' parameter to generate symmetric keys") unless private_rsa_key
-    rsa_key    = OpenSSL::PKey::RSA.new(private_rsa_key)
-
-    # Check if config file contains 1 or multiple ciphers
-    ciphers    = config.delete('ciphers')
-    cfg        = ciphers.nil? ? config : ciphers.first
-
-    # Convert keys to symbols
-    cipher_cfg = {}
-    cfg.each_pair { |k, v| cipher_cfg[k.to_sym] = v }
-
-    cipher_name = cipher_cfg[:cipher_name] || cipher_cfg[:cipher]
-
-    # Generate a new Symmetric Key pair
-    iv_filename = cipher_cfg[:iv_filename]
-    key_pair    = SymmetricEncryption::Cipher.random_key_pair(cipher_name || 'aes-256-cbc')
-
-    if key_filename = cipher_cfg[:key_filename]
-      # Save symmetric key after encrypting it with the private RSA key, backing up existing files if present
-      File.rename(key_filename, "#{key_filename}.#{Time.now.to_i}") if File.exist?(key_filename)
-      File.open(key_filename, 'wb') { |file| file.write(rsa_key.public_encrypt(key_pair[:key])) }
-      puts("Generated new Symmetric Key for encryption. Please copy #{key_filename} to the other web servers in #{environment}.")
-    elsif !cipher_cfg[:key]
-      key = rsa_key.public_encrypt(key_pair[:key])
-      puts "Generated new Symmetric Key for encryption. Set the KEY environment variable in #{environment} to:"
-      puts ::Base64.encode64(key)
-    end
-
-    if iv_filename
-      File.rename(iv_filename, "#{iv_filename}.#{Time.now.to_i}") if File.exist?(iv_filename)
-      File.open(iv_filename, 'wb') { |file| file.write(rsa_key.public_encrypt(key_pair[:iv])) }
-      puts("Generated new Symmetric Key for encryption. Please copy #{iv_filename} to the other web servers in #{environment}.")
-    elsif !cipher_cfg[:iv]
-      iv = rsa_key.public_encrypt(key_pair[:iv])
-      puts "Generated new Symmetric Key for encryption. Set the IV environment variable in #{environment} to:"
-      puts ::Base64.encode64(iv)
-    end
+    # Only regenerating the first configured cipher
+    cipher_config = config[:ciphers].first
+    Cipher.generate_random_keys({environment: environment, private_rsa_key: config[:private_rsa_key]}.merge(cipher_config))
   end
 
   # Generate a 22 character random password
@@ -329,220 +287,6 @@ module SymmetricEncryption
     MAGIC_HEADER_UNPACK = "a#{MAGIC_HEADER_SIZE}v"
   end
 
-  protected
-
-  # Returns [Array(SymmetricEncrytion::Cipher)] ciphers specified in the configuration file
-  #
-  # Read the configuration from the YAML file and return in the latest format
-  #
-  #  filename:
-  #    Name of file to read.
-  #        Mandatory for non-Rails apps
-  #        Default: Rails.root/config/symmetric-encryption.yml
-  #  environment:
-  #    Which environments config to load. Usually: production, development, etc.
-  def self.read_config(filename=nil, environment=nil)
-    config_filename = filename || File.join(Rails.root, 'config', 'symmetric-encryption.yml')
-    config          = YAML.load(ERB.new(File.new(config_filename).read).result)[environment || Rails.env]
-
-    # RSA key to decrypt key files
-    private_rsa_key = config.delete('private_rsa_key')
-
-    if ciphers = config.delete('ciphers')
-      ciphers.collect { |cipher_conf| cipher_from_config(cipher_conf, private_rsa_key) }
-    else
-      [cipher_from_config(config, private_rsa_key)]
-    end
-  end
-
-  # Returns an instance of SymmetricEncryption::Cipher created from
-  # the supplied configuration and optional rsa_encryption_key
-  #
-  # Raises an Exception on failure
-  #
-  # Parameters:
-  #   cipher_conf Hash:
-  #     :cipher_name
-  #       Encryption cipher name for the symmetric encryption key
-  #
-  #     :version
-  #       The version number of this cipher
-  #       Default: 0
-  #
-  #     :encoding [Symbol]
-  #       Encoding to use after encrypting with this cipher
-  #
-  #     :always_add_header
-  #       Whether to always include the header when encrypting data.
-  #       Highly recommended to set this value to true.
-  #       Increases the length of the encrypted data by 6 bytes, but makes
-  #       migration to a new key trivial
-  #       Default: false
-  #
-  #     :key
-  #       The actual key to use for encryption/decryption purposes
-  #
-  #     :key_filename
-  #       Name of file containing symmetric key encrypted using the public
-  #       key from the private_rsa_key
-  #
-  #     :encrypted_key
-  #       Symmetric key encrypted using the public key from the private_rsa_key
-  #       and then Base64 encoded
-  #
-  #     :iv
-  #       Optional: The actual iv to use for encryption/decryption purposes
-  #
-  #     :encrypted_iv
-  #       Initialization vector encrypted using the public key from the private_rsa_key
-  #       and then Base64 encoded
-  #
-  #     :iv_filename
-  #       Optional: Name of file containing symmetric key initialization vector
-  #       encrypted using the public key from the private_rsa_key
-  #
-  #   private_rsa_key [String]
-  #     RSA Key used to decrypt key and iv as applicable
-  def self.cipher_from_config(cipher_conf, private_rsa_key=nil)
-    config = {}
-    cipher_conf.each_pair { |k, v| config[k.to_sym] = v }
-
-    # To decrypt encrypted key or iv files
-    rsa = OpenSSL::PKey::RSA.new(private_rsa_key) if private_rsa_key
-
-    # Load Encrypted Symmetric keys
-    if key_filename = config.delete(:key_filename)
-      raise(SymmetricEncryption::ConfigError, 'Missing mandatory config parameter :private_rsa_key when :key_filename is supplied') unless rsa
-      encrypted_key = begin
-        File.open(key_filename, 'rb') { |f| f.read }
-      rescue Errno::ENOENT
-        puts "\nSymmetric Encryption key file: '#{key_filename}' not found or readable."
-        puts "To generate the keys for the first time run: rails generate symmetric_encryption:new_keys\n\n"
-        return
-      end
-      config[:key]  = rsa.private_decrypt(encrypted_key)
-    end
-
-    if iv_filename = config.delete(:iv_filename)
-      raise(SymmetricEncryption::ConfigError, 'Missing mandatory config parameter :private_rsa_key when :iv_filename is supplied') unless rsa
-      encrypted_iv = begin
-        File.open(iv_filename, 'rb') { |f| f.read } if iv_filename
-      rescue Errno::ENOENT
-        puts "\nSymmetric Encryption initialization vector file: '#{iv_filename}' not found or readable."
-        puts "To generate the keys for the first time run: rails generate symmetric_encryption:new_keys\n\n"
-        return
-      end
-      config[:iv]  = rsa.private_decrypt(encrypted_iv)
-    end
-
-    if encrypted_key = config.delete(:encrypted_key)
-      raise(SymmetricEncryption::ConfigError, 'Missing mandatory config parameter :private_rsa_key when :encrypted_key is supplied') unless rsa
-      # Decode value first using encoding specified
-      encrypted_key = ::Base64.decode64(encrypted_key)
-      if !encrypted_key || encrypted_key.empty?
-        puts "\nSymmetric Encryption encrypted_key not found."
-        puts "To generate the keys for the first time run: rails generate symmetric_encryption:new_keys\n\n"
-        return
-      end
-      config[:key] = rsa.private_decrypt(encrypted_key)
-    end
-
-    if encrypted_iv = config.delete(:encrypted_iv)
-      raise(SymmetricEncryption::ConfigError, 'Missing mandatory config parameter :private_rsa_key when :encrypted_iv is supplied') unless rsa
-      # Decode value first using encoding specified
-      encrypted_iv = ::Base64.decode64(encrypted_iv)
-      if !encrypted_key || encrypted_key.empty?
-        puts "\nSymmetric Encryption encrypted_iv not found."
-        puts "To generate the keys for the first time run: rails generate symmetric_encryption:new_keys\n\n"
-        return
-      end
-      config[:iv] = rsa.private_decrypt(encrypted_iv)
-    end
-
-    # Backward compatibility
-    if old_key_name_cipher = config.delete(:cipher)
-      config[:cipher_name] = old_key_name_cipher
-    end
-
-    # Decrypt Symmetric Keys
-    Cipher.new(config)
-  end
-
-  # Coerce given value into given type
-  # Does not coerce json or yaml values
-  def self.coerce(value, type, from_type=nil)
-    return if value.nil? || (value.is_a?(String) && (value !~ /[^[:space:]]/))
-
-    from_type ||= value.class
-    case type
-    when :json
-      value
-    when :yaml
-      value
-    else
-      coercer = Coercible::Coercer.new
-      coercer[from_type].send("to_#{type}".to_sym, value)
-    end
-  end
-
-  # Uses coercible gem to coerce values from strings into the target type
-  # Note: if the type is :string, then the value is returned as is, and the
-  #   coercible gem is not used at all.
-  def self.coerce_from_string(value, type)
-    return if value.nil?
-    case type
-    when :string
-      value
-    when :json
-      JSON.load(value)
-    when :yaml
-      YAML.load(value)
-    else
-      self.coerce(value, type, String)
-    end
-  end
-
-  # Uses coercible gem to coerce values to strings from the specified type
-  # Note: if the type is :string, and value is not nil, then #to_s is called
-  #   on the value and the coercible gem is not used at all.
-  def self.coerce_to_string(value, type)
-    return if value.nil?
-
-    case type
-    when :string
-      value.to_s
-    when :json
-      value.to_json
-    when :yaml
-      value.to_yaml
-    else
-      self.coerce(value, :string, coercion_type(type, value))
-    end
-  end
-
-  # Returns the correct coercion type to use for the specified symbol and value
-  def self.coercion_type(symbol, value)
-    if symbol == :boolean
-      value.class
-    else
-      COERCION_TYPE_MAP[symbol]
-    end
-  end
-
-  COERCION_TYPE_MAP = {
-    string:   String,
-    integer:  Integer,
-    float:    Float,
-    decimal:  BigDecimal,
-    datetime: DateTime,
-    time:     Time,
-    date:     Date
-  }
-
-  # With Ruby 1.9 strings have encodings
-  if defined?(Encoding)
-    BINARY_ENCODING = Encoding.find('binary')
-    UTF8_ENCODING   = Encoding.find('UTF-8')
-  end
-
+  BINARY_ENCODING = Encoding.find('binary')
+  UTF8_ENCODING   = Encoding.find('UTF-8')
 end
