@@ -28,7 +28,7 @@ module SymmetricEncryption
 
     # Returns [ private_rsa_key, ciphers ] config
     def self.extract_config(config)
-      config = symbolize_keys(config)
+      config = deep_symbolize_keys(config)
 
       # Old format?
       unless config.has_key?(:ciphers)
@@ -40,7 +40,6 @@ module SymmetricEncryption
 
       # Old format cipher name?
       config[:ciphers] = config[:ciphers].collect do |cipher|
-        cipher = symbolize_keys(cipher)
         if old_key_name_cipher = cipher.delete(:cipher)
           cipher[:cipher_name] = old_key_name_cipher
         end
@@ -69,18 +68,21 @@ module SymmetricEncryption
     end
 
     # Iterate through the Hash symbolizing all keys
-    def self.symbolize_keys(hash)
-      h = {}
-      hash.keys.each do |key|
-        val           = hash[key]
-        h[key.to_sym] =
-          if val.respond_to?(:keys)
-            deep_symbolize_keys(val)
-          else
-            h[key.to_sym] = val
-          end
+    def self.deep_symbolize_keys(x)
+      case x
+      when Hash
+        result = {}
+        x.each_pair do |key, value|
+          key         = key.to_sym if key.is_a?(String)
+          result[key] = deep_symbolize_keys(value)
+        end
+        result
+      when Array
+        x.collect { |i| deep_symbolize_keys(i) }
+      else
+        x
       end
-      h
     end
+
   end
 end

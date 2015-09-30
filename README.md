@@ -2,14 +2,16 @@
 
 * http://github.com/reidmorrison/symmetric-encryption
 
+Transparently encrypt ActiveRecord, Mongoid, and MongoMapper attributes. Encrypt passwords in configuration files. Encrypt entire files at rest.
+
 ## Introduction
 
 Any project that wants to meet PCI compliance has to ensure that the data is encrypted
 whilst in flight and at rest. Amongst many other other requirements all passwords
-in configuration files have to be encrypted
+in configuration files have to be encrypted.
 
-This Gem helps achieve compliance by supporting encryption of data in a simple
-and consistent way
+Symmetric Encryption helps achieve compliance by supporting encryption of data in a simple
+and consistent way.
 
 Symmetric Encryption uses OpenSSL to encrypt and decrypt data, and can therefore
 expose all the encryption algorithms supported by OpenSSL.
@@ -23,8 +25,8 @@ For complete documentation see: http://reidmorrison.github.io/symmetric-encrypti
 Symmetric Encryption works with the following Ruby interpreters:
 
 * Ruby 1.9.3, 2.0, 2.1, 2.2, or greater
-* Or, JRuby 1.7, 9.0.0, or greater
-* Or, Rubinius 2.5, or greater
+* JRuby 1.7, 9.0.0, or greater
+* Rubinius 2.5, or greater
 
 ## New features in V1.1 and V2
 
