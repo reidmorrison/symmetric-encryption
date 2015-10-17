@@ -1,8 +1,8 @@
 PATH
   remote: .
   specs:
-    symmetric-encryption (3.7.2)
-      coercible (>= 1.0.0)
+    symmetric-encryption (3.8.0)
+      coercible (~> 1.0)
 
 GEM
   remote: https://rubygems.org/
