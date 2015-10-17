@@ -7,8 +7,8 @@ class SymmetricEncryptionTest < Minitest::Test
 
     describe 'configuration' do
       before do
-        config = SymmetricEncryption::Config.read_config(File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
-        @ciphers = SymmetricEncryption::Config.extract_ciphers(config)
+        config                             = SymmetricEncryption::Config.read_config(File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
+        @ciphers                           = SymmetricEncryption::Config.extract_ciphers(config)
         @cipher_v2, @cipher_v1, @cipher_v0 = @ciphers
       end
 
@@ -44,24 +44,24 @@ class SymmetricEncryptionTest < Minitest::Test
     SymmetricEncryption::Cipher::ENCODINGS.each do |encoding|
       describe "encoding: #{encoding}" do
         before do
-          @social_security_number = '987654321'
-          @social_security_number_encrypted =
+          @social_security_number                            = '987654321'
+          @social_security_number_encrypted                  =
             case encoding
-          when :base64
-            "QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA==\n"
-          when :base64strict
-            'QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA=='
-          when :base16
-            '40456e4302004bef17d4d46ba9d7c4210c851d53ee54'
-          when :none
-            "@EnC\x02\x00K\xEF\x17\xD4\xD4k\xA9\xD7\xC4!\f\x85\x1DS\xEET".force_encoding(Encoding.find("binary"))
-          else
-            raise "Add test for encoding: #{encoding}"
-          end
+            when :base64
+              "QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA==\n"
+            when :base64strict
+              'QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA=='
+            when :base16
+              '40456e4302004bef17d4d46ba9d7c4210c851d53ee54'
+            when :none
+              "@EnC\x02\x00K\xEF\x17\xD4\xD4k\xA9\xD7\xC4!\f\x85\x1DS\xEET".force_encoding(Encoding.find("binary"))
+            else
+              raise "Add test for encoding: #{encoding}"
+            end
           @social_security_number_encrypted_with_secondary_1 = "D1UCu38pqJ3jc0GvwJHiow==\n"
-          @non_utf8 = "\xc2".force_encoding('binary')
-          @encoding = SymmetricEncryption.cipher.encoding
-          SymmetricEncryption.cipher.encoding = encoding
+          @non_utf8                                          = "\xc2".force_encoding('binary')
+          @encoding                                          = SymmetricEncryption.cipher.encoding
+          SymmetricEncryption.cipher.encoding                = encoding
         end
 
         after do
@@ -115,7 +115,7 @@ class SymmetricEncryptionTest < Minitest::Test
       before do
         @social_security_number = "987654321"
         # Encrypt data without a header and encode with base64 which has a trailing '\n'
-        @encrypted_0_ssn = SymmetricEncryption.cipher(0).encode(SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number,false,false,false))
+        @encrypted_0_ssn        = SymmetricEncryption.cipher(0).encode(SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number, false, false, false))
 
         SymmetricEncryption.select_cipher do |encoded_str, decoded_str|
           # Use cipher version 0 if the encoded string ends with "\n" otherwise
@@ -138,7 +138,7 @@ class SymmetricEncryptionTest < Minitest::Test
       before do
         @social_security_number = "987654321"
         # Encrypt data without a header and encode with base64 which has a trailing '\n'
-        assert @encrypted_0_ssn = SymmetricEncryption.cipher(0).encode(SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number,false,false,false))
+        assert @encrypted_0_ssn = SymmetricEncryption.cipher(0).encode(SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number, false, false, false))
       end
 
       it "decrypt string without a header using an old cipher" do
@@ -280,7 +280,7 @@ class SymmetricEncryptionTest < Minitest::Test
 
         describe "when yaml" do
           before do
-            @test = { :a => :b }
+            @test = {:a => :b}
           end
 
           it "encrypt and decrypt a false value to and from a boolean" do

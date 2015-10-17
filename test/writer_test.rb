@@ -6,19 +6,19 @@ require 'stringio'
 class WriterTest < Minitest::Test
   describe SymmetricEncryption::Writer do
     before do
-      @data = [
+      @data                    = [
         "Hello World\n",
         "Keep this secret\n",
         "And keep going even further and further..."
       ]
-      @data_str = @data.inject('') {|sum,str| sum << str}
-      @data_len = @data_str.length
-      cipher = SymmetricEncryption.cipher
-      before = cipher.always_add_header
+      @data_str                = @data.inject('') { |sum, str| sum << str }
+      @data_len                = @data_str.length
+      cipher                   = SymmetricEncryption.cipher
+      before                   = cipher.always_add_header
       cipher.always_add_header = false
-      @data_encrypted = SymmetricEncryption.cipher.binary_encrypt(@data_str, false, false)
+      @data_encrypted          = SymmetricEncryption.cipher.binary_encrypt(@data_str, false, false)
       cipher.always_add_header = before
-      @filename = '._test'
+      @filename                = '._test'
     end
 
     after do
@@ -26,9 +26,9 @@ class WriterTest < Minitest::Test
     end
 
     it "encrypt to string stream" do
-      stream = StringIO.new
-      file = SymmetricEncryption::Writer.new(stream, header: false, random_key: false, random_iv: false)
-      written_len = @data.inject(0) {|sum,str| sum + file.write(str)}
+      stream      = StringIO.new
+      file        = SymmetricEncryption::Writer.new(stream, header: false, random_key: false, random_iv: false)
+      written_len = @data.inject(0) { |sum, str| sum + file.write(str) }
       assert_equal @data_len, file.size
       file.close
 
@@ -40,9 +40,9 @@ class WriterTest < Minitest::Test
 
     it "encrypt to string stream using .open" do
       written_len = 0
-      stream = StringIO.new
+      stream      = StringIO.new
       SymmetricEncryption::Writer.open(stream) do |file|
-        written_len = @data.inject(0) {|sum,str| sum + file.write(str)}
+        written_len = @data.inject(0) { |sum, str| sum + file.write(str) }
         assert_equal @data_len, file.size
       end
       assert_equal @data_len, written_len
@@ -51,11 +51,11 @@ class WriterTest < Minitest::Test
     it "encrypt to file using .open" do
       written_len = nil
       SymmetricEncryption::Writer.open(@filename, header: false, random_key: false, random_iv: false) do |file|
-        written_len = @data.inject(0) {|sum,str| sum + file.write(str)}
+        written_len = @data.inject(0) { |sum, str| sum + file.write(str) }
         assert_equal @data_len, file.size
       end
       assert_equal @data_len, written_len
-      assert_equal @data_encrypted, File.open(@filename, 'rb') {|f| f.read }
+      assert_equal @data_encrypted, File.open(@filename, 'rb') { |f| f.read }
     end
   end
 end

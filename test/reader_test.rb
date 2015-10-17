@@ -6,15 +6,15 @@ require 'stringio'
 class ReaderTest < Minitest::Test
   describe SymmetricEncryption::Reader do
     before do
-      @data = [
+      @data                          = [
         "Hello World\n",
         "Keep this secret\n",
         "And keep going even further and further..."
       ]
-      @data_str = @data.inject('') {|sum,str| sum << str}
-      @data_len = @data_str.length
+      @data_str                      = @data.inject('') { |sum, str| sum << str }
+      @data_len                      = @data_str.length
       # Use Cipher 0 since it does not always include a header
-      @cipher = SymmetricEncryption.cipher(0)
+      @cipher                        = SymmetricEncryption.cipher(0)
       @data_encrypted_without_header = @cipher.binary_encrypt(@data_str)
 
       @data_encrypted_with_header = SymmetricEncryption::Cipher.build_header(
@@ -39,14 +39,14 @@ class ReaderTest < Minitest::Test
         end
 
         it "#read()" do
-          stream = StringIO.new(@data_encrypted)
+          stream    = StringIO.new(@data_encrypted)
           # Version 0 supplied if the file/stream does not have a header
-          decrypted = SymmetricEncryption::Reader.open(stream, version: 0) {|file| file.read}
+          decrypted = SymmetricEncryption::Reader.open(stream, version: 0) { |file| file.read }
           assert_equal @data_str, decrypted
         end
 
         it "#read(size) followed by #read()" do
-          stream = StringIO.new(@data_encrypted)
+          stream    = StringIO.new(@data_encrypted)
           # Version 0 supplied if the file/stream does not have a header
           decrypted = SymmetricEncryption::Reader.open(stream, version: 0) do |file|
             file.read(10)
@@ -56,8 +56,8 @@ class ReaderTest < Minitest::Test
         end
 
         it "#each_line" do
-          stream = StringIO.new(@data_encrypted)
-          i = 0
+          stream    = StringIO.new(@data_encrypted)
+          i         = 0
           # Version 0 supplied if the file/stream does not have a header
           decrypted = SymmetricEncryption::Reader.open(stream, version: 0) do |file|
             file.each_line do |line|
@@ -68,12 +68,12 @@ class ReaderTest < Minitest::Test
         end
 
         it "#read(size)" do
-          stream = StringIO.new(@data_encrypted)
-          i = 0
+          stream    = StringIO.new(@data_encrypted)
+          i         = 0
           # Version 0 supplied if the file/stream does not have a header
           decrypted = SymmetricEncryption::Reader.open(stream, version: 0) do |file|
             index = 0
-            [0,10,5,5000].each do |size|
+            [0, 10, 5, 5000].each do |size|
               buf = file.read(size)
               if size == 0
                 assert_equal '', buf
@@ -111,25 +111,25 @@ class ReaderTest < Minitest::Test
             case usecase
             when :data
               # Create encrypted file
-              @eof = false
+              @eof      = false
               @filename = '_test'
-              @header = (options[:header] != false)
+              @header   = (options[:header] != false)
               SymmetricEncryption::Writer.open(@filename, options) do |file|
-                @data.inject(0) {|sum,str| sum + file.write(str)}
+                @data.inject(0) { |sum, str| sum + file.write(str) }
               end
             when :empty
               @data_str = ''
-              @eof = true
+              @eof      = true
               @filename = '_test_empty'
-              @header = (options[:header] != false)
+              @header   = (options[:header] != false)
               SymmetricEncryption::Writer.open(@filename, options) do |file|
                 # Leave data portion empty
               end
             when :blank
               @data_str = ''
-              @eof = true
+              @eof      = true
               @filename = File.join(File.dirname(__FILE__), 'config/empty.csv')
-              @header = false
+              @header   = false
               assert_equal 0, File.size(@filename)
             else
               raise "Unhandled usecase: #{usecase}"
@@ -162,10 +162,10 @@ class ReaderTest < Minitest::Test
           end
 
           it "#read()" do
-            data = nil
-            eof = nil
+            data   = nil
+            eof    = nil
             result = SymmetricEncryption::Reader.open(@filename) do |file|
-              eof = file.eof?
+              eof  = file.eof?
               data = file.read
             end
             assert_equal @eof, eof
@@ -175,7 +175,7 @@ class ReaderTest < Minitest::Test
 
           it "#read(size)" do
             file = SymmetricEncryption::Reader.open(@filename)
-            eof = file.eof?
+            eof  = file.eof?
             data = file.read(4096)
             file.close
 
@@ -204,8 +204,8 @@ class ReaderTest < Minitest::Test
 
           it "#gets(nil,size)" do
             file = SymmetricEncryption::Reader.open(@filename)
-            eof = file.eof?
-            data = file.gets(nil,4096)
+            eof  = file.eof?
+            data = file.gets(nil, 4096)
             file.close
 
             assert_equal @eof, eof
@@ -236,7 +236,7 @@ class ReaderTest < Minitest::Test
           it "#gets(delim,size)" do
             decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
               i = 0
-              while line = file.gets("\n",128)
+              while line = file.gets("\n", 128)
                 i += 1
               end
               assert_equal (@data_size > 0 ? 3 : 0), i
@@ -252,7 +252,7 @@ class ReaderTest < Minitest::Test
         @filename = '_test'
         # Create encrypted file with old encryption key
         SymmetricEncryption::Writer.open(@filename, version: 0) do |file|
-          @data.inject(0) {|sum,str| sum + file.write(str)}
+          @data.inject(0) { |sum, str| sum + file.write(str) }
         end
       end
 
@@ -261,7 +261,7 @@ class ReaderTest < Minitest::Test
       end
 
       it "decrypt from file in a single read" do
-        decrypted = SymmetricEncryption::Reader.open(@filename) {|file| file.read}
+        decrypted = SymmetricEncryption::Reader.open(@filename) { |file| file.read }
         assert_equal @data_str, decrypted
       end
 
@@ -290,7 +290,7 @@ class ReaderTest < Minitest::Test
         @filename = '_test'
         # Create encrypted file with old encryption key
         SymmetricEncryption::Writer.open(@filename, version: 0, header: false, random_key: false) do |file|
-          @data.inject(0) {|sum,str| sum + file.write(str)}
+          @data.inject(0) { |sum, str| sum + file.write(str) }
         end
       end
 
@@ -303,14 +303,14 @@ class ReaderTest < Minitest::Test
       end
 
       it "decrypt from file in a single read" do
-        decrypted = SymmetricEncryption::Reader.open(@filename, version: 0) {|file| file.read}
+        decrypted = SymmetricEncryption::Reader.open(@filename, version: 0) { |file| file.read }
         assert_equal @data_str, decrypted
       end
 
       it "decrypt from file in a single read with different version" do
         # Should fail since file was encrypted using version 0 key
         assert_raises OpenSSL::Cipher::CipherError do
-          SymmetricEncryption::Reader.open(@filename, version: 2) {|file| file.read}
+          SymmetricEncryption::Reader.open(@filename, version: 2) { |file| file.read }
         end
       end
     end

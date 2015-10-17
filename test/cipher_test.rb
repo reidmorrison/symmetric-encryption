@@ -47,24 +47,24 @@ class CipherTest < Minitest::Test
     SymmetricEncryption::Cipher::ENCODINGS.each do |encoding|
       describe "encoding: #{encoding} with#{'out' unless always_add_header} header" do
         before do
-          @social_security_number = "987654321"
-          @social_security_number_encrypted =
+          @social_security_number                            = "987654321"
+          @social_security_number_encrypted                  =
             case encoding
-          when :base64
-            always_add_header ? "QEVuQwAAyTeLjsHTa8ykoO95K0KQmg==\n" : "yTeLjsHTa8ykoO95K0KQmg==\n"
-          when :base64strict
-            always_add_header ? "QEVuQwAAyTeLjsHTa8ykoO95K0KQmg==" : "yTeLjsHTa8ykoO95K0KQmg=="
-          when :base16
-            always_add_header ? "40456e430000c9378b8ec1d36bcca4a0ef792b42909a" : "c9378b8ec1d36bcca4a0ef792b42909a"
-          when :none
-            bin = always_add_header ? "@EnC\x00\x00\xC97\x8B\x8E\xC1\xD3k\xCC\xA4\xA0\xEFy+B\x90\x9A" : "\xC97\x8B\x8E\xC1\xD3k\xCC\xA4\xA0\xEFy+B\x90\x9A"
-            bin.force_encoding(Encoding.find("binary"))
-          else
-            raise "Add test for encoding: #{encoding}"
-          end
+            when :base64
+              always_add_header ? "QEVuQwAAyTeLjsHTa8ykoO95K0KQmg==\n" : "yTeLjsHTa8ykoO95K0KQmg==\n"
+            when :base64strict
+              always_add_header ? "QEVuQwAAyTeLjsHTa8ykoO95K0KQmg==" : "yTeLjsHTa8ykoO95K0KQmg=="
+            when :base16
+              always_add_header ? "40456e430000c9378b8ec1d36bcca4a0ef792b42909a" : "c9378b8ec1d36bcca4a0ef792b42909a"
+            when :none
+              bin = always_add_header ? "@EnC\x00\x00\xC97\x8B\x8E\xC1\xD3k\xCC\xA4\xA0\xEFy+B\x90\x9A" : "\xC97\x8B\x8E\xC1\xD3k\xCC\xA4\xA0\xEFy+B\x90\x9A"
+              bin.force_encoding(Encoding.find("binary"))
+            else
+              raise "Add test for encoding: #{encoding}"
+            end
           @social_security_number_encrypted_with_secondary_1 = "D1UCu38pqJ3jc0GvwJHiow==\n"
-          @non_utf8 = "\xc2".force_encoding('binary')
-          @cipher = SymmetricEncryption::Cipher.new(
+          @non_utf8                                          = "\xc2".force_encoding('binary')
+          @cipher                                            = SymmetricEncryption::Cipher.new(
             key:               'ABCDEF1234567890ABCDEF1234567890',
             iv:                'ABCDEF1234567890',
             cipher_name:       'aes-128-cbc',
@@ -114,7 +114,7 @@ class CipherTest < Minitest::Test
 
   describe 'with configuration' do
     before do
-      @cipher = SymmetricEncryption::Cipher.new(
+      @cipher                 = SymmetricEncryption::Cipher.new(
         key:      '1234567890ABCDEF1234567890ABCDEF',
         iv:       '1234567890ABCDEF',
         encoding: :none
@@ -125,7 +125,7 @@ class CipherTest < Minitest::Test
       @social_security_number_encrypted.force_encoding('binary') if defined?(Encoding)
 
       @sample_data = [
-        { text: '555052345', encrypted: ''}
+        {text: '555052345', encrypted: ''}
       ]
     end
 
@@ -155,7 +155,7 @@ class CipherTest < Minitest::Test
       end
 
       it "encrypt and then decrypt without a header" do
-        assert encrypted = @cipher.binary_encrypt(@social_security_number,false,false,false)
+        assert encrypted = @cipher.binary_encrypt(@social_security_number, false, false, false)
         assert_equal @social_security_number, @cipher.decrypt(encrypted)
       end
 
