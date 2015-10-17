@@ -1,9 +1,10 @@
 require_relative 'test_helper'
 
-ActiveRecord::Base.logger = SemanticLogger[ActiveRecord]
+ActiveRecord::Base.logger         = SemanticLogger[ActiveRecord]
 ActiveRecord::Base.configurations = YAML::load(ERB.new(IO.read('test/config/database.yml')).result)
 ActiveRecord::Base.establish_connection(:test)
 
+#@formatter:off
 ActiveRecord::Schema.define version: 0 do
   create_table :users, force: true do |t|
     t.string :encrypted_bank_account_number
@@ -26,6 +27,11 @@ ActiveRecord::Schema.define version: 0 do
 
     t.string :encrypted_text
     t.string :encrypted_number
+  end
+
+  create_table :unique_users, force: true do |t|
+    t.string :encrypted_email
+    t.string :encrypted_username
   end
 end
 
@@ -52,13 +58,27 @@ class User < ActiveRecord::Base
   attr_encrypted :text,           type: :string
   attr_encrypted :number,         type: :integer
 
-  validates      :text, format: { with: /\A[a-zA-Z ]+\z/, message: "only allows letters" }, presence: true
+  validates      :text, format: { with: /\A[a-zA-Z ]+\z/, message: 'only allows letters' }, presence: true
   validates      :number, presence: true
 end
 
+class UniqueUser < ActiveRecord::Base
+  attr_encrypted :email
+  attr_encrypted :username
+
+  validates_uniqueness_of :encrypted_email,    allow_blank: true, if: :encrypted_email_changed?
+  validates_uniqueness_of :encrypted_username, allow_blank: true, if: :encrypted_username_changed?
+
+  validates :username,
+    length:      {in: 3..20},
+    format:      {with: /\A[\w\d\-[[:alnum:]]]+\z/},
+    allow_blank: true
+end
+#@formatter:on
+
 # Initialize the database connection
 config_file = File.join(File.dirname(__FILE__), 'config', 'database.yml')
-raise "database config not found. Create a config file at: test/config/database.yml" unless File.exists? config_file
+raise 'database config not found. Create a config file at: test/config/database.yml' unless File.exists? config_file
 
 cfg = YAML.load(ERB.new(File.new(config_file).read).result)['test']
 raise("Environment 'test' not defined in test/config/database.yml") unless cfg
@@ -78,18 +98,18 @@ class ActiveRecordTest < Minitest::Test
     DATE_VALUE     = Date.new(1927, 04, 02)
 
     before do
-      @bank_account_number = "1234567890"
-      @bank_account_number_encrypted = "QEVuQwIAL94ArJeFlJrZp6SYsvoOGA=="
+      @bank_account_number           = '1234567890'
+      @bank_account_number_encrypted = 'QEVuQwIAL94ArJeFlJrZp6SYsvoOGA=='
 
-      @social_security_number = "987654321"
-      @social_security_number_encrypted = "QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA=="
+      @social_security_number           = '987654321'
+      @social_security_number_encrypted = 'QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA=='
 
-      @string = "A string containing some data to be encrypted with a random initialization vector"
-      @long_string = "A string containing some data to be encrypted with a random initialization vector and compressed since it takes up so much space in plain text form"
+      @string      = 'A string containing some data to be encrypted with a random initialization vector'
+      @long_string = 'A string containing some data to be encrypted with a random initialization vector and compressed since it takes up so much space in plain text form'
 
       @name = 'Joe Bloggs'
 
-      @h = { a: 'A', b: 'B' }
+      @h = {a: 'A', b: 'B'}
 
       @user = User.new(
         # Encrypted Attribute
@@ -152,14 +172,14 @@ class ActiveRecordTest < Minitest::Test
     end
 
     it 'support a random iv and compress' do
-      @user.string = @long_string
+      @user.string      = @long_string
       @user.long_string = @long_string
 
       assert_equal true, (@user.encrypted_long_string.length.to_f / @user.encrypted_string.length) < 0.8
     end
 
     it 'encrypt' do
-      user = User.new
+      user                     = User.new
       user.bank_account_number = @bank_account_number
       assert_equal @bank_account_number, user.bank_account_number
       assert_equal @bank_account_number_encrypted, user.encrypted_bank_account_number
@@ -212,25 +232,25 @@ class ActiveRecordTest < Minitest::Test
     it 'return encrypted attributes for the class' do
       expect = {social_security_number: :encrypted_social_security_number, bank_account_number: :encrypted_bank_account_number}
       result = User.encrypted_attributes
-      expect.each_pair {|k,v| assert_equal expect[k], result[k]}
+      expect.each_pair { |k, v| assert_equal expect[k], result[k] }
     end
 
     it 'return encrypted keys for the class' do
       expect = [:social_security_number, :bank_account_number]
       result = User.encrypted_keys
-      expect.each {|val| assert_equal true, result.include?(val)}
+      expect.each { |val| assert_equal true, result.include?(val) }
 
       # Also check encrypted_attribute?
-      expect.each {|val| assert_equal true, User.encrypted_attribute?(val)}
+      expect.each { |val| assert_equal true, User.encrypted_attribute?(val) }
     end
 
     it 'return encrypted columns for the class' do
       expect = [:encrypted_social_security_number, :encrypted_bank_account_number]
       result = User.encrypted_columns
-      expect.each {|val| assert_equal true, result.include?(val)}
+      expect.each { |val| assert_equal true, result.include?(val) }
 
       # Also check encrypted_column?
-      expect.each {|val| assert_equal true, User.encrypted_column?(val)}
+      expect.each { |val| assert_equal true, User.encrypted_column?(val) }
     end
 
     it 'validate encrypted data' do
@@ -305,7 +325,7 @@ class ActiveRecordTest < Minitest::Test
       end
 
       it "revert changes on reload" do
-        new_bank_account_number = '444444444'
+        new_bank_account_number   = '444444444'
         @user.bank_account_number = new_bank_account_number
         assert_equal new_bank_account_number, @user.bank_account_number
 
@@ -316,8 +336,8 @@ class ActiveRecordTest < Minitest::Test
       end
 
       it "revert changes to encrypted field on reload" do
-        new_bank_account_number = '111111111'
-        new_encrypted_bank_account_number = SymmetricEncryption.encrypt(new_bank_account_number)
+        new_bank_account_number             = '111111111'
+        new_encrypted_bank_account_number   = SymmetricEncryption.encrypt(new_bank_account_number)
         @user.encrypted_bank_account_number = new_encrypted_bank_account_number
         assert_equal new_encrypted_bank_account_number, @user.encrypted_bank_account_number
         assert_equal new_bank_account_number, @user.bank_account_number
@@ -334,6 +354,7 @@ class ActiveRecordTest < Minitest::Test
         end
 
         [
+          #@formatter:off
           { attribute: :integer_value,  klass: Integer,    value: INTEGER_VALUE,  new_value: 98 },
           { attribute: :float_value,    klass: Float,      value: FLOAT_VALUE,    new_value: 45.4321 },
           { attribute: :decimal_value,  klass: BigDecimal, value: DECIMAL_VALUE,  new_value: BigDecimal.new("99.95"), coercible: "22.51"},
@@ -342,6 +363,7 @@ class ActiveRecordTest < Minitest::Test
           { attribute: :date_value,     klass: Date,       value: DATE_VALUE,     new_value: Date.new(2027, 04, 02), coercible: DATE_VALUE.to_time },
           { attribute: :true_value,     klass: TrueClass,  value: true,           new_value: false },
           { attribute: :false_value,    klass: FalseClass, value: false,          new_value: true },
+          #@formatter:on
         ].each do |value_test|
           describe "#{value_test[:klass]} values" do
             before do
@@ -431,8 +453,8 @@ class ActiveRecordTest < Minitest::Test
           end
 
           it "permit replacing value" do
-            new_value = @h.clone
-            new_value['c'] = 'C'
+            new_value             = @h.clone
+            new_value['c']        = 'C'
             @user_clone.data_json = new_value
             @user_clone.save!
 
@@ -463,8 +485,8 @@ class ActiveRecordTest < Minitest::Test
           end
 
           it "permit replacing value" do
-            new_value = @h.clone
-            new_value[:c] = 'C'
+            new_value             = @h.clone
+            new_value[:c]         = 'C'
             @user_clone.data_yaml = new_value
             @user_clone.save!
 
@@ -487,5 +509,22 @@ class ActiveRecordTest < Minitest::Test
         end
       end
     end
+
+    describe 'uniqueness' do
+      before do
+        UniqueUser.destroy_all
+        @email      = 'whatever@not-unique.com'
+        @username   = 'gibby007'
+        @user       = UniqueUser.create!(email: @email)
+        @email_user = UniqueUser.create!(username: @username)
+      end
+
+      it 'does not allow duplicate values' do
+        duplicate = UniqueUser.new(email: @email)
+        assert_equal false, duplicate.valid?
+        assert_equal 'has already been taken', duplicate.errors.messages[:encrypted_email].first
+      end
+    end
+
   end
 end

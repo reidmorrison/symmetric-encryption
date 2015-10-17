@@ -5,9 +5,10 @@ begin
   ENV['RACK_ENV'] = 'test'
 
   Mongoid.logger = SemanticLogger[Mongoid]
-  filename = defined?(Mongoid::VERSION) ? "test/config/mongoid_v3.yml" : "test/config/mongoid_v2.yml"
+  filename       = defined?(Mongoid::VERSION) ? "test/config/mongoid_v3.yml" : "test/config/mongoid_v2.yml"
   Mongoid.load!(filename)
 
+  #@formatter:off
   class MongoidUser
     include Mongoid::Document
 
@@ -33,54 +34,70 @@ begin
     validates :encrypted_social_security_number, symmetric_encryption: true
   end
 
+  class MongoidUniqueUser
+    include Mongoid::Document
+
+    field :encrypted_email,    type: String, encrypted: true
+    field :encrypted_username, type: String, encrypted: true
+
+    validates_uniqueness_of :encrypted_email,    allow_blank: true, if: :encrypted_email_changed?
+    validates_uniqueness_of :encrypted_username, allow_blank: true, if: :encrypted_username_changed?
+
+    validates :username,
+      length:      {in: 3..20},
+      format:      {with: /\A[\w\d\-[[:alnum:]]]+\z/},
+      allow_blank: true
+  end
+  #@formatter:on
+
   #
   # Unit Tests for field encrypted and validation aspects of SymmetricEncryption
   #
   class MongoidTest < Minitest::Test
     describe 'Mongoid' do
       before do
-        @bank_account_number = "1234567890"
+        @bank_account_number           = "1234567890"
         @bank_account_number_encrypted = "QEVuQwIAL94ArJeFlJrZp6SYsvoOGA=="
 
-        @social_security_number = "987654321"
+        @social_security_number           = "987654321"
         @social_security_number_encrypted = "QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA=="
 
-        @integer = 32768
+        @integer           = 32768
         @integer_encrypted = "FA3smFQEKqB/ITv+A0xACg=="
 
-        @float = 0.9867
+        @float           = 0.9867
         @float_encrypted = "z7Pwt2JDp74d+u0IXFAdrQ=="
 
-        @date = Date.parse('20120320')
+        @date           = Date.parse('20120320')
         @date_encrypted = "WTkSPHo5ApSSHBJMxxWt2A=="
 
-        @string = "A string containing some data to be encrypted with a random initialization vector"
+        @string      = "A string containing some data to be encrypted with a random initialization vector"
         @long_string = "A string containing some data to be encrypted with a random initialization vector and compressed since it takes up so much space in plain text form"
 
-        @integer_value = 12
-        @float_value = 88.12345
-        @decimal_value = BigDecimal.new("22.51")
+        @integer_value  = 12
+        @float_value    = 88.12345
+        @decimal_value  = BigDecimal.new("22.51")
         @datetime_value = DateTime.new(2001, 11, 26, 20, 55, 54, "-5")
-        @time_value = Time.new(2013, 01, 01, 22, 30, 00, "-04:00")
-        @date_value = Date.new(1927, 04, 02)
-        @h = { a: 'A', b: 'B' }
+        @time_value     = Time.new(2013, 01, 01, 22, 30, 00, "-04:00")
+        @date_value     = Date.new(1927, 04, 02)
+        @h              = {a: 'A', b: 'B'}
 
         @user = MongoidUser.new(
-          encrypted_bank_account_number:   @bank_account_number_encrypted,
+          encrypted_bank_account_number:    @bank_account_number_encrypted,
           encrypted_social_security_number: @social_security_number_encrypted,
-          name:                            "Joe Bloggs",
+          name:                             "Joe Bloggs",
           # data type specific fields
-          integer_value:                   @integer_value,
-          aliased_integer_value:           @integer_value,
-          float_value:                     @float_value,
-          decimal_value:                   @decimal_value,
-          datetime_value:                  @datetime_value,
-          time_value:                      @time_value,
-          date_value:                      @date_value,
-          true_value:                      true,
-          false_value:                     false,
-          data_yaml:                       @h.dup,
-          data_json:                       @h.dup
+          integer_value:                    @integer_value,
+          aliased_integer_value:            @integer_value,
+          float_value:                      @float_value,
+          decimal_value:                    @decimal_value,
+          datetime_value:                   @datetime_value,
+          time_value:                       @time_value,
+          date_value:                       @date_value,
+          true_value:                       true,
+          false_value:                      false,
+          data_yaml:                        @h.dup,
+          data_json:                        @h.dup
         )
       end
 
@@ -144,14 +161,14 @@ begin
       end
 
       it "support a random iv and compress" do
-        @user.string = @long_string
+        @user.string      = @long_string
         @user.long_string = @long_string
 
         assert_equal true, (@user.encrypted_long_string.length.to_f / @user.encrypted_string.length) < 0.8
       end
 
       it "encrypt" do
-        user = MongoidUser.new
+        user                     = MongoidUser.new
         user.bank_account_number = @bank_account_number
         assert_equal @bank_account_number, user.bank_account_number
         assert_equal @bank_account_number_encrypted, user.encrypted_bank_account_number
@@ -255,7 +272,7 @@ begin
           end
 
           it "permit replacing value" do
-            new_integer_value = 98
+            new_integer_value         = 98
             @user_clone.integer_value = new_integer_value
             @user_clone.save!
 
@@ -286,7 +303,7 @@ begin
           end
 
           it "permit replacing value" do
-            new_float_value = 45.4321
+            new_float_value         = 45.4321
             @user_clone.float_value = new_float_value
             @user_clone.save!
 
@@ -317,7 +334,7 @@ begin
           end
 
           it "permit replacing value" do
-            new_decimal_value = BigDecimal.new("99.95")
+            new_decimal_value         = BigDecimal.new("99.95")
             @user_clone.decimal_value = new_decimal_value
             @user_clone.save!
 
@@ -334,7 +351,7 @@ begin
 
           it "coerce data type before save" do
             now = Time.now
-            u = MongoidUser.new(datetime_value: now)
+            u   = MongoidUser.new(datetime_value: now)
             assert_equal now, u.datetime_value
             assert u.datetime_value.kind_of?(DateTime)
           end
@@ -349,7 +366,7 @@ begin
           end
 
           it "permit replacing value" do
-            new_datetime_value = DateTime.new(1998, 10, 21, 8, 33, 28, "+5")
+            new_datetime_value         = DateTime.new(1998, 10, 21, 8, 33, 28, "+5")
             @user_clone.datetime_value = new_datetime_value
             @user_clone.save!
 
@@ -366,7 +383,7 @@ begin
 
           it "coerce data type before save" do
             now = Time.now
-            u = MongoidUser.new(time_value: now)
+            u   = MongoidUser.new(time_value: now)
             assert_equal now, u.time_value
             assert u.time_value.kind_of?(Time)
           end
@@ -381,7 +398,7 @@ begin
           end
 
           it "permit replacing value" do
-            new_time_value = Time.new(1998, 10, 21, 8, 33, 28, "+04:00")
+            new_time_value         = Time.new(1998, 10, 21, 8, 33, 28, "+04:00")
             @user_clone.time_value = new_time_value
             @user_clone.save!
 
@@ -398,7 +415,7 @@ begin
 
           it "coerce data type before save" do
             now = Time.now
-            u = MongoidUser.new(date_value: now)
+            u   = MongoidUser.new(date_value: now)
             assert_equal now.to_date, u.date_value
             assert u.date_value.kind_of?(Date)
           end
@@ -413,7 +430,7 @@ begin
           end
 
           it "permit replacing value" do
-            new_date_value = Date.new(1998, 10, 21)
+            new_date_value         = Date.new(1998, 10, 21)
             @user_clone.date_value = new_date_value
             @user_clone.save!
 
@@ -444,7 +461,7 @@ begin
           end
 
           it "permit replacing value" do
-            new_value = false
+            new_value              = false
             @user_clone.true_value = new_value
             @user_clone.save!
 
@@ -475,7 +492,7 @@ begin
           end
 
           it "permit replacing value" do
-            new_value = true
+            new_value               = true
             @user_clone.false_value = new_value
             @user_clone.save!
 
@@ -515,8 +532,8 @@ begin
           end
 
           it "permit replacing value" do
-            new_value = @h.clone
-            new_value['c'] = 'C'
+            new_value             = @h.clone
+            new_value['c']        = 'C'
             @user_clone.data_json = new_value
             @user_clone.save!
 
@@ -547,8 +564,8 @@ begin
           end
 
           it "permit replacing value" do
-            new_value = @h.clone
-            new_value[:c] = 'C'
+            new_value             = @h.clone
+            new_value[:c]         = 'C'
             @user_clone.data_yaml = new_value
             @user_clone.save!
 
@@ -557,6 +574,22 @@ begin
           end
         end
 
+      end
+
+      describe 'uniqueness' do
+        before do
+          MongoidUniqueUser.destroy_all
+          @email      = 'whatever@not-unique.com'
+          @username   = 'gibby007'
+          @user       = MongoidUniqueUser.create!(email: @email)
+          @email_user = MongoidUniqueUser.create!(username: @username)
+        end
+
+        it 'does not allow duplicate values' do
+          duplicate = MongoidUniqueUser.new(email: @email)
+          assert_equal false, duplicate.valid?
+          assert_equal 'has already been taken', duplicate.errors.messages[:encrypted_email].first
+        end
       end
 
     end
