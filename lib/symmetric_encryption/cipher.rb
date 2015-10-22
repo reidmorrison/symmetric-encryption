@@ -57,7 +57,7 @@ module SymmetricEncryption
     # See: #initialize for parameters
     def self.generate_random_keys(params)
       environment     = params[:environment]
-      private_rsa_key = config[:private_rsa_key]
+      private_rsa_key = params[:private_rsa_key]
       rsa             = OpenSSL::PKey::RSA.new(private_rsa_key) if private_rsa_key
       key_pair        = SymmetricEncryption::Cipher.random_key_pair(params[:cipher_name] || 'aes-256-cbc')
       key             = key_pair[:key]
@@ -67,7 +67,7 @@ module SymmetricEncryption
       if params.has_key?(:key)
         puts 'Put this value in your configuration file for :key'
         p key
-      elsif file_name = config.delete(:key_filename)
+      elsif file_name = params.delete(:key_filename)
         write_to_file(file_name, key, rsa)
         puts("Please copy #{file_name} to the other servers in #{environment}.")
       elsif params.has_key?(:encrypted_key)
@@ -83,7 +83,7 @@ module SymmetricEncryption
       if params.has_key?(:iv)
         puts 'Put this value in your configuration file for :iv'
         p iv
-      elsif file_name = config.delete(:iv_filename)
+      elsif file_name = params.delete(:iv_filename)
         write_to_file(file_name, iv, rsa)
         puts("Please copy #{file_name} to the other servers in #{environment}.")
       elsif params.has_key?(:encrypted_iv)
@@ -562,7 +562,7 @@ module SymmetricEncryption
 
     # Save symmetric key after encrypting it with the private RSA key
     # Backing up existing files if present
-    def write_to_file(file_name, key, rsa)
+    def self.write_to_file(file_name, key, rsa)
       raise(SymmetricEncryption::ConfigError, 'Missing mandatory config parameter :private_rsa_key when filename key is used') unless rsa
       File.rename(file_name, "#{file_name}.#{Time.now.to_i}") if File.exist?(file_name)
       File.open(file_name, 'wb') { |file| file.write(rsa.public_encrypt(key)) }

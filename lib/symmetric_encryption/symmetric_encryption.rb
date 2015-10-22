@@ -271,7 +271,8 @@ module SymmetricEncryption
 
     # Only regenerating the first configured cipher
     cipher_config = config[:ciphers].first
-    Cipher.generate_random_keys({environment: environment, private_rsa_key: config[:private_rsa_key]}.merge(cipher_config))
+    key_config    = {environment: environment, private_rsa_key: config[:private_rsa_key]}
+    Cipher.generate_random_keys(key_config.merge(cipher_config))
   end
 
   # Generate a 22 character random password

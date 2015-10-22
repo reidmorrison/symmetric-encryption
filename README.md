@@ -1,5 +1,5 @@
 # symmetric-encryption
-![](https://img.shields.io/gem/v/symmetric-encryption.svg) ![](https://secure.travis-ci.org/reidmorrison/symmetric-encryption.png?branch=master) ![](https://img.shields.io/gem/dt/symmetric-encryption.svg)  ![](https://img.shields.io/badge/status-production%20ready-blue.svg)
+![](https://img.shields.io/gem/v/symmetric-encryption.svg) ![](https://img.shields.io/travis/reidmorrison/symmetric-encryption.svg) ![](https://img.shields.io/gem/dt/symmetric-encryption.svg)  ![](https://img.shields.io/badge/status-production%20ready-blue.svg)
 
 * http://github.com/reidmorrison/symmetric-encryption
 
@@ -92,17 +92,15 @@ may have backward compatibility issues:
           compression.
         * Default: false
 
-## Versioning
-
-This project uses [Semantic Versioning](http://semver.org/).
-
 ## Author
 
 [Reid Morrison](https://github.com/reidmorrison)
 
-## Contributors
-
 [Contributors](https://github.com/reidmorrison/symmetric-encryption/graphs/contributors)
+
+## Versioning
+
+This project uses [Semantic Versioning](http://semver.org/).
 
 ## Disclaimer
 
