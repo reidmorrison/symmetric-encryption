@@ -556,7 +556,7 @@ module SymmetricEncryption
         rsa.private_decrypt(encrypted_key)
       rescue Errno::ENOENT
         puts "\nSymmetric Encryption key file: '#{file_name}' not found or readable."
-        puts "To generate the keys for the first time run: rails generate symmetric_encryption:new_keys\n\n"
+        puts "To generate the keys for the first time run: bin/rails generate symmetric_encryption:new_keys production\n\n"
       end
     end
 

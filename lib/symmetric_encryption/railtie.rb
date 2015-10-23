@@ -37,10 +37,16 @@ module SymmetricEncryption #:nodoc:
       unless ::SymmetricEncryption.cipher?
         config_file = Rails.root.join('config', 'symmetric-encryption.yml')
         if config_file.file?
-          ::SymmetricEncryption::Config.load!(config_file, Rails.env)
+          begin
+            ::SymmetricEncryption::Config.load!(config_file, Rails.env)
+          rescue ArgumentError => exc
+            puts "\nSymmetric Encryption not able to read keys."
+            puts "#{exc.class.name} #{exc.message}"
+            puts "To generate key files: bin/rails generate symmetric_encryption:new_keys #{Rails.env}\n\n"
+          end
         else
           puts "\nSymmetric Encryption config not found."
-          puts "To generate one for the first time: rails generate symmetric_encryption:config\n\n"
+          puts "To generate one for the first time: bin/rails generate symmetric_encryption:config\n\n"
         end
       end
     end
