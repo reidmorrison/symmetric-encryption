@@ -10,7 +10,7 @@ Gem::Specification.new do |s|
   s.platform    = Gem::Platform::RUBY
   s.authors     = ['Reid Morrison']
   s.email       = ['reidmo@gmail.com']
-  s.homepage    = 'http://reidmorrison.github.io/symmetric-encryption/'
+  s.homepage    = 'http://rocketjob.github.io/symmetric-encryption/'
   s.summary     = 'Encryption for Ruby, and Ruby on Rails'
   s.description = 'Transparently encrypt ActiveRecord, Mongoid, and MongoMapper attributes. Encrypt passwords in configuration files. Encrypt entire files at rest.'
   s.files       = Dir['{lib,examples}/**/*', 'LICENSE.txt', 'Rakefile', 'README.md']

@@ -1,7 +1,7 @@
 # symmetric-encryption
-![](https://img.shields.io/gem/v/symmetric-encryption.svg) ![](https://img.shields.io/travis/reidmorrison/symmetric-encryption.svg) ![](https://img.shields.io/gem/dt/symmetric-encryption.svg)  ![](https://img.shields.io/badge/status-production%20ready-blue.svg)
+![](https://img.shields.io/gem/v/symmetric-encryption.svg) ![](https://img.shields.io/travis/rocketjob/symmetric-encryption.svg) ![](https://img.shields.io/gem/dt/symmetric-encryption.svg)  ![](https://img.shields.io/badge/status-production%20ready-blue.svg)
 
-* http://github.com/reidmorrison/symmetric-encryption
+* http://github.com/rocketjob/symmetric-encryption
 
 Transparently encrypt ActiveRecord, Mongoid, and MongoMapper attributes. Encrypt passwords in configuration files. Encrypt entire files at rest.
 
@@ -19,14 +19,20 @@ expose all the encryption algorithms supported by OpenSSL.
 
 ## Documentation
 
-For complete documentation see: http://reidmorrison.github.io/symmetric-encryption/
+For complete documentation see: http://rocketjob.github.io/symmetric-encryption/
 
-## Dependencies
+## Documentation
+
+[Symmetric Encryption Guide](http://rocketjob.github.io/symmetric-encryption)
+
+[Reference Documentation](http://www.rubydoc.info/gems/symmetric-encryption/)
+
+## Supports
 
 Symmetric Encryption works with the following Ruby interpreters:
 
 * Ruby 1.9.3, 2.0, 2.1, 2.2, or greater
-* JRuby 1.7, 9.0.0, or greater
+* JRuby 1.7, 9.0, or greater
 * Rubinius 2.5, or greater
 
 ## Upgrading to SymmetricEncryption V3
@@ -96,7 +102,7 @@ may have backward compatibility issues:
 
 [Reid Morrison](https://github.com/reidmorrison)
 
-[Contributors](https://github.com/reidmorrison/symmetric-encryption/graphs/contributors)
+[Contributors](https://github.com/rocketjob/symmetric-encryption/graphs/contributors)
 
 ## Versioning
 
