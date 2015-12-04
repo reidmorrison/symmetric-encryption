@@ -1,4 +1,5 @@
 require_relative 'test_helper'
+require 'pry'
 
 ActiveRecord::Base.logger         = SemanticLogger[ActiveRecord]
 ActiveRecord::Base.configurations = YAML::load(ERB.new(IO.read('test/config/database.yml')).result)
@@ -7,6 +8,7 @@ ActiveRecord::Base.establish_connection(:test)
 #@formatter:off
 ActiveRecord::Schema.define version: 0 do
   create_table :users, force: true do |t|
+    t.string :bank_account_number
     t.string :encrypted_bank_account_number
     t.string :encrypted_social_security_number
     t.string :encrypted_string
@@ -346,6 +348,39 @@ class ActiveRecordTest < Minitest::Test
         @user.reload
         assert_equal @bank_account_number_encrypted, @user.encrypted_bank_account_number
         assert_equal @bank_account_number, @user.bank_account_number
+      end
+
+      describe "use #super" do
+        before do
+          assert_predicate @user.bank_account_number, :present?,
+                           "Must have bank_account_number attribute defined "\
+                           "as ActiveRecord attribute (i.e., in the db table)."
+        end
+
+        it "call super for setter" do
+          original_value            = @user.bank_account_number
+          @user.bank_account_number = '1111111111'
+          active_record_value       = @user.attributes['bank_account_number']
+
+          refute_equal original_value, @user.bank_account_number
+          assert_equal @user.bank_account_number, active_record_value
+        end
+
+        it "update encrypted value on change" do
+          original_encrypted_value  = @user.encrypted_bank_account_number
+          new_value                 = rand(10_000_000..99_000_0000).to_s
+          expected_encrypted_value  = SymmetricEncryption.encrypt(new_value)
+          @user.bank_account_number = new_value
+
+          assert_equal expected_encrypted_value,
+                       @user.encrypted_bank_account_number
+          assert_equal new_value, @user.bank_account_number
+        end
+
+        it "call super for getter" do
+          active_record_value = @user.attributes['bank_account_number']
+          assert_equal @user.bank_account_number, active_record_value
+        end
       end
 
       describe "data types" do

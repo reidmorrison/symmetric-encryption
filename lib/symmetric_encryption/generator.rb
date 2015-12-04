@@ -26,7 +26,8 @@ module SymmetricEncryption
         def #{decrypted_name}=(value)
           v = SymmetricEncryption::Coerce.coerce(value, :#{type})
           self.#{encrypted_name} = @stored_#{encrypted_name} = ::SymmetricEncryption.encrypt(v,#{random_iv},#{compress},:#{type})
-          @#{decrypted_name} = v.freeze
+
+          defined?(super) ? super : (@#{decrypted_name} = v.freeze)
         end
 
         # Returns the decrypted value for the encrypted field
@@ -34,10 +35,11 @@ module SymmetricEncryption
         # If this method is not called, then the encrypted value is never decrypted
         def #{decrypted_name}
           if @stored_#{encrypted_name} != self.#{encrypted_name}
-            @#{decrypted_name} = ::SymmetricEncryption.decrypt(self.#{encrypted_name},version=nil,:#{type}).freeze
+            self.#{decrypted_name} = ::SymmetricEncryption.decrypt(self.#{encrypted_name},version=nil,:#{type}).freeze
             @stored_#{encrypted_name} = self.#{encrypted_name}
           end
-          @#{decrypted_name}
+
+          defined?(super) ? super.freeze : @#{decrypted_name}
         end
 
         # Map changes to encrypted value to unencrypted equivalent
