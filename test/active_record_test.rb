@@ -1,5 +1,4 @@
 require_relative 'test_helper'
-require 'pry'
 
 ActiveRecord::Base.logger         = SemanticLogger[ActiveRecord]
 ActiveRecord::Base.configurations = YAML::load(ERB.new(IO.read('test/config/database.yml')).result)
