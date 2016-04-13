@@ -383,7 +383,7 @@ module SymmetricEncryption
       end
       if include_key
         len = buffer.slice!(0..1).unpack('v').first
-        key = decryption_cipher.binary_decrypt(buffer.slice!(0..len-1), header=false)
+        key = decryption_cipher.binary_decrypt(buffer.slice!(0..len-1), false)
       end
       if include_cipher
         len         = buffer.slice!(0..1).unpack('v').first
@@ -476,7 +476,7 @@ module SymmetricEncryption
           self.class.build_header(version, compress, random_iv ? iv : nil, nil, nil) +
             openssl_cipher.update(compress ? Zlib::Deflate.deflate(string) : string)
         else
-          openssl_cipher.iv = @iv if @iv
+          openssl_cipher.iv = @iv if defined?(@iv) && @iv
           openssl_cipher.update(string)
         end
       result << openssl_cipher.final

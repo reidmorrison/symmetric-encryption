@@ -49,10 +49,10 @@ module MongoMapper
         #
         # The above document results in the following document in the Mongo collection 'persons':
         # {
-        #   "name" : "Joe",
-        #   "encrypted_social_security_number" : "...",
-        #   "age"  : 21
-        #   "encrypted_life_history" : "...",
+        #   'name' : 'Joe',
+        #   'encrypted_social_security_number' : '...',
+        #   'age'  : 21
+        #   'encrypted_life_history' : '...',
         # }
         #
         # Symmetric Encryption creates the getters and setters to be able to work with the field
@@ -67,12 +67,12 @@ module MongoMapper
         #   puts "Decrypted Social Security Number is: #{SymmetricEncryption.decrypt(person.encrypted_social_security_number)}"
         #
         #   # Sets the encrypted_social_security_number to encrypted version
-        #   person.social_security_number = "123456789"
+        #   person.social_security_number = '123456789'
         #
         #   # Or, is equivalent to:
-        #   person.encrypted_social_security_number = SymmetricEncryption.encrypt("123456789")
+        #   person.encrypted_social_security_number = SymmetricEncryption.encrypt('123456789')
         #
-        # Note: Only "String" types are currently supported for encryption
+        # Note: Only 'String' types are currently supported for encryption
         #
         # Note: Unlike attr_encrypted finders must use the encrypted field name
         #   Invalid Example, does not work:

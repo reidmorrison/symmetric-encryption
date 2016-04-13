@@ -9,7 +9,7 @@ class ReaderTest < Minitest::Test
       @data                          = [
         "Hello World\n",
         "Keep this secret\n",
-        "And keep going even further and further..."
+        'And keep going even further and further...'
       ]
       @data_str                      = @data.inject('') { |sum, str| sum << str }
       @data_len                      = @data_str.length
@@ -19,7 +19,7 @@ class ReaderTest < Minitest::Test
 
       @data_encrypted_with_header = SymmetricEncryption::Cipher.build_header(
         @cipher.version,
-        compress = false,
+        false,
         @cipher.send(:iv),
         @cipher.send(:key),
         @cipher.cipher_name
@@ -59,7 +59,7 @@ class ReaderTest < Minitest::Test
           stream    = StringIO.new(@data_encrypted)
           i         = 0
           # Version 0 supplied if the file/stream does not have a header
-          decrypted = SymmetricEncryption::Reader.open(stream, version: 0) do |file|
+          SymmetricEncryption::Reader.open(stream, version: 0) do |file|
             file.each_line do |line|
               assert_equal @data[i], line
               i += 1
@@ -69,9 +69,8 @@ class ReaderTest < Minitest::Test
 
         it "#read(size)" do
           stream    = StringIO.new(@data_encrypted)
-          i         = 0
           # Version 0 supplied if the file/stream does not have a header
-          decrypted = SymmetricEncryption::Reader.open(stream, version: 0) do |file|
+          SymmetricEncryption::Reader.open(stream, version: 0) do |file|
             index = 0
             [0, 10, 5, 5000].each do |size|
               buf = file.read(size)
@@ -155,7 +154,7 @@ class ReaderTest < Minitest::Test
             end
           end
 
-          it ".open return Zlib::GzipReader when compressed" do
+          it '.open return Zlib::GzipReader when compressed' do
             file = SymmetricEncryption::Reader.open(@filename)
             #assert_equal (@header && (options[:compress]||false)), file.is_a?(Zlib::GzipReader)
             file.close
@@ -184,7 +183,7 @@ class ReaderTest < Minitest::Test
           end
 
           it "#each_line" do
-            decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
+            SymmetricEncryption::Reader.open(@filename) do |file|
               i = 0
               file.each_line do |line|
                 assert_equal @data[i], line
@@ -223,7 +222,7 @@ class ReaderTest < Minitest::Test
           end
 
           it "#gets(delim)" do
-            decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
+            SymmetricEncryption::Reader.open(@filename) do |file|
               i = 0
               while line = file.gets("\n")
                 assert_equal @data[i], line
@@ -234,9 +233,9 @@ class ReaderTest < Minitest::Test
           end
 
           it "#gets(delim,size)" do
-            decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
+            SymmetricEncryption::Reader.open(@filename) do |file|
               i = 0
-              while line = file.gets("\n", 128)
+              while file.gets("\n", 128)
                 i += 1
               end
               assert_equal (@data_size > 0 ? 3 : 0), i
@@ -247,7 +246,7 @@ class ReaderTest < Minitest::Test
       end
     end
 
-    describe "reading from files with previous keys" do
+    describe 'reading from files with previous keys' do
       before do
         @filename = '_test'
         # Create encrypted file with old encryption key
@@ -260,13 +259,13 @@ class ReaderTest < Minitest::Test
         File.delete(@filename) if File.exist?(@filename)
       end
 
-      it "decrypt from file in a single read" do
+      it 'decrypt from file in a single read' do
         decrypted = SymmetricEncryption::Reader.open(@filename) { |file| file.read }
         assert_equal @data_str, decrypted
       end
 
-      it "decrypt from file a line at a time" do
-        decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
+      it 'decrypt from file a line at a time' do
+        SymmetricEncryption::Reader.open(@filename) do |file|
           i = 0
           file.each_line do |line|
             assert_equal @data[i], line
@@ -275,7 +274,7 @@ class ReaderTest < Minitest::Test
         end
       end
 
-      it "support rewind" do
+      it 'support rewind' do
         decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
           file.read
           file.rewind
@@ -285,7 +284,7 @@ class ReaderTest < Minitest::Test
       end
     end
 
-    describe "reading from files with previous keys without a header" do
+    describe 'reading from files with previous keys without a header' do
       before do
         @filename = '_test'
         # Create encrypted file with old encryption key
@@ -302,12 +301,12 @@ class ReaderTest < Minitest::Test
         end
       end
 
-      it "decrypt from file in a single read" do
+      it 'decrypt from file in a single read' do
         decrypted = SymmetricEncryption::Reader.open(@filename, version: 0) { |file| file.read }
         assert_equal @data_str, decrypted
       end
 
-      it "decrypt from file in a single read with different version" do
+      it 'decrypt from file in a single read with different version' do
         # Should fail since file was encrypted using version 0 key
         assert_raises OpenSSL::Cipher::CipherError do
           SymmetricEncryption::Reader.open(@filename, version: 2) { |file| file.read }

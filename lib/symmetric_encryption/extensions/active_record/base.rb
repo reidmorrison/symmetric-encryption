@@ -106,7 +106,7 @@ module ActiveRecord #:nodoc:
         encrypted_columns.include?(attribute)
       end
 
-      protected
+      private
 
       # Allows you to use dynamic methods like <tt>find_by_email</tt> or <tt>scoped_by_email</tt> for
       # encrypted attributes

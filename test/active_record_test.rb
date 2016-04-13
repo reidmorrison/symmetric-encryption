@@ -71,14 +71,14 @@ class UniqueUser < ActiveRecord::Base
 
   validates :username,
     length:      {in: 3..20},
-    format:      {with: /\A[\w\d\-[[:alnum:]]]+\z/},
+    format:      {with: /\A[\w\-]+\z/},
     allow_blank: true
 end
 #@formatter:on
 
 # Initialize the database connection
 config_file = File.join(File.dirname(__FILE__), 'config', 'database.yml')
-raise 'database config not found. Create a config file at: test/config/database.yml' unless File.exists? config_file
+raise 'database config not found. Create a config file at: test/config/database.yml' unless File.exist? config_file
 
 cfg = YAML.load(ERB.new(File.new(config_file).read).result)['test']
 raise("Environment 'test' not defined in test/config/database.yml") unless cfg
@@ -92,7 +92,7 @@ class ActiveRecordTest < Minitest::Test
   describe 'ActiveRecord' do
     INTEGER_VALUE  = 12
     FLOAT_VALUE    = 88.12345
-    DECIMAL_VALUE  = BigDecimal.new("22.51")
+    DECIMAL_VALUE  = BigDecimal.new('22.51')
     DATETIME_VALUE = DateTime.new(2001, 11, 26, 20, 55, 54, "-5")
     TIME_VALUE     = Time.new(2013, 01, 01, 22, 30, 00, "-04:00")
     DATE_VALUE     = Date.new(1927, 04, 02)
@@ -257,7 +257,7 @@ class ActiveRecordTest < Minitest::Test
       assert_equal true, @user.valid?
       @user.encrypted_bank_account_number = '123'
       assert_equal false, @user.valid?
-      assert_equal ["must be a value encrypted using SymmetricEncryption.encrypt"], @user.errors[:encrypted_bank_account_number]
+      assert_equal ['must be a value encrypted using SymmetricEncryption.encrypt'], @user.errors[:encrypted_bank_account_number]
       @user.encrypted_bank_account_number = SymmetricEncryption.encrypt('123')
       assert_equal true, @user.valid?
       @user.bank_account_number = '123'
@@ -268,13 +268,13 @@ class ActiveRecordTest < Minitest::Test
       assert_equal true, @user.valid?
       @user.text = '123'
       assert_equal false, @user.valid?
-      assert_equal ["only allows letters"], @user.errors[:text]
+      assert_equal ['only allows letters'], @user.errors[:text]
       @user.text = nil
       assert_equal false, @user.valid?
-      assert_equal ["only allows letters", "can't be blank"], @user.errors[:text]
+      assert_equal ['only allows letters', "can't be blank"], @user.errors[:text]
       @user.text = ''
       assert_equal false, @user.valid?
-      assert_equal ["only allows letters", "can't be blank"], @user.errors[:text]
+      assert_equal ['only allows letters', "can't be blank"], @user.errors[:text]
     end
 
     it 'validate un-encrypted integer data with coercion' do
@@ -294,7 +294,7 @@ class ActiveRecordTest < Minitest::Test
       assert_equal ["can't be blank"], @user.errors[:number]
     end
 
-    describe "with saved user" do
+    describe 'with saved user' do
       before do
         @user.save!
       end
@@ -303,8 +303,8 @@ class ActiveRecordTest < Minitest::Test
         @user.destroy
       end
 
-      it "return correct data type before save" do
-        u = User.new(integer_value: "5")
+      it 'return correct data type before save' do
+        u = User.new(integer_value: '5')
         assert_equal 5, u.integer_value
         assert u.integer_value.kind_of?(Integer)
       end
@@ -324,7 +324,7 @@ class ActiveRecordTest < Minitest::Test
         end
       end
 
-      it "revert changes on reload" do
+      it 'revert changes on reload' do
         new_bank_account_number   = '444444444'
         @user.bank_account_number = new_bank_account_number
         assert_equal new_bank_account_number, @user.bank_account_number
@@ -335,7 +335,7 @@ class ActiveRecordTest < Minitest::Test
         assert_equal @bank_account_number, @user.bank_account_number
       end
 
-      it "revert changes to encrypted field on reload" do
+      it 'revert changes to encrypted field on reload' do
         new_bank_account_number             = '111111111'
         new_encrypted_bank_account_number   = SymmetricEncryption.encrypt(new_bank_account_number)
         @user.encrypted_bank_account_number = new_encrypted_bank_account_number
@@ -348,7 +348,7 @@ class ActiveRecordTest < Minitest::Test
         assert_equal @bank_account_number, @user.bank_account_number
       end
 
-      describe "data types" do
+      describe 'data types' do
         before do
           @user_clone = User.find(@user.id)
         end
@@ -357,8 +357,8 @@ class ActiveRecordTest < Minitest::Test
           #@formatter:off
           { attribute: :integer_value,  klass: Integer,    value: INTEGER_VALUE,  new_value: 98 },
           { attribute: :float_value,    klass: Float,      value: FLOAT_VALUE,    new_value: 45.4321 },
-          { attribute: :decimal_value,  klass: BigDecimal, value: DECIMAL_VALUE,  new_value: BigDecimal.new("99.95"), coercible: "22.51"},
-          { attribute: :datetime_value, klass: DateTime,   value: DATETIME_VALUE, new_value: DateTime.new(1998, 10, 21, 8, 33, 28, "+5"), coercible: DATETIME_VALUE.to_time},
+          { attribute: :decimal_value,  klass: BigDecimal, value: DECIMAL_VALUE,  new_value: BigDecimal.new('99.95'), coercible: '22.51'},
+          { attribute: :datetime_value, klass: DateTime,   value: DATETIME_VALUE, new_value: DateTime.new(1998, 10, 21, 8, 33, 28, '+5'), coercible: DATETIME_VALUE.to_time},
           { attribute: :time_value,     klass: Time,       value: TIME_VALUE,     new_value: Time.new(2000, 01, 01, 22, 30, 00, "-04:00") },
           { attribute: :date_value,     klass: Date,       value: DATE_VALUE,     new_value: Date.new(2027, 04, 02), coercible: DATE_VALUE.to_time },
           { attribute: :true_value,     klass: TrueClass,  value: true,           new_value: false },
@@ -374,18 +374,18 @@ class ActiveRecordTest < Minitest::Test
               @new_value = value_test[:new_value]
             end
 
-            it "return correct data type" do
+            it 'return correct data type' do
               assert_equal @value, @user_clone.send(@attribute)
               assert @user.clone.send(@attribute).kind_of?(@klass)
             end
 
-            it "coerce data type before save" do
+            it 'coerce data type before save' do
               u = User.new(@attribute => @value)
               assert_equal @value, u.send(@attribute)
               assert u.send(@attribute).kind_of?(@klass), "Value supposed to be coerced into #{@klass}, but is #{u.send(@attribute).class.name}"
             end
 
-            it "permit replacing value with nil" do
+            it 'permit replacing value with nil' do
               @user_clone.send("#{@attribute}=".to_sym, nil)
               @user_clone.save!
 
@@ -394,7 +394,7 @@ class ActiveRecordTest < Minitest::Test
               assert_nil @user.send("encrypted_#{@attribute}".to_sym)
             end
 
-            it "permit replacing value with an empty string" do
+            it 'permit replacing value with an empty string' do
               @user_clone.send("#{@attribute}=".to_sym, '')
               @user_clone.save!
 
@@ -403,7 +403,7 @@ class ActiveRecordTest < Minitest::Test
               assert_nil @user.send("encrypted_#{@attribute}".to_sym)
             end
 
-            it "permit replacing value with a blank string" do
+            it 'permit replacing value with a blank string' do
               @user_clone.send("#{@attribute}=".to_sym, '    ')
               @user_clone.save!
 
@@ -412,7 +412,7 @@ class ActiveRecordTest < Minitest::Test
               assert_nil @user.send("encrypted_#{@attribute}".to_sym)
             end
 
-            it "permit replacing value" do
+            it 'permit replacing value' do
               @user_clone.send("#{@attribute}=".to_sym, @new_value)
               @user_clone.save!
 
@@ -422,7 +422,7 @@ class ActiveRecordTest < Minitest::Test
           end
         end
 
-        describe "JSON Serialization" do
+        describe 'JSON Serialization' do
           before do
             # JSON Does not support symbols, so they will come back as strings
             # Convert symbols to string in the test
@@ -432,18 +432,18 @@ class ActiveRecordTest < Minitest::Test
             end
           end
 
-          it "return correct data type" do
+          it 'return correct data type' do
             assert_equal @h, @user_clone.data_json
             assert @user.clone.data_json.kind_of?(Hash)
           end
 
-          it "not coerce data type (leaves as hash) before save" do
+          it 'not coerce data type (leaves as hash) before save' do
             u = User.new(data_json: @h)
             assert_equal @h, u.data_json
             assert u.data_json.kind_of?(Hash)
           end
 
-          it "permit replacing value with nil" do
+          it 'permit replacing value with nil' do
             @user_clone.data_json = nil
             @user_clone.save!
 
@@ -452,7 +452,7 @@ class ActiveRecordTest < Minitest::Test
             assert_nil @user.encrypted_data_json
           end
 
-          it "permit replacing value" do
+          it 'permit replacing value' do
             new_value             = @h.clone
             new_value['c']        = 'C'
             @user_clone.data_json = new_value
@@ -463,19 +463,19 @@ class ActiveRecordTest < Minitest::Test
           end
         end
 
-        describe "YAML Serialization" do
-          it "return correct data type" do
+        describe 'YAML Serialization' do
+          it 'return correct data type' do
             assert_equal @h, @user_clone.data_yaml
             assert @user.clone.data_yaml.kind_of?(Hash)
           end
 
-          it "not coerce data type (leaves as hash) before save" do
+          it 'not coerce data type (leaves as hash) before save' do
             u = User.new(data_yaml: @h)
             assert_equal @h, u.data_yaml
             assert u.data_yaml.kind_of?(Hash)
           end
 
-          it "permit replacing value with nil" do
+          it 'permit replacing value with nil' do
             @user_clone.data_yaml = nil
             @user_clone.save!
 
@@ -484,7 +484,7 @@ class ActiveRecordTest < Minitest::Test
             assert_nil @user.encrypted_data_yaml
           end
 
-          it "permit replacing value" do
+          it 'permit replacing value' do
             new_value             = @h.clone
             new_value[:c]         = 'C'
             @user_clone.data_yaml = new_value

@@ -15,6 +15,6 @@ Gem::Specification.new do |s|
   s.description = 'Transparently encrypt ActiveRecord, Mongoid, and MongoMapper attributes. Encrypt passwords in configuration files. Encrypt entire files at rest.'
   s.files       = Dir['{lib,examples}/**/*', 'LICENSE.txt', 'Rakefile', 'README.md']
   s.test_files  = Dir['test/**/*']
-  s.license     = 'Apache License V2.0'
+  s.license     = 'Apache-2.0'
   s.add_dependency 'coercible', '~> 1.0'
 end

@@ -19,21 +19,22 @@ expose all the encryption algorithms supported by OpenSSL.
 
 ## Documentation
 
-For complete documentation see: http://rocketjob.github.io/symmetric-encryption/
-
-## Documentation
-
 [Symmetric Encryption Guide](http://rocketjob.github.io/symmetric-encryption)
 
 [Reference Documentation](http://www.rubydoc.info/gems/symmetric-encryption/)
 
+## Rocket Job
+
+Checkout the sister project [Rocket Job](http://rocketjob.io): Ruby's missing batch system.
+
+Fully supports Symmetric Encryption to encrypt data in flight and at rest while running jobs in the background.
+
 ## Supports
 
-Symmetric Encryption works with the following Ruby interpreters:
+Symmetric Encryption works with the following Ruby VMs:
 
-* Ruby 1.9.3, 2.0, 2.1, 2.2, or greater
-* JRuby 1.7, 9.0, or greater
-* Rubinius 2.5, or greater
+- Ruby 2.1, 2.2, 2.3, and above
+- JRuby 1.7.23, 9.0.5 and above
 
 ## Upgrading to SymmetricEncryption V3
 

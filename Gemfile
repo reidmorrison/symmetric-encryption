@@ -7,7 +7,7 @@ gem 'highline'
 
 # Optional Gems
 gem 'activerecord'
-gem 'semantic_logger'
+gem 'semantic_logger', '~> 3.3'
 
 gem 'sqlite3', platform: :ruby
 gem 'jdbc-sqlite3', platform: :jruby

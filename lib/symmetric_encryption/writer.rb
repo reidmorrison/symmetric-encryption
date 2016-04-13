@@ -79,7 +79,7 @@ module SymmetricEncryption
     # # Example: Encrypt and write data to a file
     # SymmetricEncryption::Writer.open('test_file') do |file|
     #   file.write "Hello World\n"
-    #   file.write "Keep this secret"
+    #   file.write 'Keep this secret'
     # end
     #
     # # Example: Compress, Encrypt and write data to a file
@@ -193,7 +193,7 @@ module SymmetricEncryption
     # Returns self
     #
     # Example:
-    #   file << "Hello.\n" << "This is Jack"
+    #   file << "Hello.\n" << 'This is Jack'
     def <<(data)
       write(data)
       self
