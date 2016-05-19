@@ -4,3 +4,4 @@
 *.sqlite3
 .bundle
 *.log
+Gemfile.lock

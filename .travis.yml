@@ -17,6 +17,23 @@ rvm:
   - jruby-1.7.23
   - jruby-9.0.5.0
 
+matrix:
+  exclude:
+    - rvm: 2.1.8
+      gemfile: gemfiles/rails5_0.gemfile
+    - rvm: jruby-1.7.23
+      gemfile: gemfiles/rails5_0.gemfile
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/rails5_0.gemfile
+    - rvm: 2.1.8
+      gemfile: gemfiles/mongoid_5.gemfile
+    - rvm: 2.2.4
+      gemfile: gemfiles/mongoid_5.gemfile
+    - rvm: jruby-1.7.23
+      gemfile: gemfiles/mongoid_5.gemfile
+    - rvm: jruby-9.0.5.0
+      gemfile: gemfiles/mongoid_5.gemfile
+
 services:
   - mongodb
 
