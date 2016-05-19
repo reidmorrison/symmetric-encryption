@@ -9,8 +9,9 @@ ActiveRecord::Schema.define version: 0 do
   create_table :users, force: true do |t|
     t.string :encrypted_bank_account_number
     t.string :encrypted_social_security_number
-    t.string :encrypted_string
-    t.text   :encrypted_long_string
+    t.string :encrypted_string_value
+    t.text   :encrypted_long_string_value
+    t.text   :encrypted_binary_string_value
     t.text   :encrypted_data_yaml
     t.text   :encrypted_data_json
     t.string :name
@@ -38,10 +39,11 @@ end
 class User < ActiveRecord::Base
   attr_encrypted :bank_account_number
   attr_encrypted :social_security_number
-  attr_encrypted :string,         random_iv: true
-  attr_encrypted :long_string,    random_iv: true, compress: true
-  attr_encrypted :data_yaml,      random_iv: true, compress: true, type: :yaml
-  attr_encrypted :data_json,      random_iv: true, compress: true, type: :json
+  attr_encrypted :string_value,        random_iv: true
+  attr_encrypted :long_string_value,   random_iv: true, compress: true
+  attr_encrypted :binary_string_value, random_iv: true, compress: true
+  attr_encrypted :data_yaml,           random_iv: true, compress: true, type: :yaml
+  attr_encrypted :data_json,           random_iv: true, compress: true, type: :json
 
   attr_encrypted :integer_value,  type: :integer
   attr_encrypted :float_value,    type: :float
@@ -90,12 +92,15 @@ User.establish_connection(cfg)
 #
 class ActiveRecordTest < Minitest::Test
   describe 'ActiveRecord' do
-    INTEGER_VALUE  = 12
-    FLOAT_VALUE    = 88.12345
-    DECIMAL_VALUE  = BigDecimal.new('22.51')
-    DATETIME_VALUE = DateTime.new(2001, 11, 26, 20, 55, 54, "-5")
-    TIME_VALUE     = Time.new(2013, 01, 01, 22, 30, 00, "-04:00")
-    DATE_VALUE     = Date.new(1927, 04, 02)
+    INTEGER_VALUE       = 12
+    FLOAT_VALUE         = 88.12345
+    DECIMAL_VALUE       = BigDecimal.new('22.51')
+    DATETIME_VALUE      = DateTime.new(2001, 11, 26, 20, 55, 54, "-5")
+    TIME_VALUE          = Time.new(2013, 01, 01, 22, 30, 00, "-04:00")
+    DATE_VALUE          = Date.new(1927, 04, 02)
+    STRING_VALUE        = 'A string containing some data to be encrypted with a random initialization vector'
+    LONG_STRING_VALUE   = 'A string containing some data to be encrypted with a random initialization vector and compressed since it takes up so much space in plain text form'
+    BINARY_STRING_VALUE = "Non-UTF8 Binary \x92 string".force_encoding('BINARY')
 
     before do
       @bank_account_number           = '1234567890'
@@ -103,9 +108,6 @@ class ActiveRecordTest < Minitest::Test
 
       @social_security_number           = '987654321'
       @social_security_number_encrypted = 'QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA=='
-
-      @string      = 'A string containing some data to be encrypted with a random initialization vector'
-      @long_string = 'A string containing some data to be encrypted with a random initialization vector and compressed since it takes up so much space in plain text form'
 
       @name = 'Joe Bloggs'
 
@@ -118,6 +120,9 @@ class ActiveRecordTest < Minitest::Test
         social_security_number: @social_security_number,
         name:                   @name,
         # data type specific fields
+        string_value:           STRING_VALUE,
+        long_string_value:      LONG_STRING_VALUE,
+        binary_string_value:    BINARY_STRING_VALUE,
         integer_value:          INTEGER_VALUE,
         float_value:            FLOAT_VALUE,
         decimal_value:          DECIMAL_VALUE,
@@ -164,18 +169,18 @@ class ActiveRecordTest < Minitest::Test
     end
 
     it 'support a random iv' do
-      @user.string = @string
-      assert first_value = @user.encrypted_string
+      @user.string_value = STRING_VALUE
+      assert first_value = @user.encrypted_string_value
       # Assign the same value
-      @user.string = @string.dup
-      assert_equal true, first_value != @user.encrypted_string
+      @user.string_value = STRING_VALUE.dup
+      assert first_value != @user.encrypted_string_value
     end
 
     it 'support a random iv and compress' do
-      @user.string      = @long_string
-      @user.long_string = @long_string
+      @user.string_value      = STRING_VALUE
+      @user.long_string_value = STRING_VALUE
 
-      assert_equal true, (@user.encrypted_long_string.length.to_f / @user.encrypted_string.length) < 0.8
+      refute_equal @user.encrypted_long_string_value, @user.encrypted_string_value
     end
 
     it 'encrypt' do
@@ -238,34 +243,34 @@ class ActiveRecordTest < Minitest::Test
     it 'return encrypted keys for the class' do
       expect = [:social_security_number, :bank_account_number]
       result = User.encrypted_keys
-      expect.each { |val| assert_equal true, result.include?(val) }
+      expect.each { |val| assert result.include?(val) }
 
       # Also check encrypted_attribute?
-      expect.each { |val| assert_equal true, User.encrypted_attribute?(val) }
+      expect.each { |val| assert User.encrypted_attribute?(val) }
     end
 
     it 'return encrypted columns for the class' do
       expect = [:encrypted_social_security_number, :encrypted_bank_account_number]
       result = User.encrypted_columns
-      expect.each { |val| assert_equal true, result.include?(val) }
+      expect.each { |val| assert result.include?(val) }
 
       # Also check encrypted_column?
-      expect.each { |val| assert_equal true, User.encrypted_column?(val) }
+      expect.each { |val| assert User.encrypted_column?(val) }
     end
 
     it 'validate encrypted data' do
-      assert_equal true, @user.valid?
+      assert @user.valid?
       @user.encrypted_bank_account_number = '123'
       assert_equal false, @user.valid?
       assert_equal ['must be a value encrypted using SymmetricEncryption.encrypt'], @user.errors[:encrypted_bank_account_number]
       @user.encrypted_bank_account_number = SymmetricEncryption.encrypt('123')
-      assert_equal true, @user.valid?
+      assert @user.valid?
       @user.bank_account_number = '123'
-      assert_equal true, @user.valid?
+      assert @user.valid?
     end
 
     it 'validate un-encrypted string data' do
-      assert_equal true, @user.valid?
+      assert @user.valid?
       @user.text = '123'
       assert_equal false, @user.valid?
       assert_equal ['only allows letters'], @user.errors[:text]
@@ -278,11 +283,11 @@ class ActiveRecordTest < Minitest::Test
     end
 
     it 'validate un-encrypted integer data with coercion' do
-      assert_equal true, @user.valid?
+      assert @user.valid?
       @user.number = '123'
-      assert_equal true, @user.valid?
+      assert @user.valid?
       assert_equal 123, @user.number
-      assert_equal true, @user.valid?
+      assert @user.valid?
       @user.number = ''
       assert_equal false, @user.valid?
       assert_equal nil, @user.number
@@ -300,7 +305,7 @@ class ActiveRecordTest < Minitest::Test
       end
 
       after do
-        @user.destroy
+        @user.destroy if @user
       end
 
       it 'return correct data type before save' do
@@ -309,7 +314,7 @@ class ActiveRecordTest < Minitest::Test
         assert u.integer_value.kind_of?(Integer)
       end
 
-      it "handle gsub! for non-encrypted_field" do
+      it 'handle gsub! for non-encrypted_field' do
         @user.name.gsub!('a', 'v')
         new_name = @name.gsub('a', 'v')
         assert_equal new_name, @user.name
@@ -355,14 +360,17 @@ class ActiveRecordTest < Minitest::Test
 
         [
           #@formatter:off
-          { attribute: :integer_value,  klass: Integer,    value: INTEGER_VALUE,  new_value: 98 },
-          { attribute: :float_value,    klass: Float,      value: FLOAT_VALUE,    new_value: 45.4321 },
-          { attribute: :decimal_value,  klass: BigDecimal, value: DECIMAL_VALUE,  new_value: BigDecimal.new('99.95'), coercible: '22.51'},
-          { attribute: :datetime_value, klass: DateTime,   value: DATETIME_VALUE, new_value: DateTime.new(1998, 10, 21, 8, 33, 28, '+5'), coercible: DATETIME_VALUE.to_time},
-          { attribute: :time_value,     klass: Time,       value: TIME_VALUE,     new_value: Time.new(2000, 01, 01, 22, 30, 00, "-04:00") },
-          { attribute: :date_value,     klass: Date,       value: DATE_VALUE,     new_value: Date.new(2027, 04, 02), coercible: DATE_VALUE.to_time },
-          { attribute: :true_value,     klass: TrueClass,  value: true,           new_value: false },
-          { attribute: :false_value,    klass: FalseClass, value: false,          new_value: true },
+          {attribute: :integer_value,       klass: Integer,    value: INTEGER_VALUE,       new_value: 98},
+          {attribute: :float_value,         klass: Float,      value: FLOAT_VALUE,         new_value: 45.4321},
+          {attribute: :decimal_value,       klass: BigDecimal, value: DECIMAL_VALUE,       new_value: BigDecimal.new('99.95'), coercible: '22.51'},
+          {attribute: :datetime_value,      klass: DateTime,   value: DATETIME_VALUE,      new_value: DateTime.new(1998, 10, 21, 8, 33, 28, '+5'), coercible: DATETIME_VALUE.to_time},
+          {attribute: :time_value,          klass: Time,       value: TIME_VALUE,          new_value: Time.new(2000, 01, 01, 22, 30, 00, "-04:00")},
+          {attribute: :date_value,          klass: Date,       value: DATE_VALUE,          new_value: Date.new(2027, 04, 02), coercible: DATE_VALUE.to_time},
+          {attribute: :true_value,          klass: TrueClass,  value: true,                new_value: false},
+          {attribute: :false_value,         klass: FalseClass, value: false,               new_value: true},
+          {attribute: :string_value,        klass: String,     value: STRING_VALUE,        new_value: 'Hello World'},
+          {attribute: :long_string_value,   klass: String,     value: LONG_STRING_VALUE,   new_value: 'A Really long Hello World'},
+          {attribute: :binary_string_value, klass: String,     value: BINARY_STRING_VALUE, new_value: "A new Non-UTF8 Binary \x92 string".force_encoding('BINARY')},
           #@formatter:on
         ].each do |value_test|
           describe "#{value_test[:klass]} values" do
@@ -375,7 +383,7 @@ class ActiveRecordTest < Minitest::Test
             end
 
             it 'return correct data type' do
-              assert_equal @value, @user_clone.send(@attribute)
+              assert_equal @value, @user_clone.send(@attribute), @user_clone.attributes.ai
               assert @user.clone.send(@attribute).kind_of?(@klass)
             end
 
@@ -504,8 +512,8 @@ class ActiveRecordTest < Minitest::Test
 
         it 'return true if it was changed' do
           @user.bank_account_number = '15424623'
-          assert_equal true, @user.encrypted_bank_account_number_changed?
-          assert_equal true, @user.bank_account_number_changed?
+          assert @user.encrypted_bank_account_number_changed?
+          assert @user.bank_account_number_changed?
         end
       end
     end

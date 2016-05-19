@@ -10,7 +10,13 @@ require 'active_record'
 require 'symmetric-encryption'
 require 'awesome_print'
 
-Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new
+begin
+  require 'active_model/serializers'
+rescue LoadError
+  # Only used when running Rails 5 and MongoMapper
+end
+
+#Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new
 
 SemanticLogger.add_appender(file_name: 'test.log', formatter: :color)
 SemanticLogger.default_level = :trace

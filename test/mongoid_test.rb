@@ -5,7 +5,15 @@ begin
   ENV['RACK_ENV'] = 'test'
 
   Mongoid.logger = SemanticLogger[Mongoid]
-  filename       = defined?(Mongoid::VERSION) ? 'test/config/mongoid_v3.yml' : 'test/config/mongoid_v2.yml'
+  filename       =
+    case Mongoid::VERSION.to_i
+    when 3, 4
+      'test/config/mongoid_v3.yml'
+    when 1, 2
+      'test/config/mongoid_v2.yml'
+    else
+      'test/config/mongoid_v5.yml'
+    end
   Mongoid.load!(filename)
 
   #@formatter:off
@@ -588,7 +596,7 @@ begin
         it 'does not allow duplicate values' do
           duplicate = MongoidUniqueUser.new(email: @email)
           assert_equal false, duplicate.valid?
-          assert_equal 'has already been taken', duplicate.errors.messages[:encrypted_email].first
+          assert_equal 'is already taken', duplicate.errors.messages[:encrypted_email].first
         end
       end
 

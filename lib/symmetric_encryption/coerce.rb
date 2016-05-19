@@ -14,7 +14,7 @@ module SymmetricEncryption
     # Coerce given value into given type
     # Does not coerce json or yaml values
     def self.coerce(value, type, from_type=nil)
-      return if value.nil? || (value.is_a?(String) && (value !~ /[^[:space:]]/))
+      return if blank?(value)
 
       from_type ||= value.class
       case type
@@ -69,6 +69,23 @@ module SymmetricEncryption
         value.class
       else
         TYPE_MAP[symbol]
+      end
+    end
+
+    private
+
+    BLANK_RE = /\A[[:space:]]*\z/
+
+    # Returns [true|false] whether the supplied value is blank?
+    def self.blank?(value)
+      return true if value.nil?
+      if value.is_a?(String)
+        return true if value.empty?
+        # When Binary data is supplied that cannot convert to UTF-8 it is clearly not blank
+        return false unless value.dup.force_encoding(SymmetricEncryption::UTF8_ENCODING).valid_encoding?
+        (value =~ BLANK_RE) == 0
+      else
+        false
       end
     end
   end

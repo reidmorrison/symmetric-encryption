@@ -1,9 +1,19 @@
 language: ruby
 bundler_args: --without development
 
+gemfile:
+  - gemfiles/rails3_2.gemfile
+  - gemfiles/rails4_1.gemfile
+  - gemfiles/rails4_2.gemfile
+  - gemfiles/rails5_0.gemfile
+  - gemfiles/mongoid_3.gemfile
+  - gemfiles/mongoid_4.gemfile
+  - gemfiles/mongoid_5.gemfile
+
 rvm:
   - 2.1.8
   - 2.2.4
+  - 2.3.1
   - jruby-1.7.23
   - jruby-9.0.5.0
 

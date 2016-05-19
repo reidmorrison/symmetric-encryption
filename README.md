@@ -1,4 +1,4 @@
-# symmetric-encryption
+# Symmetric Encryption
 ![](https://img.shields.io/gem/v/symmetric-encryption.svg) ![](https://img.shields.io/travis/rocketjob/symmetric-encryption.svg) ![](https://img.shields.io/gem/dt/symmetric-encryption.svg)  ![](https://img.shields.io/badge/status-production%20ready-blue.svg)
 
 * http://github.com/rocketjob/symmetric-encryption
