@@ -10,11 +10,13 @@ require 'symmetric_encryption/exception'
 
 #@formatter:off
 module SymmetricEncryption
-  autoload :Coerce,    'symmetric_encryption/coerce'
-  autoload :Config,    'symmetric_encryption/config'
-  autoload :Reader,    'symmetric_encryption/reader'
-  autoload :Writer,    'symmetric_encryption/writer'
-  autoload :Generator, 'symmetric_encryption/generator'
+  autoload :Coerce,                 'symmetric_encryption/coerce'
+  autoload :Config,                 'symmetric_encryption/config'
+  autoload :Encoder,                'symmetric_encryption/encoder'
+  autoload :KeyEncryptionKey,       'symmetric_encryption/key_encryption_key'
+  autoload :Reader,                 'symmetric_encryption/reader'
+  autoload :Writer,                 'symmetric_encryption/writer'
+  autoload :Generator,              'symmetric_encryption/generator'
   module Utils
     autoload :ReEncryptConfigFiles, 'symmetric_encryption/re_encrypt_config_files'
   end

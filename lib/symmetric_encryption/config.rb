@@ -59,7 +59,6 @@ module SymmetricEncryption
     #  environment:
     #    Which environments config to load. Usually: production, development, etc.
     def self.extract_ciphers(config)
-      # RSA key to decrypt key files
       private_rsa_key = config[:private_rsa_key]
 
       config[:ciphers].collect do |cipher_config|

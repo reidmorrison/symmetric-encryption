@@ -41,7 +41,7 @@ class SymmetricEncryptionTest < Minitest::Test
       end
     end
 
-    SymmetricEncryption::Cipher::ENCODINGS.each do |encoding|
+    [:none, :base64, :base64strict, :base16].each do |encoding|
       describe "encoding: #{encoding}" do
         before do
           @social_security_number                            = '987654321'

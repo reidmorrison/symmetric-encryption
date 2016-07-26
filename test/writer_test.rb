@@ -13,11 +13,7 @@ class WriterTest < Minitest::Test
       ]
       @data_str                = @data.inject('') { |sum, str| sum << str }
       @data_len                = @data_str.length
-      cipher                   = SymmetricEncryption.cipher
-      before                   = cipher.always_add_header
-      cipher.always_add_header = false
-      @data_encrypted          = SymmetricEncryption.cipher.binary_encrypt(@data_str, false, false)
-      cipher.always_add_header = before
+      @data_encrypted          = SymmetricEncryption.cipher.binary_encrypt(@data_str, false, false, false)
       @filename                = '._test'
     end
 

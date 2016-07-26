@@ -4,7 +4,7 @@
 ---
 # For the development and test environments the test symmetric encryption keys
 # can be placed directly in the source code.
-# And therefore no RSA private key is required
+# And therefore no key encryption key is required
 development:         &development_defaults
   key:               1234567890ABCDEF1234567890ABCDEF
   iv:                1234567890ABCDEF
@@ -16,17 +16,15 @@ test:
   <<: *development_defaults
 
 release:
-  # Since the key to encrypt and decrypt with must NOT be stored along with the
-  # source code, we only hold a RSA key that is used to unlock the file
-  # containing the actual symmetric encryption key
+  # Since the encryption key must NOT be stored along with the
+  # source code, only store the key encryption key here.
   private_rsa_key: |
-<%= OpenSSL::PKey::RSA.generate(2048).to_s.each_line.collect { |line| "    #{line}" }.join('') %>
+<%= SymmetricEncryption::KeyEncryptionKey.generate.each_line.collect { |line| "    #{line}" }.join('') %>
 
   # List Symmetric Key files in the order of current / latest first
   ciphers:
     -
-      # Filename containing Symmetric Encryption Key encrypted using the
-      # RSA public key derived from the private key above
+      # Name of the file containing the encrypted key and iv.
       key_filename:      <%= File.join(key_path, "#{app_name}_release.key") %>
       iv_filename:       <%= File.join(key_path, "#{app_name}_release.iv") %>
       cipher_name:       aes-256-cbc
@@ -35,17 +33,15 @@ release:
       always_add_header: true
 
 production:
-  # Since the key to encrypt and decrypt with must NOT be stored along with the
-  # source code, we only hold a RSA key that is used to unlock the file
-  # containing the actual symmetric encryption key
+  # Since the encryption key must NOT be stored along with the
+  # source code, only store the key encryption key here.
   private_rsa_key: |
-<%= OpenSSL::PKey::RSA.generate(2048).to_s.each_line.collect { |line| "    #{line}" }.join('') %>
+<%= SymmetricEncryption::KeyEncryptionKey.generate.each_line.collect { |line| "    #{line}" }.join('') %>
 
   # List Symmetric Key files in the order of current / latest first
   ciphers:
     -
-      # Filename containing Symmetric Encryption Key encrypted using the
-      # RSA public key derived from the private key above
+      # Name of the file containing the encrypted key and iv.
       key_filename:      <%= File.join(key_path, "#{app_name}_production.key") %>
       iv_filename:       <%= File.join(key_path, "#{app_name}_production.iv") %>
       cipher_name:       aes-256-cbc

@@ -4,7 +4,7 @@
 ---
 # For the development and test environments the test symmetric encryption keys
 # can be placed directly in the source code.
-# And therefore no RSA private key is required
+# And therefore no key encryption key is required
 development: &development_defaults
   key:    1234567890ABCDEF1234567890ABCDEF
   iv:     1234567890ABCDEF
@@ -14,12 +14,12 @@ test:
   <<: *development_defaults
 
 production:
-  # Since the key to encrypt and decrypt with must NOT be stored along with the
-  # source code, we only hold a RSA key that is used to unlock the file
-  # containing the actual symmetric encryption key
+  # Since the encryption key must NOT be stored along with the
+  # source code, only store the key encryption key here.
   #
-  # Sample RSA Key, DO NOT use this RSA key, generate a new one using
-  #    openssl genrsa 2048
+  # Test Key encryption key, DO NOT use this key, generate a new one using
+  #    SymmetricEncryption::KeyEncryptionKey.generate
+  # Or use the rails generator to create a new config file as described in the readme
   private_rsa_key: |
     -----BEGIN RSA PRIVATE KEY-----
     MIIEpAIBAAKCAQEAxIL9H/jYUGpA38v6PowRSRJEo3aNVXULNM/QNRpx2DTf++KH
@@ -51,8 +51,7 @@ production:
 
   # List Symmetric Key Ciphers in the order of current / latest first
   ciphers:
-      # Filename containing Symmetric Encryption Key encrypted using the
-      # RSA public key derived from the private key above
+      # Name of the file containing the encrypted key and iv.
     - key_filename: /etc/rails/.rails.key
       iv_filename: /etc/rails/.rails.iv
 

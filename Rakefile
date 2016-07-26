@@ -15,17 +15,10 @@ task :publish => :gem do
   system "rm symmetric-encryption-#{SymmetricEncryption::VERSION}.gem"
 end
 
-desc 'Run Test Suite'
-task :test do
-  Rake::TestTask.new(:functional) do |t|
-    t.test_files = FileList['test/*_test.rb']
-    t.verbose    = true
-  end
-
-  # For mongoid
-  ENV['RACK_ENV'] = 'test'
-
-  Rake::Task['functional'].invoke
+Rake::TestTask.new(:test) do |t|
+  t.pattern = 'test/**/*_test.rb'
+  t.verbose = true
+  t.warning = false
 end
 
 task :default => :test

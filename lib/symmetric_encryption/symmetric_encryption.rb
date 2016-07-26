@@ -253,7 +253,7 @@ module SymmetricEncryption
   #  environment:
   #    Which environments config to load. Usually: production, development, etc.
   #    Default: Rails.env
-  def self.load!(filename=nil, environment=nil)
+  def self.load!(filename = nil, environment = nil)
     Config.load!(filename, environment)
   end
 
@@ -261,18 +261,37 @@ module SymmetricEncryption
   #
   # Note: Only the current Encryption key settings are used
   #
-  # Creates Symmetric Key .key
-  #   and initialization vector .iv
-  #       which is encrypted with the above Public key
+  # Creates Symmetric Key .key and initialization vector .iv
+  # which is encrypted with the key encryption key.
   #
   # Existing key files will be renamed if present
-  def self.generate_symmetric_key_files(filename=nil, environment=nil)
+  def self.generate_symmetric_key_files(filename = nil, environment = nil)
     config        = Config.read_config(filename, environment)
 
     # Only regenerating the first configured cipher
     cipher_config = config[:ciphers].first
-    key_config    = {environment: environment, private_rsa_key: config[:private_rsa_key]}
-    Cipher.generate_random_keys(key_config.merge(cipher_config))
+    key_config    = {private_rsa_key: config[:private_rsa_key]}
+    cipher_cfg    = Cipher.generate_random_keys(key_config.merge(cipher_config))
+
+    puts
+    if encoded_encrypted_key = cipher_cfg[:encrypted_key]
+      puts 'If running in Heroku, add the environment specific key:'
+      puts "heroku config:add #{environment.upcase}_KEY1=#{encoded_encrypted_key}\n"
+    end
+
+    if encoded_encrypted_iv = cipher_cfg[:encrypted_iv]
+      puts 'If running in Heroku, add the environment specific key:'
+      puts "heroku config:add #{environment.upcase}_KEY1=#{encoded_encrypted_iv}"
+    end
+
+    if file_name = cipher_cfg[:key_filename]
+      puts("Please copy #{file_name} to the other servers in #{environment}.")
+    end
+
+    if file_name = cipher_cfg[:iv_filename]
+      puts("Please copy #{file_name} to the other servers in #{environment}.")
+    end
+    cipher_cfg
   end
 
   # Generate a 22 character random password

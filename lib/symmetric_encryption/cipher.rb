@@ -1,5 +1,5 @@
+require 'openssl'
 module SymmetricEncryption
-
   # Hold all information related to encryption keys
   # as well as encrypt and decrypt data using those keys
   #
@@ -7,11 +7,9 @@ module SymmetricEncryption
   # threads at the same time without needing an instance of Cipher per thread
   class Cipher
     # Cipher to use for encryption and decryption
-    attr_reader :cipher_name, :version, :iv
-    attr_accessor :encoding, :always_add_header
-
-    # Available encodings
-    ENCODINGS = [:none, :base64, :base64strict, :base16]
+    attr_accessor :cipher_name, :version, :iv, :always_add_header
+    attr_reader :encoder, :encoding
+    attr_writer :key
 
     # Backward compatibility
     alias_method :cipher, :cipher_name
@@ -52,48 +50,102 @@ module SymmetricEncryption
       }
     end
 
-    # Generate new randomized keys and generate key and iv files if supplied
-    # Overwrites key files for the current environment
-    # See: #initialize for parameters
-    def self.generate_random_keys(params)
-      environment     = params[:environment]
-      private_rsa_key = params[:private_rsa_key]
-      rsa             = OpenSSL::PKey::RSA.new(private_rsa_key) if private_rsa_key
-      key_pair        = SymmetricEncryption::Cipher.random_key_pair(params[:cipher_name] || 'aes-256-cbc')
-      key             = key_pair[:key]
-      iv              = key_pair[:iv]
-
-      puts 'Generated new Symmetric Key for encryption'
-      if params.has_key?(:key)
-        puts 'Put this value in your configuration file for :key'
-        p key
-      elsif file_name = params.delete(:key_filename)
-        write_to_file(file_name, key, rsa)
-        puts("Please copy #{file_name} to the other servers in #{environment}.")
-      elsif params.has_key?(:encrypted_key)
-        encrypted_key = encrypt_key(key, rsa)
-        puts 'If running in Heroku, add the environment specific key:'
-        puts "heroku config:add #{environment.upcase}_KEY1=#{encrypted_key}"
-        puts
-        puts 'Otherwise, set the :encrypted_key value to:'
-        puts encrypted_key
+    # Generate new randomized keys and generate key and iv files if supplied.
+    # Overwrites key files for the current environment.
+    #
+    # Parameters
+    #   :key_filename
+    #     Name of file that will contain the symmetric key encrypted using the public
+    #     key from the private_rsa_key.
+    #  Or,
+    #   :encrypted_key
+    #     Symmetric key encrypted using the public key from the private_rsa_key
+    #     and then Base64 encoded
+    #
+    #  Note:
+    #    If :key_filename and :encrypted_key are not supplied then a new :key will be returned.
+    #    :key is the Symmetric Key to use for encryption and decryption.
+    #
+    #
+    #   :iv_filename
+    #     Name of file containing symmetric key initialization vector
+    #     encrypted using the public key from the private_rsa_key
+    #     Deprecated: It is _not_ necessary to encrypt the initialization vector (IV)
+    #  Or,
+    #   :encrypted_iv
+    #     Initialization vector encrypted using the public key from the private_rsa_key
+    #     and then Base64 encoded
+    #     Deprecated: It is _not_ necessary to encrypt the initialization vector (IV)
+    #
+    #  Note:
+    #    If :iv_filename and :encrypted_iv are not supplied then a new :iv will be returned.
+    #    :key is the Initialization Vector to use with Symmetric Key.
+    #
+    #
+    #   private_rsa_key [String]
+    #     Key encryption key.
+    #     To generate a new one: SymmetricEncryption::KeyEncryptionKey.generate
+    #     Required if :key_filename, :encrypted_key, :iv_filename, or :encrypted_iv is supplied
+    #
+    #   :cipher_name [String]
+    #     Encryption Cipher to use.
+    #     Default: aes-256-cbc
+    #
+    #   :encoding [Symbol]
+    #     :base64strict
+    #       Return as a base64 encoded string that does not include additional newlines
+    #       This is the recommended format since newlines in the values to
+    #       SQL queries are cumbersome. Also the newline reformatting is unnecessary
+    #       It is not the default for backward compatibility
+    #     :base64
+    #       Return as a base64 encoded string
+    #     :base16
+    #       Return as a Hex encoded string
+    #     :none
+    #       Return as raw binary data string. Note: String can contain embedded nulls
+    #     Default: :base64strict
+    def self.generate_random_keys(params = {})
+      params          = params.dup
+      private_rsa_key = params.delete(:private_rsa_key)
+      cipher_name     = params.delete(:cipher_name) || 'aes-256-cbc'
+      encoding        = params.delete(:encoding) || :base64strict
+      unless private_rsa_key
+        [:key_filename, :encrypted_key, :iv_filename, :encrypted_iv].each do |key|
+          raise(SymmetricEncryption::ConfigError, "When :#{key} is supplied, :private_rsa_key is required.") if params.include?(key)
+        end
       end
 
-      puts 'Generated new Initialization Vector for encryption'
-      if params.has_key?(:iv)
-        puts 'Put this value in your configuration file for :iv'
-        p iv
-      elsif file_name = params.delete(:iv_filename)
-        write_to_file(file_name, iv, rsa)
-        puts("Please copy #{file_name} to the other servers in #{environment}.")
-      elsif params.has_key?(:encrypted_iv)
-        encrypted_iv = encrypt_key(iv, rsa)
-        puts 'If running in Heroku, add the environment specific key:'
-        puts "heroku config:add #{environment.upcase}_KEY1=#{encrypted_iv}"
-        puts
-        puts 'Otherwise, set the :encrypted_iv value to:'
-        puts encrypted_iv
+      key_encryption_key = KeyEncryptionKey.new(private_rsa_key) if private_rsa_key
+      cipher_conf        = {cipher_name: cipher_name, encoding: encoding}
+
+      key_pair = SymmetricEncryption::Cipher.random_key_pair(cipher_name)
+      key      = key_pair[:key]
+      iv       = key_pair[:iv]
+
+      if file_name = params.delete(:key_filename)
+        cipher_conf[:key_filename] = file_name
+        encrypted_key              = key_encryption_key.encrypt(key)
+        write_to_file(file_name, encrypted_key)
+      elsif params.delete(:encrypted_key)
+        encrypted_key               = key_encryption_key.encrypt(key)
+        cipher_conf[:encrypted_key] = SymmetricEncryption::Encoder[encoding].encode(encrypted_key)
+      else
+        cipher_conf[:key] = key.to_s
       end
+
+      if file_name = params.delete(:iv_filename)
+        cipher_conf[:iv_filename] = file_name
+        encrypted_iv              = key_encryption_key.encrypt(iv)
+        write_to_file(file_name, encrypted_iv)
+      elsif params.delete(:encrypted_iv)
+        encrypted_iv               = key_encryption_key.encrypt(iv)
+        cipher_conf[:encrypted_iv] = SymmetricEncryption::Encoder[encoding].encode(encrypted_iv)
+      else
+        cipher_conf[:iv] = iv.to_s
+      end
+
+      raise(ArgumentError, "SymmetricEncryption::Cipher Invalid options #{params.inspect}") if params.size > 0
+      cipher_conf
     end
 
     # Create a Symmetric::Key for encryption and decryption purposes
@@ -114,15 +166,15 @@ module SymmetricEncryption
     #     Optional. The Initialization Vector to use with Symmetric Key
     #     Highly Recommended as it is the input into the CBC algorithm
     #  Or,
-    #   Note: The following 2 options are deprecated since it is _not_ necessary
-    #         to encrypt the initialization vector (IV)
     #   :iv_filename
     #     Name of file containing symmetric key initialization vector
     #     encrypted using the public key from the private_rsa_key
+    #     Deprecated: It is _not_ necessary to encrypt the initialization vector (IV)
     #  Or,
     #   :encrypted_iv
     #     Initialization vector encrypted using the public key from the private_rsa_key
     #     and then Base64 encoded
+    #     Deprecated: It is _not_ necessary to encrypt the initialization vector (IV)
     #
     #   :cipher_name [String]
     #     Optional. Encryption Cipher to use
@@ -157,39 +209,55 @@ module SymmetricEncryption
     #     Recommended: true
     #
     #   private_rsa_key [String]
-    #     RSA Key used to decrypt key and iv as applicable
-    #     Mandatory if :key_filename, :encrypted_key, :iv_filename, or :encrypted_iv is supplied
+    #     Key encryption key.
+    #     To generate a new one: SymmetricEncryption::KeyEncryptionKey.generate
+    #     Required if :key_filename, :encrypted_key, :iv_filename, or :encrypted_iv is supplied
     def initialize(params={})
       params             = params.dup
       @cipher_name       = params.delete(:cipher_name) || params.delete(:cipher) || 'aes-256-cbc'
       @version           = params.delete(:version)
       @always_add_header = params.delete(:always_add_header) || false
-      @encoding          = (params.delete(:encoding) || :base64).to_sym
-
-      # To decrypt encrypted key or iv files
+      self.encoding      = (params.delete(:encoding) || :base64).to_sym
       private_rsa_key    = params.delete(:private_rsa_key)
-      rsa                = OpenSSL::PKey::RSA.new(private_rsa_key) if private_rsa_key
-
-      if key = params.delete(:key)
-        @key = key
-      elsif file_name = params.delete(:key_filename)
-        @key = read_from_file(file_name, rsa)
-      elsif encrypted_key = params.delete(:encrypted_key)
-        @key = decrypt_key(encrypted_key, rsa)
+      unless private_rsa_key
+        [:key_filename, :encrypted_key, :iv_filename, :encrypted_iv].each do |key|
+          raise(SymmetricEncryption::ConfigError, "When :#{key} is supplied, :private_rsa_key is required.") if params.include?(key)
+        end
       end
 
-      if iv = params.delete(:iv)
-        @iv = iv
-      elsif file_name = params.delete(:iv_filename)
-        @iv = read_from_file(file_name, rsa)
-      elsif encrypted_iv = params.delete(:encrypted_iv)
-        @iv = decrypt_key(encrypted_iv, rsa)
-      end
+      key_encryption_key = KeyEncryptionKey.new(private_rsa_key) if private_rsa_key
+      @key               =
+        if key = params.delete(:key)
+          key
+        elsif file_name = params.delete(:key_filename)
+          encrypted_key = self.class.read_from_file(file_name)
+          key_encryption_key.decrypt(encrypted_key)
+        elsif encrypted_key = params.delete(:encrypted_key)
+          binary = self.encoder.decode(encrypted_key)
+          key_encryption_key.decrypt(binary)
+        else
+          raise(ArgumentError, 'Missing mandatory parameter :key, :key_filename, or :encrypted_key')
+        end
 
-      raise(ArgumentError, 'Missing mandatory parameter :key, :key_filename, or :encrypted_key') unless @key
-      raise(ArgumentError, "Invalid Encoding: #{@encoding}") unless ENCODINGS.include?(@encoding)
+      @iv =
+        if iv = params.delete(:iv)
+          iv
+        elsif file_name = params.delete(:iv_filename)
+          encrypted_iv = self.class.read_from_file(file_name)
+          key_encryption_key.decrypt(encrypted_iv)
+        elsif encrypted_iv = params.delete(:encrypted_iv)
+          binary = self.encoder.decode(encrypted_iv)
+          key_encryption_key.decrypt(binary)
+        end
+
       raise(ArgumentError, "Cipher version has a valid range of 0 to 255. #{@version} is too high, or negative") if (@version.to_i > 255) || (@version.to_i < 0)
       raise(ArgumentError, "SymmetricEncryption::Cipher Invalid options #{params.inspect}") if params.size > 0
+    end
+
+    # Change the encoding
+    def encoding=(encoding)
+      @encoder  = SymmetricEncryption::Encoder[encoding]
+      @encoding = encoding
     end
 
     # Encrypt and then encode a string
@@ -277,21 +345,7 @@ module SymmetricEncryption
     # Returned string is UTF8 encoded except for encoding :none
     def encode(binary_string)
       return binary_string if binary_string.nil? || (binary_string == '')
-
-      # Now encode data based on encoding setting
-      case encoding
-      when :base64
-        encoded_string = ::Base64.encode64(binary_string)
-        encoded_string.force_encoding(SymmetricEncryption::UTF8_ENCODING)
-      when :base64strict
-        encoded_string = ::Base64.encode64(binary_string).gsub(/\n/, '')
-        encoded_string.force_encoding(SymmetricEncryption::UTF8_ENCODING)
-      when :base16
-        encoded_string = binary_string.to_s.unpack('H*').first
-        encoded_string.force_encoding(SymmetricEncryption::UTF8_ENCODING)
-      else
-        binary_string
-      end
+      encoder.encode(binary_string)
     end
 
     # Decode the supplied string using the encoding in this cipher instance
@@ -300,17 +354,7 @@ module SymmetricEncryption
     # Returned string is Binary encoded
     def decode(encoded_string)
       return encoded_string if encoded_string.nil? || (encoded_string == '')
-
-      case encoding
-      when :base64, :base64strict
-        decoded_string = ::Base64.decode64(encoded_string)
-        decoded_string.force_encoding(SymmetricEncryption::BINARY_ENCODING)
-      when :base16
-        decoded_string = [encoded_string].pack('H*')
-        decoded_string.force_encoding(SymmetricEncryption::BINARY_ENCODING)
-      else
-        encoded_string
-      end
+      encoder.decode(encoded_string)
     end
 
     # Return a new random key using the configured cipher_name
@@ -548,44 +592,19 @@ module SymmetricEncryption
 
     attr_reader :key
 
-    # Read the encrypted key from file
-    def read_from_file(file_name, rsa)
-      raise(SymmetricEncryption::ConfigError, 'Missing mandatory config parameter :private_rsa_key when filename key is used') unless rsa
-      begin
-        encrypted_key = File.open(file_name, 'rb') { |f| f.read }
-        rsa.private_decrypt(encrypted_key)
-      rescue Errno::ENOENT
-        puts "\nSymmetric Encryption key file: '#{file_name}' not found or readable."
-        puts "To generate the keys for the first time run: bin/rails generate symmetric_encryption:new_keys production\n\n"
-      end
+    # Read from the file, raising an exception if it is not found
+    def self.read_from_file(file_name)
+      File.open(file_name, 'rb') { |f| f.read }
+    rescue Errno::ENOENT => exc
+      puts "\nSymmetric Encryption key file: '#{file_name}' not found or readable."
+      puts "To generate the keys for the first time run: bin/rails generate symmetric_encryption:new_keys production\n\n"
+      raise(exc)
     end
 
-    # Save symmetric key after encrypting it with the private RSA key
-    # Backing up existing files if present
-    def self.write_to_file(file_name, key, rsa)
-      raise(SymmetricEncryption::ConfigError, 'Missing mandatory config parameter :private_rsa_key when filename key is used') unless rsa
+    # Write to the supplied filename, backing up the existing file if present
+    def self.write_to_file(file_name, data)
       File.rename(file_name, "#{file_name}.#{Time.now.to_i}") if File.exist?(file_name)
-      File.open(file_name, 'wb') { |file| file.write(rsa.public_encrypt(key)) }
-    end
-
-    # Read the encrypted key from file
-    def decrypt_key(encrypted_key, rsa)
-      raise(SymmetricEncryption::ConfigError, 'Missing mandatory config parameter :private_rsa_key when encrypted key is supplied') unless rsa
-
-      # Decode value first using encoding specified
-      encrypted_key = ::Base64.decode64(encrypted_key)
-      if !encrypted_key || encrypted_key.empty?
-        puts "\nSymmetric Encryption encrypted_key not found."
-        puts "To generate the keys for the first time run: rails generate symmetric_encryption:new_keys\n\n"
-      else
-        rsa.private_decrypt(encrypted_key)
-      end
-    end
-
-    # Returns [String] encrypted form of supplied key
-    def encrypt_key(key, rsa)
-      raise(SymmetricEncryption::ConfigError, 'Missing mandatory config parameter :private_rsa_key when encrypted key is supplied') unless rsa
-      ::Base64.encode64(rsa.public_encrypt(key))
+      File.open(file_name, 'wb') { |file| file.write(data) }
     end
 
   end
