@@ -5,26 +5,17 @@ begin
   ENV['RACK_ENV'] = 'test'
 
   Mongoid.logger = SemanticLogger[Mongoid]
-  filename       =
-    case Mongoid::VERSION.to_i
-    when 3, 4
-      'test/config/mongoid_v3.yml'
-    when 1, 2
-      'test/config/mongoid_v2.yml'
-    else
-      'test/config/mongoid_v5.yml'
-    end
-  Mongoid.load!(filename)
+  Mongoid.load!('test/config/mongoid.yml')
 
   #@formatter:off
   class MongoidUser
     include Mongoid::Document
 
     field :name,                             type: String
-    field :encrypted_bank_account_number,    type: String,  encrypted: true
-    field :encrypted_social_security_number, type: String,  encrypted: true
-    field :encrypted_string,                 type: String,  encrypted: {random_iv: true}
-    field :encrypted_long_string,            type: String,  encrypted: {random_iv: true, compress: true}
+    field :encrypted_bank_account_number,    type: String, encrypted: true
+    field :encrypted_social_security_number, type: String, encrypted: true
+    field :encrypted_string,                 type: String, encrypted: {random_iv: true}
+    field :encrypted_long_string,            type: String, encrypted: {random_iv: true, compress: true}
 
     field :encrypted_integer_value,          type: String, encrypted: {type: :integer}
     field :aiv,                              type: String, encrypted: {type: :integer, decrypt_as: :aliased_integer_value}

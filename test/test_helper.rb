@@ -3,7 +3,6 @@ $LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
 
 require 'yaml'
 require 'minitest/autorun'
-require 'minitest/reporters'
 require 'semantic_logger'
 # Since we want both the AR and Mongoid extensions loaded we need to require them first
 require 'active_record'
@@ -15,8 +14,6 @@ begin
 rescue LoadError
   # Only used when running Rails 5 and MongoMapper
 end
-
-#Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new
 
 SemanticLogger.add_appender(file_name: 'test.log', formatter: :color)
 SemanticLogger.default_level = :trace
