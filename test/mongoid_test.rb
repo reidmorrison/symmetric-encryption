@@ -4,7 +4,6 @@ begin
   require_relative '../lib/symmetric_encryption/extensions/mongoid/encrypted'
   ENV['RACK_ENV'] = 'test'
 
-  Mongoid.logger = SemanticLogger[Mongoid]
   Mongoid.load!('test/config/mongoid.yml')
 
   #@formatter:off
@@ -185,14 +184,14 @@ begin
 
       it "all paths it lead to the same result, check uninitialized" do
         user = MongoidUser.new
-        assert_equal nil, user.social_security_number
+        assert_nil user.social_security_number
         assert_equal @bank_account_number, (user.social_security_number = @bank_account_number)
         assert_equal @bank_account_number, user.social_security_number
         assert_equal @bank_account_number_encrypted, user.encrypted_social_security_number
 
-        assert_equal nil, (user.social_security_number = nil)
-        assert_equal nil, user.social_security_number
-        assert_equal nil, user.encrypted_social_security_number
+        assert_nil (user.social_security_number = nil)
+        assert_nil user.social_security_number
+        assert_nil user.encrypted_social_security_number
       end
 
       it 'allow unencrypted values to be passed to the constructor' do

@@ -94,7 +94,7 @@ class CipherTest < Minitest::Test
         end
 
         it 'return nil when encrypting nil' do
-          assert_equal nil, @cipher.encrypt(nil)
+          assert_nil @cipher.encrypt(nil)
         end
 
         it "return '' when encrypting ''" do
@@ -102,7 +102,7 @@ class CipherTest < Minitest::Test
         end
 
         it 'return nil when decrypting nil' do
-          assert_equal nil, @cipher.decrypt(nil)
+          assert_nil @cipher.decrypt(nil)
         end
 
         it "return '' when decrypting ''" do

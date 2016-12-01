@@ -89,7 +89,7 @@ class SymmetricEncryptionTest < Minitest::Test
         end
 
         it 'return nil when encrypting nil' do
-          assert_equal nil, SymmetricEncryption.encrypt(nil)
+          assert_nil SymmetricEncryption.encrypt(nil)
         end
 
         it "return '' when encrypting ''" do
@@ -97,7 +97,7 @@ class SymmetricEncryptionTest < Minitest::Test
         end
 
         it 'return nil when decrypting nil' do
-          assert_equal nil, SymmetricEncryption.decrypt(nil)
+          assert_nil SymmetricEncryption.decrypt(nil)
         end
 
         it "return '' when decrypting ''" do

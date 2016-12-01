@@ -2,7 +2,6 @@ source 'https://rubygems.org'
 gem 'rake'
 gem 'minitest'
 gem 'awesome_print'
-gem 'semantic_logger'
 
 # Optional gem used by rake task for user to enter text to be encrypted
 gem 'highline'

@@ -1,6 +1,5 @@
 require_relative 'test_helper'
 
-ActiveRecord::Base.logger         = SemanticLogger[ActiveRecord]
 ActiveRecord::Base.configurations = YAML::load(ERB.new(IO.read('test/config/database.yml')).result)
 ActiveRecord::Base.establish_connection(:test)
 
@@ -216,14 +215,14 @@ class ActiveRecordTest < Minitest::Test
 
     it 'all paths it lead to the same result, check uninitialized' do
       user = User.new
-      assert_equal nil, user.social_security_number
+      assert_nil user.social_security_number
       assert_equal @bank_account_number, (user.social_security_number = @bank_account_number)
       assert_equal @bank_account_number, user.social_security_number
       assert_equal @bank_account_number_encrypted, user.encrypted_social_security_number
 
-      assert_equal nil, (user.social_security_number = nil)
-      assert_equal nil, user.social_security_number
-      assert_equal nil, user.encrypted_social_security_number
+      assert_nil (user.social_security_number = nil)
+      assert_nil user.social_security_number
+      assert_nil user.encrypted_social_security_number
     end
 
     it 'allow unencrypted values to be passed to the constructor' do
@@ -290,11 +289,11 @@ class ActiveRecordTest < Minitest::Test
       assert @user.valid?
       @user.number = ''
       assert_equal false, @user.valid?
-      assert_equal nil, @user.number
+      assert_nil @user.number
       assert_equal ["can't be blank"], @user.errors[:number]
       @user.number = nil
-      assert_equal nil, @user.number
-      assert_equal nil, @user.encrypted_number
+      assert_nil @user.number
+      assert_nil @user.encrypted_number
       assert_equal false, @user.valid?
       assert_equal ["can't be blank"], @user.errors[:number]
     end

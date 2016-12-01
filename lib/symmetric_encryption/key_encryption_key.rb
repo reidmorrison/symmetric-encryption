@@ -1,4 +1,4 @@
-require 'openssl/pkey'
+require 'openssl'
 module SymmetricEncryption
   # Class that manages the key that is used to encrypt the encryption key.
   # Currently uses RSA asymmetric encryption to secure the key.

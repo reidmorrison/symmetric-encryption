@@ -140,14 +140,14 @@ class ReaderTest < Minitest::Test
             File.delete(@filename) if File.exist?(@filename) && !@filename.end_with?('empty.csv')
           end
 
-          it ".empty?" do
+          it '.empty?' do
             assert_equal (@data_size==0), SymmetricEncryption::Reader.empty?(@filename)
             assert_raises Errno::ENOENT do
               SymmetricEncryption::Reader.empty?('missing_file')
             end
           end
 
-          it ".header_present?" do
+          it '.header_present?' do
             assert_equal @header, SymmetricEncryption::Reader.header_present?(@filename)
             assert_raises Errno::ENOENT do
               SymmetricEncryption::Reader.header_present?('missing_file')
@@ -160,7 +160,7 @@ class ReaderTest < Minitest::Test
             file.close
           end
 
-          it "#read()" do
+          it '#read' do
             data   = nil
             eof    = nil
             result = SymmetricEncryption::Reader.open(@filename) do |file|
@@ -172,17 +172,22 @@ class ReaderTest < Minitest::Test
             assert_equal @data_str, result
           end
 
-          it "#read(size)" do
+          it '#read(size)' do
             file = SymmetricEncryption::Reader.open(@filename)
             eof  = file.eof?
             data = file.read(4096)
             file.close
 
             assert_equal @eof, eof
-            assert_equal (@data_size > 0 ? @data_str : nil), data
+            if @data_size > 0
+              assert_equal @data_str, data
+            else
+              assert_nil data
+            end
+
           end
 
-          it "#each_line" do
+          it '#each_line' do
             SymmetricEncryption::Reader.open(@filename) do |file|
               i = 0
               file.each_line do |line|
@@ -192,7 +197,7 @@ class ReaderTest < Minitest::Test
             end
           end
 
-          it "#rewind" do
+          it '#rewind' do
             decrypted = SymmetricEncryption::Reader.open(@filename) do |file|
               file.read
               file.rewind
@@ -201,7 +206,7 @@ class ReaderTest < Minitest::Test
             assert_equal @data_str, decrypted
           end
 
-          it "#gets(nil,size)" do
+          it '#gets(nil,size)' do
             file = SymmetricEncryption::Reader.open(@filename)
             eof  = file.eof?
             data = file.gets(nil, 4096)
@@ -216,12 +221,12 @@ class ReaderTest < Minitest::Test
               if defined?(JRuby) && options[:compress] && (usecase == :empty)
                 assert_equal '', data
               else
-                assert_equal nil, data
+                assert_nil data
               end
             end
           end
 
-          it "#gets(delim)" do
+          it '#gets(delim)' do
             SymmetricEncryption::Reader.open(@filename) do |file|
               i = 0
               while line = file.gets("\n")
@@ -232,7 +237,7 @@ class ReaderTest < Minitest::Test
             end
           end
 
-          it "#gets(delim,size)" do
+          it '#gets(delim,size)' do
             SymmetricEncryption::Reader.open(@filename) do |file|
               i = 0
               while file.gets("\n", 128)

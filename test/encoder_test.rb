@@ -40,7 +40,7 @@ class EncoderTest < Minitest::Test
         end
 
         it 'return nil when encoding nil' do
-          assert_equal nil, @encoder.encode(nil)
+          assert_nil @encoder.encode(nil)
         end
 
         it "return '' when encoding ''" do
@@ -48,7 +48,7 @@ class EncoderTest < Minitest::Test
         end
 
         it 'return nil when decoding nil' do
-          assert_equal nil, @encoder.decode(nil)
+          assert_nil @encoder.decode(nil)
         end
 
         it "return '' when decoding ''" do

@@ -6,7 +6,7 @@ begin
   # Initialize MongoMapper
   config_file = File.join('test', 'config', 'mongo_mapper.yml')
   config      = YAML.load(ERB.new(File.read(config_file)).result)
-  MongoMapper.setup(config, 'test', logger: SemanticLogger['Mongo'])
+  MongoMapper.setup(config, 'test')
 
   #@formatter:off
   class MongoMapperUser
@@ -187,14 +187,14 @@ begin
 
       it "all paths it lead to the same result, check uninitialized" do
         user = MongoMapperUser.new
-        assert_equal nil, user.social_security_number
+        assert_nil user.social_security_number
         assert_equal @bank_account_number, (user.social_security_number = @bank_account_number)
         assert_equal @bank_account_number, user.social_security_number
         assert_equal @bank_account_number_encrypted, user.encrypted_social_security_number
 
-        assert_equal nil, (user.social_security_number = nil)
-        assert_equal nil, user.social_security_number
-        assert_equal nil, user.encrypted_social_security_number
+        assert_nil (user.social_security_number = nil)
+        assert_nil user.social_security_number
+        assert_nil user.encrypted_social_security_number
       end
 
       it 'allow unencrypted values to be passed to the constructor' do

@@ -49,10 +49,11 @@ production:
     r1URaMAun2PfAB4g2N/kEZTExgeOGqXjFhvvjdzl97ux2cTyZhaTXg==
     -----END RSA PRIVATE KEY-----
 
-  # List Symmetric Key Ciphers in the order of current / latest first
+  # List Symmetric Key Ciphers in the order of current / newest first
   ciphers:
+    -
       # Name of the file containing the encrypted key and iv.
-    - key_filename: /etc/rails/.rails.key
+      key_filename: /etc/rails/.rails.key
       iv_filename: /etc/rails/.rails.iv
 
       # Encryption cipher
@@ -82,31 +83,26 @@ production:
       # Default: base64
       encoding: base64strict
 
-      # FUTURE ENHANCEMENT:
-      #
-      # By adding a version indicator all encrypted data will include
-      # an additional first Byte that includes this version number to
-      # assist with speeding up decryption when adding new encryption keys
-      # and to support old data decryption using older keys
-      #
-      # By not specifying a version, or setting it to 0 will disable version
-      # identification prior to decrypting data
-      # During decryption these Keys will be tried in the order listed in the
-      # configuration file starting with the first in the list
-      # Slower since a decryption attempt is made for every key until the
-      # correct key is located. However, all encrypted data does not require
-      # the 1 Byte version header prefix
-      #
-      # Default: 0
-      #version: 0
+      # Version of this key so that when a new key is supplied, old encrypted data can be decrypted
+      # using the correct key.
+      # Increment this version with every time a new key is generated.
+      version: 2
 
-      # OPTIONAL:
-      #
-      # Any previous Symmetric Encryption Keys
-      #
-      # Only used when old data still exists that requires old decryption keys
-      # to be used
-    - key_filename: /etc/rails/.rails_old.key
-      iv_filename:  /etc/rails/.rails_old.iv
-      cipher:       aes-256-cbc
-      encoding:     base64strict
+      # Highly Recommended to always set this to true.
+      # Add a header to every encrypted message.
+      always_add_header: true
+
+    # OPTIONAL:
+    #
+    # Any previous Symmetric Encryption Keys
+    #
+    # Only used when old data still exists that requires old decryption keys
+    # to be used
+    -
+      key_filename:      /etc/rails/.rails_old.key
+      iv_filename:       /etc/rails/.rails_old.iv
+      cipher:            aes-256-cbc
+      encoding:          base64strict
+      version:           1
+      always_add_header: true
+
