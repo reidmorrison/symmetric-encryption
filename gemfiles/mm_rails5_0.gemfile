@@ -1,8 +1,0 @@
-eval File.read(File.expand_path('../Gemfile.common.rb', __FILE__)), nil, 'Gemfile.common.rb'
-gemspec :path => '../'
-
-gem 'activerecord', '~> 5.0'
-gem 'activemodel-serializers-xml'
-gem 'mongo_ha'
-gem 'mongo_mapper'
-gem 'bson_ext', platform: :ruby
