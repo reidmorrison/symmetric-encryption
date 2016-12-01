@@ -4,7 +4,6 @@ $LOAD_PATH.unshift File.dirname(__FILE__) + '/../lib'
 require 'yaml'
 require 'minitest/autorun'
 require 'active_record'
-require 'mongoid'
 require 'symmetric-encryption'
 require 'awesome_print'
 
