@@ -17,8 +17,12 @@ matrix:
   exclude:
     - rvm: 2.1.10
       gemfile: gemfiles/rails5_0.gemfile
-    - rvm: jruby-9.1.6.0
+    - rvm: jruby-9.1.7.0
       gemfile: gemfiles/rails5_0.gemfile
+    - rvm: 2.4.0
+      gemfiles/rails4_2.gemfile
+    - rvm: 2.4.0
+      gemfiles/mm_rails4_2.gemfile
 
 services:
   - mongodb
