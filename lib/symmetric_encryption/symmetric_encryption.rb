@@ -33,7 +33,7 @@ module SymmetricEncryption
   # Example: For testing purposes the following test cipher can be used:
   #
   #   SymmetricEncryption.cipher = SymmetricEncryption::Cipher.new(
-  #     key:    '1234567890ABCDEF1234567890ABCDEF',
+  #     key:    '1234567890ABCDEF',
   #     iv:     '1234567890ABCDEF',
   #     cipher: 'aes-128-cbc'
   #   )

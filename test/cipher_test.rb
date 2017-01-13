@@ -8,7 +8,7 @@ class CipherTest < Minitest::Test
     it 'allow setting the cipher_name' do
       cipher = SymmetricEncryption::Cipher.new(
         cipher_name: 'aes-128-cbc',
-        key:         '1234567890ABCDEF1234567890ABCDEF',
+        key:         '1234567890ABCDEF',
         iv:          '1234567890ABCDEF',
         encoding:    :none
       )
@@ -32,7 +32,7 @@ class CipherTest < Minitest::Test
     it 'throw an exception on bad data' do
       cipher = SymmetricEncryption::Cipher.new(
         cipher_name: 'aes-128-cbc',
-        key:         '1234567890ABCDEF1234567890ABCDEF',
+        key:         '1234567890ABCDEF',
         iv:          '1234567890ABCDEF',
         encoding:    :none
       )
@@ -65,7 +65,7 @@ class CipherTest < Minitest::Test
           @social_security_number_encrypted_with_secondary_1 = "D1UCu38pqJ3jc0GvwJHiow==\n"
           @non_utf8                                          = "\xc2".force_encoding('binary')
           @cipher                                            = SymmetricEncryption::Cipher.new(
-            key:               'ABCDEF1234567890ABCDEF1234567890',
+            key:               'ABCDEF1234567890',
             iv:                'ABCDEF1234567890',
             cipher_name:       'aes-128-cbc',
             encoding:          encoding,

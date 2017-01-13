@@ -8,7 +8,7 @@ module SymmetricEncryption #:nodoc:
     #   module MyApplication
     #     class Application < Rails::Application
     #       config.symmetric_encryption.cipher = SymmetricEncryption::Cipher.new(
-    #         key:    '1234567890ABCDEF1234567890ABCDEF',
+    #         key:    '1234567890ABCDEF',
     #         iv:     '1234567890ABCDEF',
     #         cipher_name: 'aes-128-cbc'
     #       )
@@ -26,8 +26,8 @@ module SymmetricEncryption #:nodoc:
     # @example symmetric-encryption.yml
     #
     #   development:
-    #     cipher_name: aes-256-cbc
-    #     key:         1234567890ABCDEF1234567890ABCDEF
+    #     cipher_name: aes-128-cbc
+    #     key:         1234567890ABCDEF
     #     iv:          1234567890ABCDEF
     #
     # Loaded before Active Record initializes since database.yml can have encrypted
