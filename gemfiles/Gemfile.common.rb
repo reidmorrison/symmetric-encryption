@@ -1,6 +1,7 @@
 source 'https://rubygems.org'
 gem 'rake'
 gem 'minitest'
+gem 'mocha'
 gem 'awesome_print'
 
 # Optional gem used by rake task for user to enter text to be encrypted

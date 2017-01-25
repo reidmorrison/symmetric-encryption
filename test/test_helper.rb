@@ -6,6 +6,7 @@ require 'minitest/autorun'
 require 'active_record'
 require 'symmetric-encryption'
 require 'awesome_print'
+require 'mocha/mini_test'
 
 begin
   require 'active_model/serializers'

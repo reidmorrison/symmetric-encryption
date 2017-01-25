@@ -293,6 +293,25 @@ class SymmetricEncryptionTest < Minitest::Test
       end
     end
 
+    describe '.generate_symmetric_key_files' do
+      let(:params) { { private_rsa_key: 'rsa_key', key: 'key', iv: 'iv' } }
+      let(:file_path) { File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml') }
+      let(:cipher_config) { { encrypted_key: 'encrypted_key', encrypted_iv: 'encrypted_iv'} }
+
+      let(:config) do
+        {
+          private_rsa_key: 'rsa_key',
+          ciphers: [{ version: 1, always_add_header: true, key: 'key', iv: 'iv' }]
+        }
+      end
+
+      it 'removes unused config keys before generate the random keys' do
+        SymmetricEncryption::Config.expects(:read_config).with(file_path, 'test').returns(config)
+        SymmetricEncryption::Cipher.expects(:generate_random_keys).with(params).returns(cipher_config)
+
+        SymmetricEncryption.generate_symmetric_key_files(file_path, 'test')
+      end
+    end
   end
 
 end
