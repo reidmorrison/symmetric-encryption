@@ -24,6 +24,9 @@ encrypted_key = cipher_conf[:encrypted_key]
 puts "\n\n********************************************************************************"
 puts "Add the release environment key to Heroku: (Optional)\n\n"
 puts "  heroku config:add RELEASE_KEY1=#{encrypted_key}\n\n"
+puts "\n\n********************************************************************************"
+puts "Add the release environment key to Heroku: (Optional)\n\n"
+puts "  heroku config:add RELEASE_IV1=#{encrypted_iv}\n\n"
 -%>
 release:
   # Key encryption key
@@ -37,7 +40,7 @@ release:
       # Filename containing Symmetric Encryption Key encrypted using the
       # key encryption key above (private_rsa_key).
       encrypted_key:     "<%= '<' + "%= ENV['RELEASE_KEY1'] %" + '>' %>"
-      encrypted_iv:      "<%= encrypted_iv %>"
+      encrypted_iv:      "<%= '<' + "%= ENV['RELEASE_IV1'] %" + '>' %>"
       cipher_name:       <%=  cipher_name %>
       encoding:          :base64strict
       version:           1
@@ -53,6 +56,9 @@ encrypted_key = cipher_conf[:encrypted_key]
 puts "Add the production key to Heroku:\n\n"
 puts "  heroku config:add PRODUCTION_KEY1=#{encrypted_key}\n\n"
 puts "********************************************************************************\n\n\n"
+puts "Add the production key to Heroku:\n\n"
+puts "  heroku config:add PRODUCTION_IV1=#{encrypted_iv}\n\n"
+puts "********************************************************************************\n\n\n"
 -%>
 production:
   # Since the encryption key must NOT be stored along with the
@@ -65,7 +71,7 @@ production:
     -
       # Encrypted key is supplied via an environment variable.
       encrypted_key:     "<%= '<' + "%= ENV['PRODUCTION_KEY1'] %" + '>' %>"
-      encrypted_iv:      "<%= encrypted_iv %>"
+      encrypted_iv:      "<%= '<' + "%= ENV['PRODUCTION_IV1'] %" + '>' %>"
       cipher_name:       <%=  cipher_name %>
       encoding:          :base64strict
       version:           1

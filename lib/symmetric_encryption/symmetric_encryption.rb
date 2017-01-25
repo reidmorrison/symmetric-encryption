@@ -270,6 +270,12 @@ module SymmetricEncryption
 
     # Only regenerating the first configured cipher
     cipher_config = config[:ciphers].first
+
+    # Delete unused config keys to generate new random keys
+    [:version, :always_add_header].each do |key|
+      cipher_config.delete(key)
+    end
+
     key_config    = {private_rsa_key: config[:private_rsa_key]}
     cipher_cfg    = Cipher.generate_random_keys(key_config.merge(cipher_config))
 
@@ -281,7 +287,7 @@ module SymmetricEncryption
 
     if encoded_encrypted_iv = cipher_cfg[:encrypted_iv]
       puts 'If running in Heroku, add the environment specific key:'
-      puts "heroku config:add #{environment.upcase}_KEY1=#{encoded_encrypted_iv}"
+      puts "heroku config:add #{environment.upcase}_IV1=#{encoded_encrypted_iv}"
     end
 
     if file_name = cipher_cfg[:key_filename]

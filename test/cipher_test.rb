@@ -174,6 +174,16 @@ class CipherTest < Minitest::Test
   end
 
   describe '.generate_random_keys' do
+    describe 'with wrong params' do
+      it 'raises ArgumentError' do
+        error = assert_raises ArgumentError do
+          SymmetricEncryption::Cipher.generate_random_keys(wrong_params: '')
+        end
+
+        assert_equal "SymmetricEncryption::Cipher Invalid options {:wrong_params=>\"\"}", error.message
+      end
+    end
+
     describe 'with keys' do
       it 'creates new keys' do
         h = SymmetricEncryption::Cipher.generate_random_keys
