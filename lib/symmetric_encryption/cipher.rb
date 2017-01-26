@@ -130,7 +130,8 @@ module SymmetricEncryption
         encrypted_key               = key_encryption_key.encrypt(key)
         cipher_conf[:encrypted_key] = SymmetricEncryption::Encoder[encoding].encode(encrypted_key)
       else
-        cipher_conf[:key] = key.to_s
+        params.delete(:key)
+        cipher_conf[:key] = SymmetricEncryption::Encoder[encoding].encode(key.to_s)
       end
 
       if file_name = params.delete(:iv_filename)
@@ -141,7 +142,8 @@ module SymmetricEncryption
         encrypted_iv               = key_encryption_key.encrypt(iv)
         cipher_conf[:encrypted_iv] = SymmetricEncryption::Encoder[encoding].encode(encrypted_iv)
       else
-        cipher_conf[:iv] = iv.to_s
+        params.delete(:iv)
+        cipher_conf[:iv] = SymmetricEncryption::Encoder[encoding].encode(iv.to_s)
       end
 
       raise(ArgumentError, "SymmetricEncryption::Cipher Invalid options #{params.inspect}") if params.size > 0

@@ -184,9 +184,19 @@ class CipherTest < Minitest::Test
       end
     end
 
-    describe 'with keys' do
+    describe 'without keys' do
       it 'creates new keys' do
         h = SymmetricEncryption::Cipher.generate_random_keys
+        assert_equal 'aes-256-cbc', h[:cipher_name]
+        assert_equal :base64strict, h[:encoding]
+        assert h.has_key?(:key), h
+        assert h.has_key?(:iv), h
+      end
+    end
+
+    describe 'with keys' do
+      it 'creates new keys' do
+        h = SymmetricEncryption::Cipher.generate_random_keys(key: '', iv: '')
         assert_equal 'aes-256-cbc', h[:cipher_name]
         assert_equal :base64strict, h[:encoding]
         assert h.has_key?(:key), h

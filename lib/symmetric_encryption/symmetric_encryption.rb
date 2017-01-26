@@ -290,6 +290,14 @@ module SymmetricEncryption
       puts "heroku config:add #{environment.upcase}_IV1=#{encoded_encrypted_iv}"
     end
 
+    if key = cipher_cfg[:key]
+      puts "Please add the key: #{key} to your config file"
+    end
+
+    if iv = cipher_cfg[:iv]
+      puts "Please add the iv: #{iv} to your config file"
+    end
+
     if file_name = cipher_cfg[:key_filename]
       puts("Please copy #{file_name} to the other servers in #{environment}.")
     end
