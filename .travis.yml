@@ -4,24 +4,32 @@ bundler_args: --without development
 gemfile:
   - gemfiles/rails4_2.gemfile
   - gemfiles/rails5_0.gemfile
+  - gemfiles/rails5_1.gemfile
   - gemfiles/mm_rails4_2.gemfile
 
 rvm:
   - 2.1.10
-  - 2.2.6
-  - 2.3.3
-  - 2.4.0
-  - jruby-9.1.7.0
+  - 2.2.7
+  - 2.3.4
+  - 2.4.1
+  - jruby-9.1.8.0
+
+jdk:
+  - oraclejdk8
 
 matrix:
   exclude:
     - rvm: 2.1.10
       gemfile: gemfiles/rails5_0.gemfile
-    - rvm: jruby-9.1.7.0
+    - rvm: jruby-9.1.8.0
       gemfile: gemfiles/rails5_0.gemfile
-    - rvm: 2.4.0
+    - rvm: 2.1.10
+      gemfile: gemfiles/rails5_1.gemfile
+    - rvm: jruby-9.1.8.0
+      gemfile: gemfiles/rails5_1.gemfile
+    - rvm: 2.4.1
       gemfile: gemfiles/rails4_2.gemfile
-    - rvm: 2.4.0
+    - rvm: 2.4.1
       gemfile: gemfiles/mm_rails4_2.gemfile
 
 services:
