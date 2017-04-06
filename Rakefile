@@ -1,8 +1,9 @@
-require 'rake/clean'
-require 'rake/testtask'
+# Setup bundler to avoid having to run bundle exec all the time.
+require 'rubygems'
+require 'bundler/setup'
 
-$LOAD_PATH.unshift File.expand_path('../lib', __FILE__)
-require 'symmetric_encryption/version'
+require 'rake/testtask'
+require_relative 'lib/symmetric_encryption/version'
 
 task :gem do
   system 'gem build symmetric-encryption.gemspec'
@@ -21,4 +22,10 @@ Rake::TestTask.new(:test) do |t|
   t.warning = false
 end
 
-task :default => :test
+# By default run tests against all appraisals
+if !ENV["APPRAISAL_INITIALIZED"] && !ENV["TRAVIS"]
+  require 'appraisal'
+  task default: :appraisal
+else
+  task default: :test
+end

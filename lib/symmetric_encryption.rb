@@ -30,4 +30,7 @@ if defined?(ActiveRecord::Base) && !defined?(AttrEncrypted::Version)
 end
 require 'symmetric_encryption/railties/symmetric_encryption_validator' if defined?(ActiveModel)
 require 'symmetric_encryption/extensions/mongoid/encrypted' if defined?(Mongoid)
-require 'symmetric_encryption/extensions/mongo_mapper/plugins/encrypted_key' if defined?(MongoMapper)
+if defined?(MongoMapper)
+  warn 'MongoMapper support is deprecated. Consider upgrading to Mongoid.'
+  require 'symmetric_encryption/extensions/mongo_mapper/plugins/encrypted_key'
+end

@@ -137,7 +137,7 @@ class ActiveRecordTest < Minitest::Test
       )
     end
 
-    it 'have encrypted methods' do
+    it 'has encrypted methods' do
       assert_equal true, @user.respond_to?(:encrypted_bank_account_number)
       assert_equal true, @user.respond_to?(:bank_account_number)
       assert_equal true, @user.respond_to?(:encrypted_social_security_number)
@@ -149,153 +149,155 @@ class ActiveRecordTest < Minitest::Test
       assert_equal true, @user.respond_to?(:bank_account_number_changed?)
     end
 
-    it 'have unencrypted values' do
+    it 'has unencrypted values' do
       assert_equal @bank_account_number, @user.bank_account_number
       assert_equal @social_security_number, @user.social_security_number
     end
 
-    it 'have encrypted values' do
+    it 'has encrypted values' do
       assert_equal @bank_account_number_encrypted, @user.encrypted_bank_account_number
       assert_equal @social_security_number_encrypted, @user.encrypted_social_security_number
     end
 
-    it 'support same iv' do
-      @user.social_security_number = @social_security_number
-      assert first_value = @user.social_security_number
-      # Assign the same value
-      @user.social_security_number = @social_security_number
-      assert_equal first_value, @user.social_security_number
-    end
+    describe ':random_iv' do
+      it 'false' do
+        @user.social_security_number = @social_security_number
+        assert first_value = @user.social_security_number
+        # Assign the same value
+        @user.social_security_number = @social_security_number
+        assert_equal first_value, @user.social_security_number
+      end
 
-    it 'support a random iv' do
-      @user.string_value = STRING_VALUE
-      assert first_value = @user.encrypted_string_value
-      # Assign the same value
-      @user.string_value = STRING_VALUE.dup
-      assert first_value != @user.encrypted_string_value
-    end
+      it 'true' do
+        @user.string_value = STRING_VALUE
+        assert first_value = @user.encrypted_string_value
+        # Assign the same value
+        @user.string_value = STRING_VALUE.dup
+        assert first_value != @user.encrypted_string_value
+      end
 
-    it 'support a random iv and compress' do
-      @user.string_value      = STRING_VALUE
-      @user.long_string_value = STRING_VALUE
+      it 'true and compress: true' do
+        @user.string_value      = STRING_VALUE
+        @user.long_string_value = STRING_VALUE
 
-      refute_equal @user.encrypted_long_string_value, @user.encrypted_string_value
-    end
-
-    it 'encrypt' do
-      user                     = User.new
-      user.bank_account_number = @bank_account_number
-      assert_equal @bank_account_number, user.bank_account_number
-      assert_equal @bank_account_number_encrypted, user.encrypted_bank_account_number
-    end
-
-    it 'allow lookups using unencrypted or encrypted column name' do
-      if ActiveRecord::VERSION::STRING.to_f < 4.1
-        @user.save!
-
-        inq = User.find_by_bank_account_number(@bank_account_number)
-        assert_equal @bank_account_number, inq.bank_account_number
-        assert_equal @bank_account_number_encrypted, inq.encrypted_bank_account_number
-
-        @user.delete
+        refute_equal @user.encrypted_long_string_value, @user.encrypted_string_value
       end
     end
 
-    it 'all paths it lead to the same result' do
-      assert_equal @bank_account_number_encrypted, (@user.encrypted_social_security_number = @bank_account_number_encrypted)
-      assert_equal @bank_account_number, @user.social_security_number
-      assert_equal @bank_account_number_encrypted, @user.encrypted_social_security_number
+    describe 'attribute=' do
+      it 'encrypt' do
+        user                     = User.new
+        user.bank_account_number = @bank_account_number
+        assert_equal @bank_account_number, user.bank_account_number
+        assert_equal @bank_account_number_encrypted, user.encrypted_bank_account_number
+      end
+
+      it 'all paths it lead to the same result' do
+        assert_equal @bank_account_number_encrypted, (@user.encrypted_social_security_number = @bank_account_number_encrypted)
+        assert_equal @bank_account_number, @user.social_security_number
+        assert_equal @bank_account_number_encrypted, @user.encrypted_social_security_number
+      end
+
+      it 'all paths it lead to the same result 2' do
+        assert_equal @bank_account_number, (@user.social_security_number = @bank_account_number)
+        assert_equal @bank_account_number_encrypted, @user.encrypted_social_security_number
+        assert_equal @bank_account_number, @user.social_security_number
+      end
+
+      it 'all paths it lead to the same result, check uninitialized' do
+        user = User.new
+        assert_nil user.social_security_number
+        assert_equal @bank_account_number, (user.social_security_number = @bank_account_number)
+        assert_equal @bank_account_number, user.social_security_number
+        assert_equal @bank_account_number_encrypted, user.encrypted_social_security_number
+
+        assert_nil (user.social_security_number = nil)
+        assert_nil user.social_security_number
+        assert_nil user.encrypted_social_security_number
+      end
     end
 
-    it 'all paths it lead to the same result 2' do
-      assert_equal @bank_account_number, (@user.social_security_number = @bank_account_number)
-      assert_equal @bank_account_number_encrypted, @user.encrypted_social_security_number
-      assert_equal @bank_account_number, @user.social_security_number
+    describe '.new' do
+      it 'allows unencrypted values to be passed to the constructor' do
+        user = User.new(bank_account_number: @bank_account_number, social_security_number: @social_security_number)
+        assert_equal @bank_account_number, user.bank_account_number
+        assert_equal @social_security_number, user.social_security_number
+        assert_equal @bank_account_number_encrypted, user.encrypted_bank_account_number
+        assert_equal @social_security_number_encrypted, user.encrypted_social_security_number
+      end
     end
 
-    it 'all paths it lead to the same result, check uninitialized' do
-      user = User.new
-      assert_nil user.social_security_number
-      assert_equal @bank_account_number, (user.social_security_number = @bank_account_number)
-      assert_equal @bank_account_number, user.social_security_number
-      assert_equal @bank_account_number_encrypted, user.encrypted_social_security_number
-
-      assert_nil (user.social_security_number = nil)
-      assert_nil user.social_security_number
-      assert_nil user.encrypted_social_security_number
+    describe '.encrypted_attributes' do
+      it 'returns encrypted attributes for the class' do
+        expect = {social_security_number: :encrypted_social_security_number, bank_account_number: :encrypted_bank_account_number}
+        result = User.encrypted_attributes
+        expect.each_pair { |k, v| assert_equal expect[k], result[k] }
+      end
     end
 
-    it 'allow unencrypted values to be passed to the constructor' do
-      user = User.new(bank_account_number: @bank_account_number, social_security_number: @social_security_number)
-      assert_equal @bank_account_number, user.bank_account_number
-      assert_equal @social_security_number, user.social_security_number
-      assert_equal @bank_account_number_encrypted, user.encrypted_bank_account_number
-      assert_equal @social_security_number_encrypted, user.encrypted_social_security_number
+    describe '.encrypted_keys' do
+      it 'return encrypted keys for the class' do
+        expect = [:social_security_number, :bank_account_number]
+        result = User.encrypted_keys
+        expect.each { |val| assert result.include?(val) }
+
+        # Also check encrypted_attribute?
+        expect.each { |val| assert User.encrypted_attribute?(val) }
+      end
     end
 
-    it 'return encrypted attributes for the class' do
-      expect = {social_security_number: :encrypted_social_security_number, bank_account_number: :encrypted_bank_account_number}
-      result = User.encrypted_attributes
-      expect.each_pair { |k, v| assert_equal expect[k], result[k] }
+    describe '.encrypted_columns' do
+      it 'return encrypted columns for the class' do
+        expect = [:encrypted_social_security_number, :encrypted_bank_account_number]
+        result = User.encrypted_columns
+        expect.each { |val| assert result.include?(val) }
+
+        # Also check encrypted_column?
+        expect.each { |val| assert User.encrypted_column?(val) }
+      end
     end
 
-    it 'return encrypted keys for the class' do
-      expect = [:social_security_number, :bank_account_number]
-      result = User.encrypted_keys
-      expect.each { |val| assert result.include?(val) }
+    describe '#valid?' do
+      it 'validate encrypted data' do
+        assert @user.valid?
+        @user.encrypted_bank_account_number = '123'
+        assert_equal false, @user.valid?
+        assert_equal ['must be a value encrypted using SymmetricEncryption.encrypt'], @user.errors[:encrypted_bank_account_number]
+        @user.encrypted_bank_account_number = SymmetricEncryption.encrypt('123')
+        assert @user.valid?
+        @user.bank_account_number = '123'
+        assert @user.valid?
+      end
 
-      # Also check encrypted_attribute?
-      expect.each { |val| assert User.encrypted_attribute?(val) }
-    end
+      it 'validate un-encrypted string data' do
+        assert @user.valid?
+        @user.text = '123'
+        assert_equal false, @user.valid?
+        assert_equal ['only allows letters'], @user.errors[:text]
+        @user.text = nil
+        assert_equal false, @user.valid?
+        assert_equal ['only allows letters', "can't be blank"], @user.errors[:text]
+        @user.text = ''
+        assert_equal false, @user.valid?
+        assert_equal ['only allows letters', "can't be blank"], @user.errors[:text]
+      end
 
-    it 'return encrypted columns for the class' do
-      expect = [:encrypted_social_security_number, :encrypted_bank_account_number]
-      result = User.encrypted_columns
-      expect.each { |val| assert result.include?(val) }
-
-      # Also check encrypted_column?
-      expect.each { |val| assert User.encrypted_column?(val) }
-    end
-
-    it 'validate encrypted data' do
-      assert @user.valid?
-      @user.encrypted_bank_account_number = '123'
-      assert_equal false, @user.valid?
-      assert_equal ['must be a value encrypted using SymmetricEncryption.encrypt'], @user.errors[:encrypted_bank_account_number]
-      @user.encrypted_bank_account_number = SymmetricEncryption.encrypt('123')
-      assert @user.valid?
-      @user.bank_account_number = '123'
-      assert @user.valid?
-    end
-
-    it 'validate un-encrypted string data' do
-      assert @user.valid?
-      @user.text = '123'
-      assert_equal false, @user.valid?
-      assert_equal ['only allows letters'], @user.errors[:text]
-      @user.text = nil
-      assert_equal false, @user.valid?
-      assert_equal ['only allows letters', "can't be blank"], @user.errors[:text]
-      @user.text = ''
-      assert_equal false, @user.valid?
-      assert_equal ['only allows letters', "can't be blank"], @user.errors[:text]
-    end
-
-    it 'validate un-encrypted integer data with coercion' do
-      assert @user.valid?
-      @user.number = '123'
-      assert @user.valid?
-      assert_equal 123, @user.number
-      assert @user.valid?
-      @user.number = ''
-      assert_equal false, @user.valid?
-      assert_nil @user.number
-      assert_equal ["can't be blank"], @user.errors[:number]
-      @user.number = nil
-      assert_nil @user.number
-      assert_nil @user.encrypted_number
-      assert_equal false, @user.valid?
-      assert_equal ["can't be blank"], @user.errors[:number]
+      it 'validate un-encrypted integer data with coercion' do
+        assert @user.valid?
+        @user.number = '123'
+        assert @user.valid?
+        assert_equal 123, @user.number
+        assert @user.valid?
+        @user.number = ''
+        assert_equal false, @user.valid?
+        assert_nil @user.number
+        assert_equal ["can't be blank"], @user.errors[:number]
+        @user.number = nil
+        assert_nil @user.number
+        assert_nil @user.encrypted_number
+        assert_equal false, @user.valid?
+        assert_equal ["can't be blank"], @user.errors[:number]
+      end
     end
 
     describe 'with saved user' do
@@ -328,28 +330,30 @@ class ActiveRecordTest < Minitest::Test
         end
       end
 
-      it 'revert changes on reload' do
-        new_bank_account_number   = '444444444'
-        @user.bank_account_number = new_bank_account_number
-        assert_equal new_bank_account_number, @user.bank_account_number
+      describe '#reload' do
+        it 'reverts changes' do
+          new_bank_account_number   = '444444444'
+          @user.bank_account_number = new_bank_account_number
+          assert_equal new_bank_account_number, @user.bank_account_number
 
-        # Reload User model from the database
-        @user.reload
-        assert_equal @bank_account_number_encrypted, @user.encrypted_bank_account_number
-        assert_equal @bank_account_number, @user.bank_account_number
-      end
+          # Reload User model from the database
+          @user.reload
+          assert_equal @bank_account_number_encrypted, @user.encrypted_bank_account_number
+          assert_equal @bank_account_number, @user.bank_account_number
+        end
 
-      it 'revert changes to encrypted field on reload' do
-        new_bank_account_number             = '111111111'
-        new_encrypted_bank_account_number   = SymmetricEncryption.encrypt(new_bank_account_number)
-        @user.encrypted_bank_account_number = new_encrypted_bank_account_number
-        assert_equal new_encrypted_bank_account_number, @user.encrypted_bank_account_number
-        assert_equal new_bank_account_number, @user.bank_account_number
+        it 'reverts changes to encrypted field' do
+          new_bank_account_number             = '111111111'
+          new_encrypted_bank_account_number   = SymmetricEncryption.encrypt(new_bank_account_number)
+          @user.encrypted_bank_account_number = new_encrypted_bank_account_number
+          assert_equal new_encrypted_bank_account_number, @user.encrypted_bank_account_number
+          assert_equal new_bank_account_number, @user.bank_account_number
 
-        # Reload User model from the database
-        @user.reload
-        assert_equal @bank_account_number_encrypted, @user.encrypted_bank_account_number
-        assert_equal @bank_account_number, @user.bank_account_number
+          # Reload User model from the database
+          @user.reload
+          assert_equal @bank_account_number_encrypted, @user.encrypted_bank_account_number
+          assert_equal @bank_account_number, @user.bank_account_number
+        end
       end
 
       describe 'data types' do
@@ -382,8 +386,11 @@ class ActiveRecordTest < Minitest::Test
             end
 
             it 'return correct data type' do
-              assert_equal @value, @user_clone.send(@attribute), @user_clone.attributes.ai
-              assert @user.clone.send(@attribute).kind_of?(@klass)
+              val = @user_clone.send(@attribute)
+              # Need to dup since minitest attempts to modify the decrypted value which is frozen
+              val = val.dup if val.duplicable?
+              assert_equal @value, val, @user_clone.attributes.ai
+              assert @user.send(@attribute).kind_of?(@klass)
             end
 
             it 'coerce data type before save' do
@@ -424,7 +431,10 @@ class ActiveRecordTest < Minitest::Test
               @user_clone.save!
 
               @user.reload
-              assert_equal @new_value, @user.send(@attribute)
+              val = @user.send(@attribute)
+              # Need to dup since minitest attempts to modify the decrypted value which is frozen
+              val = val.dup if val.duplicable?
+              assert_equal @new_value, val
             end
           end
         end

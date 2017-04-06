@@ -375,14 +375,14 @@ begin
 
         describe 'time values' do
           it 'return correct data type' do
-            assert_equal @time_value, @user_clone.time_value
+            assert_equal @time_value, @user_clone.time_value.dup
             assert @user.clone.time_value.kind_of?(Time)
           end
 
           it 'coerce data type before save' do
             now = Time.now
             u   = MongoidUser.new(time_value: now)
-            assert_equal now, u.time_value
+            assert_equal now, u.time_value.dup
             assert u.time_value.kind_of?(Time)
           end
 
@@ -401,7 +401,7 @@ begin
             @user_clone.save!
 
             @user.reload
-            assert_equal new_time_value, @user.time_value
+            assert_equal new_time_value, @user.time_value.dup
           end
         end
 
