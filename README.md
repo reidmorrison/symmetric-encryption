@@ -33,8 +33,8 @@ Fully supports Symmetric Encryption to encrypt data in flight and at rest while 
 
 Symmetric Encryption works with the following Ruby VMs:
 
-- Ruby 2.1, 2.2, 2.3, and above
-- JRuby 1.7.23, 9.0.5 and above
+- Ruby 2.1 and higher.
+- JRuby 9.1 and higher.
 
 ## Upgrading to SymmetricEncryption V3
 
