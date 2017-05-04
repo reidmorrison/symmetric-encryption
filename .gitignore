@@ -1,9 +1,10 @@
 .DS_Store
 *.gem
-.idea/*
 *.sqlite3
 .bundle
 *.log
 Gemfile.lock
 
 *.lock
+.idea
+/docs/_site
