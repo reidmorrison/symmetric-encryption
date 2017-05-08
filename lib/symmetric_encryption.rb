@@ -17,6 +17,7 @@ module SymmetricEncryption
   autoload :Reader,                 'symmetric_encryption/reader'
   autoload :Writer,                 'symmetric_encryption/writer'
   autoload :Generator,              'symmetric_encryption/generator'
+  autoload :CLI,                    'symmetric_encryption/cli'
   module Utils
     autoload :ReEncryptConfigFiles, 'symmetric_encryption/re_encrypt_config_files'
   end
