@@ -77,15 +77,6 @@ class UniqueUser < ActiveRecord::Base
 end
 #@formatter:on
 
-# Initialize the database connection
-config_file = File.join(File.dirname(__FILE__), 'config', 'database.yml')
-raise 'database config not found. Create a config file at: test/config/database.yml' unless File.exist? config_file
-
-cfg = YAML.load(ERB.new(File.new(config_file).read).result)['test']
-raise("Environment 'test' not defined in test/config/database.yml") unless cfg
-
-User.establish_connection(cfg)
-
 #
 # Unit Test for attr_encrypted extensions in ActiveRecord
 #
