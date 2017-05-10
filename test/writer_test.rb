@@ -6,15 +6,15 @@ require 'stringio'
 class WriterTest < Minitest::Test
   describe SymmetricEncryption::Writer do
     before do
-      @data                    = [
+      @data           = [
         "Hello World\n",
         "Keep this secret\n",
         'And keep going even further and further...'
       ]
-      @data_str                = @data.inject('') { |sum, str| sum << str }
-      @data_len                = @data_str.length
-      @data_encrypted          = SymmetricEncryption.cipher.binary_encrypt(@data_str, false, false, false)
-      @filename                = '._test'
+      @data_str       = @data.inject('') { |sum, str| sum << str }
+      @data_len       = @data_str.length
+      @data_encrypted = SymmetricEncryption.cipher.binary_encrypt(@data_str, false, false, false)
+      @filename       = '._test'
     end
 
     after do

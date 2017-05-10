@@ -276,8 +276,8 @@ module SymmetricEncryption
       cipher_config.delete(key)
     end
 
-    key_config    = {private_rsa_key: config[:private_rsa_key]}
-    cipher_cfg    = Cipher.generate_random_keys(key_config.merge(cipher_config))
+    key_config = {private_rsa_key: config[:private_rsa_key]}
+    cipher_cfg = Cipher.generate_random_keys(key_config.merge(cipher_config))
 
     puts
     if encoded_encrypted_key = cipher_cfg[:encrypted_key]

@@ -145,11 +145,11 @@ module SymmetricEncryption
       # Write the Encryption header including the random iv, key, and cipher
       if header
         @ios.write(Cipher.build_header(
-            cipher.version,
-            compress,
-            random_iv ? iv : nil,
-            random_key ? key : nil,
-            cipher_name))
+          cipher.version,
+          compress,
+          random_iv ? iv : nil,
+          random_key ? key : nil,
+          cipher_name))
       end
       @size   = 0
       @closed = false

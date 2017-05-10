@@ -56,8 +56,8 @@ class ReaderTest < Minitest::Test
         end
 
         it "#each_line" do
-          stream    = StringIO.new(@data_encrypted)
-          i         = 0
+          stream = StringIO.new(@data_encrypted)
+          i      = 0
           # Version 0 supplied if the file/stream does not have a header
           SymmetricEncryption::Reader.open(stream, version: 0) do |file|
             file.each_line do |line|
@@ -68,7 +68,7 @@ class ReaderTest < Minitest::Test
         end
 
         it "#read(size)" do
-          stream    = StringIO.new(@data_encrypted)
+          stream = StringIO.new(@data_encrypted)
           # Version 0 supplied if the file/stream does not have a header
           SymmetricEncryption::Reader.open(stream, version: 0) do |file|
             index = 0

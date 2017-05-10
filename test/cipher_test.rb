@@ -257,8 +257,8 @@ class CipherTest < Minitest::Test
       it 'exception on missing rsa key' do
         assert_raises SymmetricEncryption::ConfigError do
           SymmetricEncryption::Cipher.generate_random_keys(
-            key_filename:    @key_filename,
-            iv_filename:     @iv_filename
+            key_filename: @key_filename,
+            iv_filename:  @iv_filename
           )
         end
       end
