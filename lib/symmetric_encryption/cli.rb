@@ -4,32 +4,30 @@ require 'erb'
 
 module SymmetricEncryption
   class CLI
-    attr_reader :parser, :options, :key_path, :app_name
+    attr_reader :parser, :key_path, :app_name, :encrypt_value, :file_path,
+                :decrypt_value, :random_password, :keys, :gen_config, :environment
 
     def initialize(argv)
-      @options = {}
       setup
       parser.parse!(argv.dup)
     end
 
     def run!
-      if options[:encrypt] || options[:decrypt] || options[:random_password] || options[:keys]
+      if encrypt_value || decrypt_value || random_password || keys
         check_env_file_options
         load
       end
 
-      if options[:encrypt]
+      if encrypt_value
         encrypt
-      elsif options[:decrypt]
+      elsif decrypt_value
         decrypt
-      elsif options[:random_password]
-        random_password
-      elsif options[:keys]
+      elsif random_password
+        gen_random_password
+      elsif keys
         generate_keys
-      elsif options[:config]
+      elsif gen_config
         check_key_path_name_options
-        @key_path = options[:key_path]
-        @app_name = options[:name]
         generate_config
       else
         puts parser
@@ -47,39 +45,39 @@ module SymmetricEncryption
         opts.banner = "Symmetric Encryption #{VERSION} CLI\n\nsymmetric-encryption <options>\n"
 
         opts.on '-e', '--encrypt', 'Encrypt a plain text value. Requires --env and --file.' do |encrypt|
-          options[:encrypt] = encrypt
+          @encrypt_value = encrypt
         end
 
         opts.on '-d', '--decrypt VALUE', 'Decrypt a encrypted value. Requires --env and --file.' do |decrypt|
-          options[:decrypt] = decrypt
+          @decrypt_value = decrypt
         end
 
         opts.on '-r', '--random', 'Generate a random password.' do |random|
-          options[:random_password] = random
+          @random_password = random
         end
 
         opts.on '-k', '--keys', 'Generate encryption keys Requires --env and --file.' do |keys|
-          options[:keys] = keys
+          @keys = keys
         end
 
-        opts.on '-c', '--config', 'Generate a configuration file. Requires --path and --name' do |config|
-          options[:config] = config
+        opts.on '-g', '--generate', 'Generate a configuration file. Requires --path and --name' do |config|
+          @gen_config = config
         end
 
         opts.on '-p', '--path KEY_PATH', 'Key path for configuration generator.' do |path|
-          options[:key_path] = path
+          @key_path = path
         end
 
         opts.on '-n', '--name NAME', 'Name for configuration generator' do |name|
-          options[:name] = name
+          @app_name = name
         end
 
         opts.on '-v', '--env ENVIRONMENT', 'Which environment are we using.' do |environment|
-          options[:environment] = environment
+          @environment = environment
         end
 
         opts.on '-f', '--file FILE_PATH', 'File path of your configuration file.' do |path|
-          options[:file_path] = path
+          @file_path = path
         end
       end
     end
@@ -99,14 +97,14 @@ module SymmetricEncryption
     end
 
     def generate_keys
-      SymmetricEncryption.generate_symmetric_key_files(options[:file_path], options[:environment])
+      SymmetricEncryption.generate_symmetric_key_files(file_path, environment)
     end
 
     def decrypt
-      puts "Decrypted: #{SymmetricEncryption.decrypt(options[:decrypt])}\n\n"
+      puts "Decrypted: #{SymmetricEncryption.decrypt(decrypt_value)}\n\n"
     end
 
-    def random_password
+    def gen_random_password
       p = SymmetricEncryption.random_password
       puts "\nGenerated Password: #{p}"
       puts "Encrypted: #{SymmetricEncryption.encrypt(p)}\n\n"
@@ -144,23 +142,23 @@ module SymmetricEncryption
     end
 
     def check_key_path
-      raise SymmetricEncryption::Error, 'Missing required --path option'  unless options[:key_path]
+      raise SymmetricEncryption::Error, 'Missing required --path option'  unless key_path
     end
 
     def check_name
-      raise SymmetricEncryption::Error, 'Missing required --name option'  unless options[:name]
+      raise SymmetricEncryption::Error, 'Missing required --name option'  unless app_name
     end
 
     def check_env
-      raise SymmetricEncryption::Error, 'Missing required --env option'  unless options[:environment]
+      raise SymmetricEncryption::Error, 'Missing required --env option'  unless environment
     end
 
     def check_file
-      raise SymmetricEncryption::Error, 'Missing required --file option' unless options[:file_path]
+      raise SymmetricEncryption::Error, 'Missing required --file option' unless file_path
     end
 
     def load
-      SymmetricEncryption.load!(options[:file_path], options[:environment])
+      SymmetricEncryption.load!(file_path, environment)
     end
   end
 end
