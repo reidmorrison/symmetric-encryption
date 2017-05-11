@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+
+require 'symmetric_encryption'
+
+SymmetricEncryption::CLI.run!(ARGV)
