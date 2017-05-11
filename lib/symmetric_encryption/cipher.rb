@@ -146,7 +146,6 @@ module SymmetricEncryption
         cipher_conf[:iv] = SymmetricEncryption::Encoder[encoding].encode(iv.to_s)
       end
 
-      raise(ArgumentError, "SymmetricEncryption::Cipher Invalid options #{params.inspect}") if params.size > 0
       cipher_conf
     end
 
