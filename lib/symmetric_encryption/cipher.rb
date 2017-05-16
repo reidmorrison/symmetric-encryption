@@ -8,11 +8,8 @@ module SymmetricEncryption
   class Cipher
     # Cipher to use for encryption and decryption
     attr_accessor :cipher_name, :version, :iv, :always_add_header
-    attr_reader :encoder, :encoding
+    attr_reader :encoding
     attr_writer :key
-
-    # Backward compatibility
-    alias_method :cipher, :cipher_name
 
     # Defines the Header Structure returned when parsing the header
     HeaderStruct = Struct.new(
@@ -200,66 +197,71 @@ module SymmetricEncryption
     #   :version [Fixnum]
     #     Optional. The version number of this encryption key
     #     Used by SymmetricEncryption to select the correct key when decrypting data
-    #     Maximum value: 255
+    #     Valid Range: 0..255
+    #     Default: 1
     #
     #   :always_add_header [true|false]
     #     Whether to always include the header when encrypting data.
     #     ** Highly recommended to set this value to true **
     #     Increases the length of the encrypted data by a few bytes, but makes
     #     migration to a new key trivial
-    #     Default: false
-    #     Recommended: true
+    #     Default: true
     #
     #   private_rsa_key [String]
     #     Key encryption key.
     #     To generate a new one: SymmetricEncryption::KeyEncryptionKey.generate
     #     Required if :key_filename, :encrypted_key, :iv_filename, or :encrypted_iv is supplied
-    def initialize(params={})
-      params             = params.dup
-      @cipher_name       = params.delete(:cipher_name) || params.delete(:cipher) || 'aes-256-cbc'
-      @version           = params.delete(:version)
-      @always_add_header = params.delete(:always_add_header) || false
-      self.encoding      = (params.delete(:encoding) || :base64).to_sym
-      private_rsa_key    = params.delete(:private_rsa_key)
-      unless private_rsa_key
-        [:key_filename, :encrypted_key, :iv_filename, :encrypted_iv].each do |key|
-          raise(SymmetricEncryption::ConfigError, "When :#{key} is supplied, :private_rsa_key is required.") if params.include?(key)
-        end
+    def initialize(cipher_name: 'aes-256-cbc', encoding: :base64, version: 0, always_add_header: true,
+                   private_rsa_key: nil,
+                   key_filename: nil, encrypted_key: nil, key: nil,
+                   iv_filename: nil, encrypted_iv: nil, iv: nil)
+      @cipher_name       = cipher_name
+      self.encoding      = encoding.to_sym
+      @version           = version.to_i
+      @always_add_header = always_add_header
+
+      raise(ArgumentError, "Cipher version has a valid range of 0 to 255. #{@version} is too high, or negative") if (@version > 255) || (@version < 0)
+
+      if key_filename || encrypted_key || iv_filename || encrypted_iv
+        raise(SymmetricEncryption::ConfigError, 'Missing required :private_rsa_key') unless private_rsa_key
       end
 
       key_encryption_key = KeyEncryptionKey.new(private_rsa_key) if private_rsa_key
       @key               =
-        if key = params.delete(:key)
+        if key
           key
-        elsif file_name = params.delete(:key_filename)
-          encrypted_key = self.class.read_from_file(file_name)
+        elsif key_filename
+          encrypted_key = self.class.read_from_file(key_filename)
           key_encryption_key.decrypt(encrypted_key)
-        elsif encrypted_key = params.delete(:encrypted_key)
-          binary = self.encoder.decode(encrypted_key)
+        elsif encrypted_key
+          binary = encoder.decode(encrypted_key)
           key_encryption_key.decrypt(binary)
         else
           raise(ArgumentError, 'Missing mandatory parameter :key, :key_filename, or :encrypted_key')
         end
 
       @iv =
-        if iv = params.delete(:iv)
+        if iv
           iv
-        elsif file_name = params.delete(:iv_filename)
-          encrypted_iv = self.class.read_from_file(file_name)
+        elsif iv_filename
+          encrypted_iv = self.class.read_from_file(iv_filename)
           key_encryption_key.decrypt(encrypted_iv)
-        elsif encrypted_iv = params.delete(:encrypted_iv)
-          binary = self.encoder.decode(encrypted_iv)
+        elsif encrypted_iv
+          binary = encoder.decode(encrypted_iv)
           key_encryption_key.decrypt(binary)
         end
 
-      raise(ArgumentError, "Cipher version has a valid range of 0 to 255. #{@version} is too high, or negative") if (@version.to_i > 255) || (@version.to_i < 0)
-      raise(ArgumentError, "SymmetricEncryption::Cipher Invalid options #{params.inspect}") if params.size > 0
     end
 
     # Change the encoding
     def encoding=(encoding)
-      @encoder  = SymmetricEncryption::Encoder[encoding]
+      @encoder  = nil
       @encoding = encoding
+    end
+
+    # Returns [SymmetricEncryption::Encoder] the encoder to use for the current encoding.
+    def encoder
+      @encoder ||= SymmetricEncryption::Encoder[encoding]
     end
 
     # Encrypt and then encode a string

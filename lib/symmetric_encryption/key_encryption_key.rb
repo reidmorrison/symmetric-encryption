@@ -7,9 +7,7 @@ module SymmetricEncryption
   #   No encoding or decoding is performed.
   class KeyEncryptionKey
     # Returns [String] a new key encryption key.
-    def self.generate(options = {})
-      options = options.dup
-      size    = options.delete(:size) || 2048
+    def self.generate(size: 2048)
       OpenSSL::PKey::RSA.generate(size).to_s
     end
 

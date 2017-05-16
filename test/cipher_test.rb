@@ -17,15 +17,16 @@ class CipherTest < Minitest::Test
 
     it 'not require an iv' do
       cipher = SymmetricEncryption::Cipher.new(
-        key:      '1234567890ABCDEF1234567890ABCDEF',
-        encoding: :none
+        key:               '1234567890ABCDEF1234567890ABCDEF',
+        encoding:          :none,
+        always_add_header: false
       )
       result = "\302<\351\227oj\372\3331\310\260V\001\v'\346"
       # Note: This test fails on JRuby 1.7 RC1 since it's OpenSSL
       #       behaves differently when no IV is supplied.
       #       It instead encrypts to the following value:
       # result = "0h\x92\x88\xA1\xFE\x8D\xF5\xF3v\x82\xAF(P\x83Y"
-      result.force_encoding('binary') if defined?(Encoding)
+      result.force_encoding('binary')
       assert_equal result, cipher.encrypt('Hello World')
     end
 
@@ -122,7 +123,7 @@ class CipherTest < Minitest::Test
       @social_security_number = '987654321'
 
       @social_security_number_encrypted = "A\335*\314\336\250V\340\023%\000S\177\305\372\266"
-      @social_security_number_encrypted.force_encoding('binary') if defined?(Encoding)
+      @social_security_number_encrypted.force_encoding('binary')
 
       @sample_data = [
         {text: '555052345', encrypted: ''}
