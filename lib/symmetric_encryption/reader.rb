@@ -91,6 +91,37 @@ module SymmetricEncryption
       end
     end
 
+    # Decrypt an entire file.
+    #
+    # Returns [Integer] the number of unencrypted bytes written to the target file.
+    #
+    # Params:
+    #   source: [String|IO]
+    #     Source filename or IOStream
+    #
+    #   target: [String|IO]
+    #     Target filename or IOStream
+    #
+    #   block_size: [Integer]
+    #     Number of bytes to read into memory for each read.
+    #     For very large files using a larger block size is faster.
+    #     Default: 65535
+    #
+    # Notes:
+    # * The file contents are streamed so that the entire file is _not_ loaded into memory.
+    def self.decrypt(source:, target:, block_size: 65535)
+      target_ios    = target.is_a?(String) ? ::File.open(target, 'wb') : target
+      bytes_written = 0
+      open(source) do |input_ios|
+        while !input_ios.eof?
+          bytes_written += target_ios.write(input_ios.read(block_size))
+        end
+      end
+      bytes_written
+    ensure
+      target_ios.close if target_ios && target_ios.respond_to?(:closed?) && !target_ios.closed?
+    end
+
     # Returns [true|false] whether the file or stream contains any data
     # excluding the header should it have one
     def self.empty?(filename_or_stream)
@@ -325,7 +356,7 @@ module SymmetricEncryption
       iv, key           = nil
       cipher_name       = nil
       decryption_cipher = nil
-      if header = SymmetricEncryption::Cipher.parse_header!(buf)
+      if header = SymmetricEncryption::Cipher::Header.parse!(buf)
         @header_present   = true
         @compressed       = header.compressed
         decryption_cipher = header.decryption_cipher

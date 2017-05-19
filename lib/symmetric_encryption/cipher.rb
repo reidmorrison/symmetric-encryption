@@ -8,44 +8,8 @@ module SymmetricEncryption
   class Cipher
     # Cipher to use for encryption and decryption
     attr_accessor :cipher_name, :version, :iv, :always_add_header
-    attr_reader :encoding
+    attr_reader :encoding, :key_filename, :iv_filename, :key_encryption_key
     attr_writer :key
-
-    # Defines the Header Structure returned when parsing the header
-    HeaderStruct = Struct.new(
-      # [true|false] Whether the data is compressed, if supplied in the header
-      :compressed,
-      # [String] IV used to encrypt the data, if supplied in the header
-      :iv,
-      # [String] Key used to encrypt the data, if supplied in the header
-      :key,
-      # [String] Name of the cipher used, if supplied in the header
-      :cipher_name,
-      # [Integer] Version of the cipher used, if supplied in the header
-      :version,
-      # [SymmetricEncryption::Cipher] Cipher matching the header, or SymmetricEncryption.cipher(default_version)
-      :decryption_cipher
-    )
-
-    # Generate a new Symmetric Key pair
-    #
-    # Returns a hash containing a new random symmetric_key pair
-    # consisting of a :key and :iv.
-    # The cipher_name is also included for compatibility with the Cipher initializer
-    #
-    # Notes:
-    # * The key _must_ be properly secured
-    # * The iv can be stored in the clear and it is not necessary to encrypt it
-    def self.random_key_pair(cipher_name = 'aes-256-cbc')
-      openssl_cipher = ::OpenSSL::Cipher.new(cipher_name)
-      openssl_cipher.encrypt
-
-      {
-        key:         openssl_cipher.random_key,
-        iv:          openssl_cipher.random_iv,
-        cipher_name: cipher_name
-      }
-    end
 
     # Generate new randomized keys and generate key and iv files if supplied.
     # Overwrites key files for the current environment.
@@ -76,7 +40,7 @@ module SymmetricEncryption
     #
     #  Note:
     #    If :iv_filename and :encrypted_iv are not supplied then a new :iv will be returned.
-    #    :key is the Initialization Vector to use with Symmetric Key.
+    #    :iv is the Initialization Vector to use with Symmetric Key.
     #
     #
     #   private_rsa_key [String]
@@ -101,69 +65,40 @@ module SymmetricEncryption
     #     :none
     #       Return as raw binary data string. Note: String can contain embedded nulls
     #     Default: :base64strict
-    def self.generate_random_keys(params = {})
-      params          = params.dup
-      private_rsa_key = params.delete(:private_rsa_key)
-      cipher_name     = params.delete(:cipher_name) || 'aes-256-cbc'
-      encoding        = params.delete(:encoding) || :base64strict
-      unless private_rsa_key
-        [:key_filename, :encrypted_key, :iv_filename, :encrypted_iv].each do |key|
-          raise(SymmetricEncryption::ConfigError, "When :#{key} is supplied, :private_rsa_key is required.") if params.include?(key)
-        end
-      end
+    def self.generate_random_keys(cipher_name: 'aes-256-cbc', encoding: :base64,
+      private_rsa_key: nil,
+      key_filename: nil, encrypted_key: nil,
+      iv_filename: nil, encrypted_iv: nil)
 
-      key_encryption_key = KeyEncryptionKey.new(private_rsa_key) if private_rsa_key
-      cipher_conf        = {cipher_name: cipher_name, encoding: encoding}
-
-      key_pair = SymmetricEncryption::Cipher.random_key_pair(cipher_name)
-      key      = key_pair[:key]
-      iv       = key_pair[:iv]
-
-      if file_name = params.delete(:key_filename)
-        cipher_conf[:key_filename] = file_name
-        encrypted_key              = key_encryption_key.encrypt(key)
-        write_to_file(file_name, encrypted_key)
-      elsif params.delete(:encrypted_key)
-        encrypted_key               = key_encryption_key.encrypt(key)
-        cipher_conf[:encrypted_key] = SymmetricEncryption::Encoder[encoding].encode(encrypted_key)
-      else
-        params.delete(:key)
-        cipher_conf[:key] = SymmetricEncryption::Encoder[encoding].encode(key.to_s)
-      end
-
-      if file_name = params.delete(:iv_filename)
-        cipher_conf[:iv_filename] = file_name
-        encrypted_iv              = key_encryption_key.encrypt(iv)
-        write_to_file(file_name, encrypted_iv)
-      elsif params.delete(:encrypted_iv)
-        encrypted_iv               = key_encryption_key.encrypt(iv)
-        cipher_conf[:encrypted_iv] = SymmetricEncryption::Encoder[encoding].encode(encrypted_iv)
-      else
-        params.delete(:iv)
-        cipher_conf[:iv] = SymmetricEncryption::Encoder[encoding].encode(iv.to_s)
-      end
-
-      raise(ArgumentError, "SymmetricEncryption::Cipher Invalid options #{params.inspect}") if params.size > 0
-      cipher_conf
+      cipher = self.class.new(
+        cipher_name:     cipher_name,
+        encoding:        encoding,
+        private_rsa_key: private_rsa_key,
+        key_filename:    key_filename,
+        iv_filename:     iv_filename
+      )
+      cipher.to_h
     end
 
     # Create a Symmetric::Key for encryption and decryption purposes
     #
     # Parameters:
     #   :key [String]
-    #     The Symmetric Key to use for encryption and decryption
+    #     The Symmetric Key to use for encryption and decryption.
+    #     Default: :random, generate a new random key if `key_filename` or `encrypted_key` is not supplied.
     #  Or,
     #   :key_filename
     #     Name of file containing symmetric key encrypted using the public
-    #     key from the private_rsa_key
+    #     key from the private_rsa_key.
     #  Or,
     #   :encrypted_key
     #     Symmetric key encrypted using the public key from the private_rsa_key
-    #     and then Base64 encoded
+    #     and then encoded with supplied `encoding`.
     #
     #   :iv [String]
     #     Optional. The Initialization Vector to use with Symmetric Key
     #     Highly Recommended as it is the input into the CBC algorithm
+    #     Default: :random, generate a new random IV if `iv_filename` or `encrypted_iv` is not supplied.
     #  Or,
     #   :iv_filename
     #     Name of file containing symmetric key initialization vector
@@ -191,8 +126,7 @@ module SymmetricEncryption
     #       Return as a Hex encoded string
     #     :none
     #       Return as raw binary data string. Note: String can contain embedded nulls
-    #     Default: :base64
-    #     Recommended: :base64strict
+    #     Default: :base64strict
     #
     #   :version [Fixnum]
     #     Optional. The version number of this encryption key
@@ -211,46 +145,118 @@ module SymmetricEncryption
     #     Key encryption key.
     #     To generate a new one: SymmetricEncryption::KeyEncryptionKey.generate
     #     Required if :key_filename, :encrypted_key, :iv_filename, or :encrypted_iv is supplied
-    def initialize(cipher_name: 'aes-256-cbc', encoding: :base64, version: 0, always_add_header: true,
-                   private_rsa_key: nil,
-                   key_filename: nil, encrypted_key: nil, key: nil,
-                   iv_filename: nil, encrypted_iv: nil, iv: nil)
+    #
+    #   key_encryption_key [SymmetricEncryption::KeyEncryptionKey]
+    #     Key encryption key to encrypt/decrypt the key and/or iv with.
+    #     Note:
+    #     - `private_rsa_key` is not used if `key_encryption_key` is supplied.
+    def initialize(cipher_name: 'aes-256-cbc', encoding: :base64strict, version: 0, always_add_header: true,
+                   private_rsa_key: nil, key_encryption_key: nil,
+                   key_filename: nil, encrypted_key: nil, key: :random,
+                   iv_filename: nil, encrypted_iv: nil, iv: :random)
+
       @cipher_name       = cipher_name
       self.encoding      = encoding.to_sym
       @version           = version.to_i
       @always_add_header = always_add_header
+      @key_filename      = key_filename
+      @iv_filename       = iv_filename
+
+      @key_encryption_key =
+        if key_encryption_key
+          key_encryption_key
+        elsif private_rsa_key
+          KeyEncryptionKey.new(private_rsa_key)
+        end
 
       raise(ArgumentError, "Cipher version has a valid range of 0 to 255. #{@version} is too high, or negative") if (@version > 255) || (@version < 0)
 
       if key_filename || encrypted_key || iv_filename || encrypted_iv
-        raise(SymmetricEncryption::ConfigError, 'Missing required :private_rsa_key') unless private_rsa_key
+        raise(SymmetricEncryption::ConfigError, 'Missing required :private_rsa_key, or :key_encryption_key') unless key_encryption_key
       end
 
-      key_encryption_key = KeyEncryptionKey.new(private_rsa_key) if private_rsa_key
-      @key               =
-        if key
+      @key =
+        if key != :random && key != nil
           key
         elsif key_filename
-          encrypted_key = self.class.read_from_file(key_filename)
-          key_encryption_key.decrypt(encrypted_key)
+          Keystore::File.new(file_name: key_filename, key_encryption_key: key_encryption_key).read
         elsif encrypted_key
-          binary = encoder.decode(encrypted_key)
-          key_encryption_key.decrypt(binary)
+          Keystore::String.new(encrypted_key: encrypted_key, key_encryption_key: key_encryption_key).read
+        elsif key == :random
+          random_key
         else
           raise(ArgumentError, 'Missing mandatory parameter :key, :key_filename, or :encrypted_key')
         end
 
       @iv =
-        if iv
+        if iv != :random && iv != nil
           iv
         elsif iv_filename
-          encrypted_iv = self.class.read_from_file(iv_filename)
-          key_encryption_key.decrypt(encrypted_iv)
+          Keystore::File.new(file_name: iv_filename, key_encryption_key: key_encryption_key).read
         elsif encrypted_iv
-          binary = encoder.decode(encrypted_iv)
-          key_encryption_key.decrypt(binary)
+          Keystore::String.new(encrypted_key: encrypted_iv, key_encryption_key: key_encryption_key).read
+        elsif iv == :random
+          random_iv
         end
 
+    end
+
+    # Returns [Cipher] a new cipher based on the current cipher.
+    # Updates the following attributes:
+    # - New randomized key.
+    # - New randomized iv.
+    # - Increments the version number, with rollover.
+    # - Changes the version number in the key_filename if present.
+    #     - For example replaces the text v10 with v11.
+    # Params
+    #   save: [true|false]
+    #     After creating a random cipher, also write the new values to its keystore (file).
+    #
+    # Note:
+    # - iv_filename is no longer supported and is removed when creating a new random cipher.
+    #     - `iv` is always included in the clear.
+    def random_cipher(save: true)
+      cipher     = clone
+      cipher.key = random_key
+      cipher.iv  = random_iv
+
+      version >= 255 ? cipher.version = 1 : cipher.version += 1
+
+      # Not necessary to encrypt IV
+      cipher.iv_filename = nil
+
+      # Update version number in key_filename
+      if key_filename
+        cipher.key_filename = key_filename.sub("v#{version}", "v#{cipher.version}")
+        Keystore::File.new(file_name: cipher.key_filename, key_encryption_key: key_encryption_key).write(key) if save
+      end
+
+      cipher
+    end
+
+    # Returns [Hash] the configuration for this cipher.
+    def to_h
+      h = {
+        cipher_name:       cipher_name,
+        encoding:          encoding,
+        version:           version,
+        always_add_header: always_add_header
+      }
+
+      if key_filename
+        h[:key_filename] = key_filename
+      else
+        encrypted_key     = key_encryption_key.encrypt(key)
+        h[:encrypted_key] = encoder.encode(encrypted_key)
+      end
+
+      if iv_filename
+        h[:iv_filename] = iv_filename
+      else
+        h[:iv] = encoder.encode(iv)
+      end
+
+      h
     end
 
     # Change the encoding
@@ -331,12 +337,12 @@ module SymmetricEncryption
 
       return decoded if decoded.empty?
       decrypted = binary_decrypt(decoded)
-      if defined?(Encoding)
-        # Try to force result to UTF-8 encoding, but if it is not valid, force it back to Binary
-        unless decrypted.force_encoding(SymmetricEncryption::UTF8_ENCODING).valid_encoding?
-          decrypted.force_encoding(SymmetricEncryption::BINARY_ENCODING)
-        end
+
+      # Try to force result to UTF-8 encoding, but if it is not valid, force it back to Binary
+      unless decrypted.force_encoding(SymmetricEncryption::UTF8_ENCODING).valid_encoding?
+        decrypted.force_encoding(SymmetricEncryption::BINARY_ENCODING)
       end
+
       decrypted
     end
 
@@ -364,167 +370,51 @@ module SymmetricEncryption
     # Return a new random key using the configured cipher_name
     # Useful for generating new symmetric keys
     def random_key
-      ::OpenSSL::Cipher::Cipher.new(@cipher_name).random_key
+      ::OpenSSL::Cipher::Cipher.new(cipher_name).random_key
+    end
+
+    # Return a new random IV using the configured cipher_name
+    # Useful for generating new symmetric keys
+    def random_iv
+      ::OpenSSL::Cipher::Cipher.new(cipher_name).random_iv
     end
 
     # Returns the block size for the configured cipher_name
     def block_size
-      ::OpenSSL::Cipher::Cipher.new(@cipher_name).block_size
-    end
-
-    # Returns whether the supplied buffer starts with a symmetric_encryption header
-    # Note: The encoding of the supplied buffer is forced to binary if not already binary
-    def self.has_header?(buffer)
-      return false if buffer.nil? || (buffer == '')
-      buffer.force_encoding(SymmetricEncryption::BINARY_ENCODING) if buffer.respond_to?(:force_encoding)
-      buffer.start_with?(MAGIC_HEADER)
-    end
-
-    # Returns HeaderStruct of the header parsed from the supplied string
-    # Returns nil if no header is present
-    #
-    # The supplied buffer will be updated directly and its header will be
-    # stripped if present
-    #
-    # Parameters
-    #   buffer
-    #     String to extract the header from
-    #
-    def self.parse_header!(buffer)
-      return unless has_header?(buffer)
-
-      # Header includes magic header and version byte
-      #
-      # The encryption header consists of:
-      #    4 Byte Magic Header Prefix: @Enc
-      #    Followed by 2 Bytes (16 bits)
-      #       Bit 0 through 7: The version of the cipher used to encrypt the header
-      #       Bit 8 though 10: Reserved
-      #       Bit 11: Whether the encrypted data is Binary (otherwise UTF8 text)
-      #       Bit 12: Whether the Cipher Name is included
-      #       Bit 13: Whether the Key is included
-      #       Bit 14: Whether the IV is included
-      #       Bit 15: Whether the data is compressed
-      #    2 Byte IV Length if included
-      #    IV in binary form
-      #    2 Byte Key Length if included
-      #    Key in binary form
-      #    2 Byte Cipher Name Length if included
-      #    Cipher name it UTF8 text
-
-      # Remove header and extract flags
-      _, flags          = buffer.slice!(0..MAGIC_HEADER_SIZE+1).unpack(MAGIC_HEADER_UNPACK)
-      compressed        = (flags & 0b1000_0000_0000_0000) != 0
-      include_iv        = (flags & 0b0100_0000_0000_0000) != 0
-      include_key       = (flags & 0b0010_0000_0000_0000) != 0
-      include_cipher    = (flags & 0b0001_0000_0000_0000) != 0
-      # Version of the key to use to decrypt the key if present,
-      # otherwise to decrypt the data following the header
-      version           = flags & 0b0000_0000_1111_1111
-      decryption_cipher = SymmetricEncryption.cipher(version)
-      raise(SymmetricEncryption::CipherError, "Cipher with version:#{version.inspect} not found in any of the configured SymmetricEncryption ciphers") unless decryption_cipher
-      iv, key, cipher_name = nil
-
-      if include_iv
-        len = buffer.slice!(0..1).unpack('v').first
-        iv  = buffer.slice!(0..len-1)
-      end
-      if include_key
-        len = buffer.slice!(0..1).unpack('v').first
-        key = decryption_cipher.binary_decrypt(buffer.slice!(0..len-1), false)
-      end
-      if include_cipher
-        len         = buffer.slice!(0..1).unpack('v').first
-        cipher_name = buffer.slice!(0..len-1)
-      end
-
-      HeaderStruct.new(compressed, iv, key, cipher_name, version, decryption_cipher)
-    end
-
-    # Returns a magic header for this cipher instance that can be placed at
-    # the beginning of a file or stream to indicate how the data was encrypted
-    #
-    # Parameters
-    #   compressed
-    #     Sets the compressed indicator in the header
-    #     Default: false
-    #
-    #   iv
-    #     The iv to to put in the header
-    #     Default: nil : Exclude from header
-    #
-    #   key
-    #     The key to to put in the header
-    #     The key is encrypted using the global encryption key
-    #     Default: nil : Exclude key from header
-    #
-    #   cipher_name
-    #     Includes the cipher_name used. For example 'aes-256-cbc'
-    #     The cipher_name string to to put in the header
-    #     Default: nil : Exclude cipher_name name from header
-    def self.build_header(version, compressed=false, iv=nil, key=nil, cipher_name=nil)
-      # Ruby V2 named parameters would be perfect here
-
-      # Version number of supplied encryption key, or use the global cipher version if none was supplied
-      flags  = iv || key ? (SymmetricEncryption.cipher.version || 0) : (version || 0) # Same as 0b0000_0000_0000_0000
-
-      # If the data is to be compressed before being encrypted, set the
-      # compressed bit in the flags word
-      flags  |= 0b1000_0000_0000_0000 if compressed
-      flags  |= 0b0100_0000_0000_0000 if iv
-      flags  |= 0b0010_0000_0000_0000 if key
-      flags  |= 0b0001_0000_0000_0000 if cipher_name
-      header = "#{MAGIC_HEADER}#{[flags].pack('v')}".force_encoding(SymmetricEncryption::BINARY_ENCODING)
-      if iv
-        header << [iv.length].pack('v')
-        header << iv
-      end
-      if key
-        encrypted = SymmetricEncryption.cipher.binary_encrypt(key, false, false, false)
-        header << [encrypted.length].pack('v').force_encoding(SymmetricEncryption::BINARY_ENCODING)
-        header << encrypted
-      end
-      if cipher_name
-        header << [cipher_name.length].pack('v')
-        header << cipher_name
-      end
-      header
+      ::OpenSSL::Cipher::Cipher.new(cipher_name).block_size
     end
 
     # Advanced use only
     #
     # Returns a Binary encrypted string without applying any Base64, or other encoding
     #
-    #   add_header [nil|true|false]
-    #     Whether to add a header to the encrypted string
-    #     If not supplied it defaults to true if always_add_header || random_iv || compress
-    #     Default: nil
+    #   add_header [true|false]
+    #     Whether to add a header to the encrypted string.
+    #     Default: `always_add_header`
     #
-    # Creates a new OpenSSL::Cipher with every call so that this call
-    # is thread-safe
-    #
-    # See #encrypt to encrypt and encode the result as a string
-    def binary_encrypt(str, random_iv=false, compress=false, add_header=nil)
+    # Use #encrypt to encrypt and encode the result as a string.
+    def binary_encrypt(str, random_iv: false, compress: false, add_header: always_add_header)
       return if str.nil?
       string = str.to_s
       return string if string.empty?
 
-      # Creates a new OpenSSL::Cipher with every call so that this call
-      # is thread-safe
-      openssl_cipher = ::OpenSSL::Cipher.new(self.cipher_name)
+      # Creates a new OpenSSL::Cipher with every call so that this call is thread-safe.
+      openssl_cipher = ::OpenSSL::Cipher.new(cipher_name)
       openssl_cipher.encrypt
       openssl_cipher.key = @key
-      add_header         = always_add_header || random_iv || compress if add_header.nil?
-      result             =
+
+      # Header required when adding a random_iv or compressing
+      add_header         = true if random_iv || compress
+
+      result =
         if add_header
-          # Random iv and compress both add the magic header
-          iv                = random_iv ? openssl_cipher.random_iv : @iv
+          iv                = random_iv ? openssl_cipher.random_iv : iv
           openssl_cipher.iv = iv if iv
           # Set the binary indicator on the header if string is Binary Encoded
-          self.class.build_header(version, compress, random_iv ? iv : nil, nil, nil) +
-            openssl_cipher.update(compress ? Zlib::Deflate.deflate(string) : string)
+          header            = Header.new(version: version, compressed: compress, iv: random_iv ? iv : nil)
+          header.to_s + openssl_cipher.update(compress ? Zlib::Deflate.deflate(string) : string)
         else
-          openssl_cipher.iv = @iv if defined?(@iv) && @iv
+          openssl_cipher.iv = iv if iv
           openssl_cipher.update(string)
         end
       result << openssl_cipher.final
@@ -545,7 +435,7 @@ module SymmetricEncryption
     #   encrypted_string [String]
     #     Binary encrypted string to decrypt
     #
-    #   header [HeaderStruct]
+    #   header [SymmetricEncryption::Header]
     #     Optional header for the supplied encrypted_string
     #
     # Reads the 'magic' header if present for key, iv, cipher_name and compression
@@ -559,57 +449,62 @@ module SymmetricEncryption
     # Note:
     #   When a string is encrypted and the header is used, its decrypted form
     #   is automatically set to the same UTF-8 or Binary encoding
-    def binary_decrypt(encrypted_string, header=nil)
+    def binary_decrypt(encrypted_string, header: Header.new)
       return if encrypted_string.nil?
       str = encrypted_string.to_s
       str.force_encoding(SymmetricEncryption::BINARY_ENCODING) if str.respond_to?(:force_encoding)
       return str if str.empty?
 
-      if header || self.class.has_header?(str)
-        str    = str.dup
-        header ||= self.class.parse_header!(str)
+      offset = header.parse(str)
+      data   = offset > 0 ? str[offset..-1] : str
 
-        openssl_cipher = ::OpenSSL::Cipher.new(header.cipher_name || self.cipher_name)
-        openssl_cipher.decrypt
-        openssl_cipher.key = header.key || @key
-        iv                 = header.iv || @iv
-        openssl_cipher.iv  = iv if iv
-        result             = openssl_cipher.update(str)
-        result << openssl_cipher.final
-        header.compressed ? Zlib::Inflate.inflate(result) : result
-      else
-        openssl_cipher = ::OpenSSL::Cipher.new(self.cipher_name)
-        openssl_cipher.decrypt
-        openssl_cipher.key = @key
-        openssl_cipher.iv  = @iv if @iv
-        result             = openssl_cipher.update(str)
-        result << openssl_cipher.final
+      openssl_cipher = ::OpenSSL::Cipher.new(header.cipher_name || cipher_name)
+      openssl_cipher.decrypt
+      openssl_cipher.key = header.key || @key
+      if iv = (header.iv || @iv)
+        openssl_cipher.iv = iv
       end
+      result = openssl_cipher.update(data)
+      result << openssl_cipher.final
+      header.compressed ? Zlib::Inflate.inflate(result) : result
     end
 
     # Returns [String] object represented as a string, filtering out the key
     def inspect
-      "#<#{self.class}:0x#{self.__id__.to_s(16)} @key=\"[FILTERED]\" @iv=#{iv.inspect} @cipher_name=#{cipher_name.inspect}, @version=#{version.inspect}, @encoding=#{encoding.inspect}, @always_add_header=#{always_add_header.inspect}"
+      "#<#{self.class}:0x#{self.__id__.to_s(16)} @key=\"[FILTERED]\" @iv=#{iv.inspect} @cipher_name=#{cipher_name.inspect}, @version=#{version.inspect}, @encoding=#{encoding.inspect}, @always_add_header=#{always_add_header.inspect}, @key_filename=#{key_filename.inspect}, @iv_filename=#{iv_filename.inspect}, key_encryption_key=#{key_encryption_key.inspect}>"
+    end
+
+    # DEPRECATED
+    def self.has_header?(buffer)
+      SymmetricEncryption::Header.present?(buffer)
+    end
+
+    # DEPRECATED
+    def self.parse_header!(buffer)
+      header = SymmetricEncryption::Header.new
+      header.parse!(buffer) == 0 ? nil : header
+    end
+
+    # DEPRECATED
+    def self.build_header(version, compressed = false, iv = nil, key = nil, cipher_name = nil)
+      Header.new(version: version, compressed: compressed, iv: iv, key: key, cipher_name: cipher_name).to_s
+    end
+
+    # DEPRECATED
+    def self.random_key_pair(cipher_name = 'aes-256-cbc')
+      openssl_cipher = ::OpenSSL::Cipher.new(cipher_name)
+      openssl_cipher.encrypt
+
+      {
+        key:         openssl_cipher.random_key,
+        iv:          openssl_cipher.random_iv,
+        cipher_name: cipher_name
+      }
     end
 
     private
 
     attr_reader :key
-
-    # Read from the file, raising an exception if it is not found
-    def self.read_from_file(file_name)
-      File.open(file_name, 'rb') { |f| f.read }
-    rescue Errno::ENOENT => exc
-      puts "\nSymmetric Encryption key file: '#{file_name}' not found or readable."
-      puts "To generate the keys for the first time run: bin/rails generate symmetric_encryption:new_keys production\n\n"
-      raise(exc)
-    end
-
-    # Write to the supplied filename, backing up the existing file if present
-    def self.write_to_file(file_name, data)
-      File.rename(file_name, "#{file_name}.#{Time.now.to_i}") if File.exist?(file_name)
-      File.open(file_name, 'wb') { |file| file.write(data) }
-    end
 
   end
 end

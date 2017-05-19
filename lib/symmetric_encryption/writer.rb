@@ -98,11 +98,9 @@ module SymmetricEncryption
     #  ensure
     #    csv.close if csv
     #  end
-    def self.open(filename_or_stream, options={}, &block)
+    def self.open(filename_or_stream, mode: 'wb', compress: false, &block)
       raise(ArgumentError, 'options must be a hash') unless options.respond_to?(:each_pair)
-      mode     = options.fetch(:mode, 'wb')
-      compress = options.fetch(:compress, false)
-      ios      = filename_or_stream.is_a?(String) ? ::File.open(filename_or_stream, mode) : filename_or_stream
+      ios = filename_or_stream.is_a?(String) ? ::File.open(filename_or_stream, mode) : filename_or_stream
 
       begin
         file = self.new(ios, options)
@@ -111,6 +109,41 @@ module SymmetricEncryption
       ensure
         file.close if block && file && (file.respond_to?(:closed?) && !file.closed?)
       end
+    end
+
+    # Encrypt an entire file.
+    #
+    # Returns [Integer] the number of encrypted bytes written to the target file.
+    #
+    # Params:
+    #   source: [String|IO]
+    #     Source filename or IOStream
+    #
+    #   target: [String|IO]
+    #     Target filename or IOStream
+    #
+    #   compress: [true|false]
+    #     Whether to compress the target file prior to encryption.
+    #     Default: false
+    #
+    #   block_size: [Integer]
+    #     Number of bytes to read into memory for each read.
+    #     For very large files using a larger block size is faster.
+    #     Default: 65535
+    #
+    # Notes:
+    # * The file contents are streamed so that the entire file is _not_ loaded into memory.
+    def self.encrypt(source:, target:, compress: false, block_size: 65535)
+      source_ios = source.is_a?(String) ? ::File.open(source, 'rb') : source
+      bytes_written = 0
+      open(target, compress: compress) do |input_file|
+        while !source_ios.eof?
+          bytes_written += output_file.write(source_ios.read(block_size))
+        end
+      end
+      bytes_written
+    ensure
+      source_ios.close if source_ios && source_ios.respond_to?(:closed?) && !source_ios.closed?
     end
 
     # Encrypt data before writing to the supplied stream

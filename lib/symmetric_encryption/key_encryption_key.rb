@@ -11,8 +11,8 @@ module SymmetricEncryption
       OpenSSL::PKey::RSA.generate(size).to_s
     end
 
-    def initialize(key_encryption_key)
-      @rsa = OpenSSL::PKey::RSA.new(key_encryption_key)
+    def initialize(private_rsa_key)
+      @rsa = OpenSSL::PKey::RSA.new(private_rsa_key)
     end
 
     def encrypt(key)

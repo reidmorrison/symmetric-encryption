@@ -7,8 +7,8 @@ module SymmetricEncryption
     #        Default: Rails.root/config/symmetric-encryption.yml
     #  environment:
     #    Which environments config to load. Usually: production, development, etc.
-    #    Default: Rails.env
-    def self.load!(filename=nil, environment=nil)
+    #    Default: Rails.env || ENV['RACK_ENV'] || ENV['RAILS_ENV'] || 'development'
+    def self.load!(filename = nil, environment = nil)
       config  = read_config(filename, environment)
       ciphers = extract_ciphers(config)
 
@@ -20,9 +20,19 @@ module SymmetricEncryption
     private
 
     # Returns [Hash] the configuration for the supplied environment
-    def self.read_config(filename=nil, environment=nil)
-      config_filename = filename || File.join(Rails.root, 'config', 'symmetric-encryption.yml')
-      cfg             = YAML.load(ERB.new(File.new(config_filename).read).result)[environment || Rails.env]
+    def self.read_config(filename = nil, environment = nil)
+      root            = defined?(Rails) ? Rails.root : '.'
+      config_filename = filename || File.join(root, 'config', 'symmetric-encryption.yml')
+      raise(ConfigError, "Cannot find config file: #{config_filename}") unless File.exist?(config_filename)
+
+      if defined?(Rails)
+        environment ||= Rails.env
+      else
+        environment ||= ENV['RACK_ENV'] || ENV['RAILS_ENV'] || 'development'
+      end
+      raise(ConfigError, "Environment must be specified") unless environment
+
+      cfg = YAML.load(ERB.new(File.new(config_filename).read).result)[environment || Rails.env]
       extract_config(cfg)
     end
 

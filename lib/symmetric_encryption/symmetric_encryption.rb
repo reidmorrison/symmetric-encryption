@@ -71,17 +71,18 @@ module SymmetricEncryption
     @@secondary_ciphers
   end
 
-  # AES Symmetric Decryption of supplied string
-  #  Returns decrypted value
-  #  Returns nil if the supplied value is nil
-  #  Returns "" if it is a string and it is empty
+  # Decrypt supplied string.
+  #
+  #  Returns [String] the decrypted string.
+  #  Returns [nil] if the supplied value is nil.
+  #  Returns [''] if it is a string and it is empty.
   #
   #  Parameters
-  #    str
-  #      Encrypted string to decrypt
-  #    version
+  #    string [String]
+  #      Encrypted string to decrypt.
+  #    version [Integer]
   #      Specify which cipher version to use if no header is present on the
-  #      encrypted string
+  #      encrypted string.
   #    type [:string|:integer|:float|:decimal|:datetime|:time|:date|:boolean]
   #      If value is set to something other than :string, then the coercible gem
   #      will be use to coerce the unencrypted string value into the specified
@@ -117,7 +118,7 @@ module SymmetricEncryption
     return decoded if decoded.empty?
 
     decrypted =
-      if header = Cipher.parse_header!(decoded)
+      if header = Header.parse!(decoded)
         header.decryption_cipher.binary_decrypt(decoded, header)
       else
         # Use cipher_selector if present to decide which cipher to use
@@ -130,6 +131,20 @@ module SymmetricEncryption
       decrypted.force_encoding(SymmetricEncryption::BINARY_ENCODING)
     end
     Coerce.coerce_from_string(decrypted, type)
+  end
+
+  # Returns the header for the encrypted string
+  # Returns [nil] if no header is present
+  def self.header(encrypted_and_encoded_string)
+    raise(SymmetricEncryption::ConfigError, 'Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data') unless @@cipher
+    return if encrypted_and_encoded_string.nil? || (encrypted_and_encoded_string == '')
+
+    # Decode before decrypting supplied string
+    decoded = cipher.encoder.decode(encrypted_and_encoded_string.to_s)
+    return if decoded.nil? || decoded.empty?
+
+    h = Header.new
+    h.parse(decoded) == 0 ? nil : h
   end
 
   # AES Symmetric Encryption of supplied string
@@ -201,19 +216,16 @@ module SymmetricEncryption
     end
   end
 
-  # Returns [true|false] as to whether the data could be decrypted
-  #   Parameters:
-  #     encrypted_data: Encrypted string
+  # Returns [true|false] whether the string is encrypted.
   #
-  # WARNING: This method can only be relied upon if the encrypted data includes the
-  #          symmetric encryption header. In some cases data decrypted using the
-  #          wrong key will decrypt and return garbage
+  # NOTE:
+  # * This method only works when the encrypted data includes the
+  #   symmetric encryption header.
   def self.encrypted?(encrypted_data)
-    raise(SymmetricEncryption::ConfigError, 'Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data') unless @@cipher
+    return false if encrypted_data.nil? || (encrypted_data == '')
 
-    # For now have to decrypt it fully
-    result = try_decrypt(encrypted_data)
-    !(result.nil? || result == '')
+    @header ||= SymmetricEncryption.cipher.encoder.encode(SymmetricEncryption::MAGIC_HEADER).gsub('=', '')
+    encrypted_data.to_s.start_with?(@header)
   end
 
   # When no header is present in the encrypted data, this custom Block/Proc is
@@ -308,17 +320,10 @@ module SymmetricEncryption
     cipher_cfg
   end
 
-  # Generate a 22 character random password
-  def self.random_password
-    Base64.encode64(OpenSSL::Cipher.new('aes-128-cbc').random_key)[0..-4].strip
-  end
-
-  # Binary encrypted data includes this magic header so that we can quickly
-  # identify binary data versus base64 encoded data that does not have this header
-  unless defined? MAGIC_HEADER
-    MAGIC_HEADER        = '@EnC'
-    MAGIC_HEADER_SIZE   = MAGIC_HEADER.size
-    MAGIC_HEADER_UNPACK = "a#{MAGIC_HEADER_SIZE}v"
+  # Generate a Random password
+  def self.random_password(size = 22)
+    require 'securerandom' unless defined?(SecureRandom)
+    SecureRandom.urlsafe_base64(size)
   end
 
   BINARY_ENCODING = Encoding.find('binary')

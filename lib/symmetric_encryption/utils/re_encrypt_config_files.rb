@@ -1,13 +1,23 @@
 # Used for re-encrypting encrypted passwords stored in configuration files.
 #
-# Search for `SymmetricEncryption.try_decrypt` in config files and replace the
-# encrypted value with one encrypted using the new encryption key.
+# Search for any encrypted value and re-encrypt it using the latest encryption key.
+# Note:
+# * Only works with encrypted values that have the standard header.
+#   * The search looks for the header and then replaces the encrypted value.
 #
 # Example:
 #   re_encrypt = SymmetricEncryption::Utils::ReEncryptConfigFiles.new(version: 4)
 #   re_encrypt.process_directory('../../**/*.yml')
 module SymmetricEncryption
   module Utils
+    # ReEncrypt files
+    #
+    #   If a file is encrypted, it is re-encrypted with the cipher that has the highest version number.
+    #   A file is already encrypted with the highest version is not reencrypted.
+    #
+    #   If a file is not encrypted, the file is searched for any encrypted values, and those values are reencrypted.
+    #
+    #   symmetric_encryption --reencrypt "**/*.yml"
     class ReEncryptConfigFiles
       DEFAULT_REGEXP = /\A(.*)SymmetricEncryption.try_decrypt[\s\(\"\'].([\w@=+\/\\]+)[\'\"](.*)\Z/
 
@@ -27,7 +37,7 @@ module SymmetricEncryption
         raise(ArgumentError, "Unknown parameters: #{params.inspect}") if params.size > 0
       end
 
-      # Re-encrypt the supplied enctrypted value with the new cipher
+      # Re-encrypt the supplied encrypted value with the new cipher
       def re_encrypt(encrypted)
         if unencrypted = SymmetricEncryption.try_decrypt(encrypted)
           cipher.encrypt(unencrypted)

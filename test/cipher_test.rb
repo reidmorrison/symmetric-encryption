@@ -1,266 +1,304 @@
 require_relative 'test_helper'
 
-# Unit Test for SymmetricEncryption::Cipher
-#
+# Tests for SymmetricEncryption::Cipher
 class CipherTest < Minitest::Test
-  describe 'standalone' do
+  ['aes-128-cbc'].each do |cipher_name|
+    #['aes-128-cbc', 'aes-128-gcm'].each do |cipher_name|
+    describe "Cipher: #{cipher_name}" do
+      describe 'standalone' do
+        it 'allows setting the cipher_name' do
+          cipher = SymmetricEncryption::Cipher.new(
+            cipher_name: cipher_name,
+            key:         '1234567890ABCDEF',
+            iv:          '1234567890ABCDEF',
+            encoding:    :none
+          )
+          assert_equal cipher_name, cipher.cipher_name
+        end
 
-    it 'allow setting the cipher_name' do
-      cipher = SymmetricEncryption::Cipher.new(
-        cipher_name: 'aes-128-cbc',
-        key:         '1234567890ABCDEF',
-        iv:          '1234567890ABCDEF',
-        encoding:    :none
-      )
-      assert_equal 'aes-128-cbc', cipher.cipher_name
-    end
+        it 'does not require an iv' do
+          cipher = SymmetricEncryption::Cipher.new(
+            key:               '1234567890ABCDEF',
+            cipher_name:       cipher_name,
+            encoding:          :none,
+            always_add_header: false
+          )
+          assert result = cipher.encrypt('Hello World')
+          assert_equal 'Hello World', cipher.decrypt(result)
+        end
 
-    it 'not require an iv' do
-      cipher = SymmetricEncryption::Cipher.new(
-        key:               '1234567890ABCDEF1234567890ABCDEF',
-        encoding:          :none,
-        always_add_header: false
-      )
-      result = "\302<\351\227oj\372\3331\310\260V\001\v'\346"
-      # Note: This test fails on JRuby 1.7 RC1 since it's OpenSSL
-      #       behaves differently when no IV is supplied.
-      #       It instead encrypts to the following value:
-      # result = "0h\x92\x88\xA1\xFE\x8D\xF5\xF3v\x82\xAF(P\x83Y"
-      result.force_encoding('binary')
-      assert_equal result, cipher.encrypt('Hello World')
-    end
-
-    it 'throw an exception on bad data' do
-      cipher = SymmetricEncryption::Cipher.new(
-        cipher_name: 'aes-128-cbc',
-        key:         '1234567890ABCDEF',
-        iv:          '1234567890ABCDEF',
-        encoding:    :none
-      )
-      assert_raises OpenSSL::Cipher::CipherError do
-        cipher.decrypt('bad data')
+        it 'throw an exception on bad data' do
+          cipher = SymmetricEncryption::Cipher.new(
+            cipher_name: cipher_name,
+            key:         '1234567890ABCDEF',
+            iv:          '1234567890ABCDEF',
+            encoding:    :none
+          )
+          assert_raises OpenSSL::Cipher::CipherError do
+            cipher.decrypt('bad data')
+          end
+        end
       end
-    end
 
-  end
+      [false, true].each do |always_add_header|
+        [:none, :base64, :base64strict, :base16].each do |encoding|
+          describe "encoding: #{encoding} with#{'out' unless always_add_header} header" do
+            before do
+              @social_security_number = '987654321'
+              @encrypted_values       = {
+                'aes-128-cbc' => {
+                  base64:       {
+                    header:    "QEVuQwAAyTeLjsHTa8ykoO95K0KQmg==\n",
+                    no_header: "yTeLjsHTa8ykoO95K0KQmg==\n"
+                  },
+                  base64strict: {
+                    header:    'QEVuQwAAyTeLjsHTa8ykoO95K0KQmg==',
+                    no_header: 'yTeLjsHTa8ykoO95K0KQmg=='
+                  },
+                  base16:       {
+                    header:    '40456e430000c9378b8ec1d36bcca4a0ef792b42909a',
+                    no_header: 'c9378b8ec1d36bcca4a0ef792b42909a'
+                  },
+                  none:         {
+                    header:    "@EnC\x00\x00\xC97\x8B\x8E\xC1\xD3k\xCC\xA4\xA0\xEFy+B\x90\x9A",
+                    no_header: "\xC97\x8B\x8E\xC1\xD3k\xCC\xA4\xA0\xEFy+B\x90\x9A"
+                  },
+                },
+                # 'aes-128-gcm' => {
+                #   base64:       {
+                #     header:    "QEVuQwAAOcqz9UDbd1Sn\n",
+                #     no_header: "Ocqz9UDbd1Sn\n"
+                #   },
+                #   base64strict: {
+                #     header:    'QEVuQwAAOcqz9UDbd1Sn',
+                #     no_header: 'Ocqz9UDbd1Sn'
+                #   },
+                #   base16:       {
+                #     header:    '40456e43000039cab3f540db7754a7',
+                #     no_header: '39cab3f540db7754a7'
+                #   },
+                #   none:         {
+                #     header:    "@EnC\x00\x009\xCA\xB3\xF5@\xDBwT\xA7",
+                #     no_header: "9\xCA\xB3\xF5@\xDBwT\xA7"
+                #   },
+                # }
+              }
 
-  [false, true].each do |always_add_header|
-    [:none, :base64, :base64strict, :base16].each do |encoding|
-      describe "encoding: #{encoding} with#{'out' unless always_add_header} header" do
-        before do
-          @social_security_number                            = '987654321'
-          @social_security_number_encrypted                  =
-            case encoding
-            when :base64
-              always_add_header ? "QEVuQwAAyTeLjsHTa8ykoO95K0KQmg==\n" : "yTeLjsHTa8ykoO95K0KQmg==\n"
-            when :base64strict
-              always_add_header ? 'QEVuQwAAyTeLjsHTa8ykoO95K0KQmg==' : 'yTeLjsHTa8ykoO95K0KQmg=='
-            when :base16
-              always_add_header ? '40456e430000c9378b8ec1d36bcca4a0ef792b42909a' : 'c9378b8ec1d36bcca4a0ef792b42909a'
-            when :none
-              bin = always_add_header ? "@EnC\x00\x00\xC97\x8B\x8E\xC1\xD3k\xCC\xA4\xA0\xEFy+B\x90\x9A" : "\xC97\x8B\x8E\xC1\xD3k\xCC\xA4\xA0\xEFy+B\x90\x9A"
-              bin.force_encoding(Encoding.find('binary'))
-            else
-              raise "Add test for encoding: #{encoding}"
+              @non_utf8 = "\xc2".force_encoding('binary')
+              @cipher   = SymmetricEncryption::Cipher.new(
+                key:               'ABCDEF1234567890',
+                iv:                'ABCDEF1234567890',
+                cipher_name:       cipher_name,
+                encoding:          encoding,
+                always_add_header: always_add_header
+              )
+
+              h         = @encrypted_values[cipher_name][encoding] if @encrypted_values[cipher_name]
+              skip "Add @encrypted_values for cipher_name: #{cipher_name} and encoding: #{encoding}, value: #{@cipher.encrypt(@social_security_number).inspect}" unless h
+              @social_security_number_encrypted = h[always_add_header ? :header : :no_header]
+
+              @social_security_number_encrypted.force_encoding(Encoding.find('binary')) if encoding == :none
             end
-          @social_security_number_encrypted_with_secondary_1 = "D1UCu38pqJ3jc0GvwJHiow==\n"
-          @non_utf8                                          = "\xc2".force_encoding('binary')
-          @cipher                                            = SymmetricEncryption::Cipher.new(
-            key:               'ABCDEF1234567890',
-            iv:                'ABCDEF1234567890',
-            cipher_name:       'aes-128-cbc',
-            encoding:          encoding,
-            always_add_header: always_add_header
+
+            it 'encrypt simple string' do
+              assert encrypted = @cipher.encrypt(@social_security_number)
+              assert_equal @social_security_number_encrypted, encrypted
+            end
+
+            it 'decrypt string' do
+              assert decrypted = @cipher.decrypt(@social_security_number_encrypted)
+              assert_equal @social_security_number, decrypted
+              assert_equal Encoding.find('utf-8'), decrypted.encoding, decrypted
+            end
+
+            it 'encrypt and decrypt string' do
+              assert encrypted = @cipher.encrypt(@social_security_number)
+              assert_equal @social_security_number_encrypted, encrypted
+              assert decrypted = @cipher.decrypt(encrypted)
+              assert_equal @social_security_number, decrypted
+              assert_equal Encoding.find('utf-8'), decrypted.encoding, decrypted
+            end
+
+            it 'return BINARY encoding for non-UTF-8 encrypted data' do
+              assert_equal Encoding.find('binary'), @non_utf8.encoding
+              assert_equal true, @non_utf8.valid_encoding?
+              assert encrypted = @cipher.encrypt(@non_utf8)
+              assert decrypted = @cipher.decrypt(encrypted)
+              assert_equal true, decrypted.valid_encoding?
+              assert_equal Encoding.find('binary'), decrypted.encoding, decrypted
+              assert_equal @non_utf8, decrypted
+            end
+
+            it 'return nil when encrypting nil' do
+              assert_nil @cipher.encrypt(nil)
+            end
+
+            it "return '' when encrypting ''" do
+              assert_equal '', @cipher.encrypt('')
+            end
+
+            it 'return nil when decrypting nil' do
+              assert_nil @cipher.decrypt(nil)
+            end
+
+            it "return '' when decrypting ''" do
+              assert_equal '', @cipher.decrypt('')
+            end
+          end
+        end
+      end
+
+      describe 'with configuration' do
+        before do
+          @cipher                 = SymmetricEncryption::Cipher.new(
+            cipher_name: cipher_name,
+            key:         '1234567890ABCDEF',
+            iv:          '1234567890ABCDEF',
+            cipher_name: 'aes-128-cbc',
+            encoding:    :none
           )
+          @social_security_number = '987654321'
+
+          @social_security_number_encrypted = "A\335*\314\336\250V\340\023%\000S\177\305\372\266"
+          @social_security_number_encrypted.force_encoding('binary')
+
+          @sample_data = [
+            {text: '555052345', encrypted: ''}
+          ]
         end
 
-        it 'encrypt simple string' do
-          assert_equal @social_security_number_encrypted, @cipher.encrypt(@social_security_number)
+        describe 'with header' do
+          before do
+            @social_security_number = '987654321'
+          end
+
+          it 'build and parse header' do
+            assert random_key_pair = SymmetricEncryption::Cipher.random_key_pair('aes-128-cbc')
+            assert binary_header = SymmetricEncryption::Cipher.build_header(SymmetricEncryption.cipher.version, true, random_key_pair[:iv], random_key_pair[:key], random_key_pair[:cipher_name])
+            header = SymmetricEncryption::Cipher.parse_header!(binary_header)
+            ap header
+            assert_equal true, header.compressed
+            assert random_cipher = SymmetricEncryption::Cipher.new(random_key_pair)
+            assert_equal random_cipher.cipher_name, header.cipher_name, 'Ciphers differ'
+            assert_equal random_cipher.send(:key), header.key, 'Keys differ'
+            assert_equal random_cipher.send(:iv), header.iv, 'IVs differ'
+
+            string = 'Hello World'
+            cipher = SymmetricEncryption::Cipher.new(key: header.key, iv: header.iv, cipher_name: header.cipher_name)
+            # Test Encryption
+            assert_equal random_cipher.encrypt(string, false, false), cipher.encrypt(string, false, false), 'Encrypted values differ'
+          end
+
+          it 'encrypt and then decrypt without a header' do
+            assert encrypted = @cipher.binary_encrypt(@social_security_number, false, false, false)
+            assert_equal @social_security_number, @cipher.decrypt(encrypted)
+          end
+
+          it 'encrypt and then decrypt using random iv' do
+            assert encrypted = @cipher.encrypt(@social_security_number, true)
+            assert_equal @social_security_number, @cipher.decrypt(encrypted)
+          end
+
+          it 'encrypt and then decrypt using random iv with compression' do
+            assert encrypted = @cipher.encrypt(@social_security_number, true, true)
+            assert_equal @social_security_number, @cipher.decrypt(encrypted)
+          end
+
         end
 
-        it 'decrypt string' do
-          assert decrypted = @cipher.decrypt(@social_security_number_encrypted)
-          assert_equal @social_security_number, decrypted
-          assert_equal Encoding.find('utf-8'), decrypted.encoding, decrypted
+      end
+
+      describe '.generate_random_keys' do
+        describe 'with wrong params' do
+          it 'raises ArgumentError' do
+            error = assert_raises ArgumentError do
+              SymmetricEncryption::Cipher.generate_random_keys(wrong_params: '')
+            end
+
+            assert_equal "SymmetricEncryption::Cipher Invalid options {:wrong_params=>\"\"}", error.message
+          end
         end
 
-        it 'return BINARY encoding for non-UTF-8 encrypted data' do
-          assert_equal Encoding.find('binary'), @non_utf8.encoding
-          assert_equal true, @non_utf8.valid_encoding?
-          assert encrypted = @cipher.encrypt(@non_utf8)
-          assert decrypted = @cipher.decrypt(encrypted)
-          assert_equal true, decrypted.valid_encoding?
-          assert_equal Encoding.find('binary'), decrypted.encoding, decrypted
-          assert_equal @non_utf8, decrypted
+        describe 'without keys' do
+          it 'creates new keys' do
+            h = SymmetricEncryption::Cipher.generate_random_keys
+            assert_equal 'aes-256-cbc', h[:cipher_name]
+            assert_equal :base64strict, h[:encoding]
+            assert h.has_key?(:key), h
+            assert h.has_key?(:iv), h
+          end
         end
 
-        it 'return nil when encrypting nil' do
-          assert_nil @cipher.encrypt(nil)
+        describe 'with keys' do
+          it 'creates new keys' do
+            h = SymmetricEncryption::Cipher.generate_random_keys(key: '', iv: '')
+            assert_equal 'aes-256-cbc', h[:cipher_name]
+            assert_equal :base64strict, h[:encoding]
+            assert h.has_key?(:key), h
+            assert h.has_key?(:iv), h
+          end
         end
 
-        it "return '' when encrypting ''" do
-          assert_equal '', @cipher.encrypt('')
+        describe 'with encrypted keys' do
+          it 'creates new encrypted keys' do
+            key_encryption_key = SymmetricEncryption::KeyEncryptionKey.generate
+            h                  = SymmetricEncryption::Cipher.generate_random_keys(
+              cipher_name:     cipher_name,
+              encrypted_key:   '',
+              encrypted_iv:    '',
+              private_rsa_key: key_encryption_key
+            )
+            assert_equal cipher_name, h[:cipher_name]
+            assert_equal :base64strict, h[:encoding]
+            assert h.has_key?(:encrypted_key), h
+            assert h.has_key?(:encrypted_iv), h
+          end
+
+          it 'exception on missing rsa key' do
+            assert_raises SymmetricEncryption::ConfigError do
+              SymmetricEncryption::Cipher.generate_random_keys(
+                encrypted_key: '',
+                encrypted_iv:  ''
+              )
+            end
+          end
         end
 
-        it 'return nil when decrypting nil' do
-          assert_nil @cipher.decrypt(nil)
-        end
+        describe 'with files' do
+          before do
+            @key_filename = 'blah.key'
+            @iv_filename  = 'blah.iv'
+          end
 
-        it "return '' when decrypting ''" do
-          assert_equal '', @cipher.decrypt('')
-        end
-      end
-    end
-  end
+          after do
+            File.delete(@key_filename) if File.exist?(@key_filename)
+            File.delete(@iv_filename) if File.exist?(@iv_filename)
+          end
 
-  describe 'with configuration' do
-    before do
-      @cipher                 = SymmetricEncryption::Cipher.new(
-        key:      '1234567890ABCDEF1234567890ABCDEF',
-        iv:       '1234567890ABCDEF',
-        encoding: :none
-      )
-      @social_security_number = '987654321'
+          it 'creates new files' do
+            key_encryption_key = SymmetricEncryption::KeyEncryptionKey.generate
+            h                  = SymmetricEncryption::Cipher.generate_random_keys(
+              cipher_name:     cipher_name,
+              key_filename:    @key_filename,
+              iv_filename:     @iv_filename,
+              private_rsa_key: key_encryption_key
+            )
+            assert_equal cipher_name, h[:cipher_name]
+            assert_equal :base64strict, h[:encoding]
+            assert h.has_key?(:key_filename), h
+            assert h.has_key?(:iv_filename), h
+            assert File.exist?(@key_filename)
+            assert File.exist?(@iv_filename)
+          end
 
-      @social_security_number_encrypted = "A\335*\314\336\250V\340\023%\000S\177\305\372\266"
-      @social_security_number_encrypted.force_encoding('binary')
-
-      @sample_data = [
-        {text: '555052345', encrypted: ''}
-      ]
-    end
-
-    it "default to 'aes-256-cbc'" do
-      assert_equal 'aes-256-cbc', @cipher.cipher_name
-    end
-
-    describe 'with header' do
-      before do
-        @social_security_number = '987654321'
-      end
-
-      it 'build and parse header' do
-        assert random_key_pair = SymmetricEncryption::Cipher.random_key_pair('aes-128-cbc')
-        assert binary_header = SymmetricEncryption::Cipher.build_header(SymmetricEncryption.cipher.version, true, random_key_pair[:iv], random_key_pair[:key], random_key_pair[:cipher_name])
-        header = SymmetricEncryption::Cipher.parse_header!(binary_header)
-        assert_equal true, header.compressed
-        assert random_cipher = SymmetricEncryption::Cipher.new(random_key_pair)
-        assert_equal random_cipher.cipher_name, header.cipher_name, 'Ciphers differ'
-        assert_equal random_cipher.send(:key), header.key, 'Keys differ'
-        assert_equal random_cipher.send(:iv), header.iv, 'IVs differ'
-
-        string = 'Hello World'
-        cipher = SymmetricEncryption::Cipher.new(key: header.key, iv: header.iv, cipher_name: header.cipher_name)
-        # Test Encryption
-        assert_equal random_cipher.encrypt(string, false, false), cipher.encrypt(string, false, false), 'Encrypted values differ'
-      end
-
-      it 'encrypt and then decrypt without a header' do
-        assert encrypted = @cipher.binary_encrypt(@social_security_number, false, false, false)
-        assert_equal @social_security_number, @cipher.decrypt(encrypted)
-      end
-
-      it 'encrypt and then decrypt using random iv' do
-        assert encrypted = @cipher.encrypt(@social_security_number, true)
-        assert_equal @social_security_number, @cipher.decrypt(encrypted)
-      end
-
-      it 'encrypt and then decrypt using random iv with compression' do
-        assert encrypted = @cipher.encrypt(@social_security_number, true, true)
-        assert_equal @social_security_number, @cipher.decrypt(encrypted)
-      end
-
-    end
-
-  end
-
-  describe '.generate_random_keys' do
-    describe 'with wrong params' do
-      it 'raises ArgumentError' do
-        error = assert_raises ArgumentError do
-          SymmetricEncryption::Cipher.generate_random_keys(wrong_params: '')
-        end
-
-        assert_equal "SymmetricEncryption::Cipher Invalid options {:wrong_params=>\"\"}", error.message
-      end
-    end
-
-    describe 'without keys' do
-      it 'creates new keys' do
-        h = SymmetricEncryption::Cipher.generate_random_keys
-        assert_equal 'aes-256-cbc', h[:cipher_name]
-        assert_equal :base64strict, h[:encoding]
-        assert h.has_key?(:key), h
-        assert h.has_key?(:iv), h
-      end
-    end
-
-    describe 'with keys' do
-      it 'creates new keys' do
-        h = SymmetricEncryption::Cipher.generate_random_keys(key: '', iv: '')
-        assert_equal 'aes-256-cbc', h[:cipher_name]
-        assert_equal :base64strict, h[:encoding]
-        assert h.has_key?(:key), h
-        assert h.has_key?(:iv), h
-      end
-    end
-
-    describe 'with encrypted keys' do
-      it 'creates new encrypted keys' do
-        key_encryption_key = SymmetricEncryption::KeyEncryptionKey.generate
-        h                  = SymmetricEncryption::Cipher.generate_random_keys(
-          encrypted_key:   '',
-          encrypted_iv:    '',
-          private_rsa_key: key_encryption_key
-        )
-        assert_equal 'aes-256-cbc', h[:cipher_name]
-        assert_equal :base64strict, h[:encoding]
-        assert h.has_key?(:encrypted_key), h
-        assert h.has_key?(:encrypted_iv), h
-      end
-
-      it 'exception on missing rsa key' do
-        assert_raises SymmetricEncryption::ConfigError do
-          SymmetricEncryption::Cipher.generate_random_keys(
-            encrypted_key: '',
-            encrypted_iv:  ''
-          )
-        end
-      end
-    end
-
-    describe 'with files' do
-      before do
-        @key_filename = 'blah.key'
-        @iv_filename  = 'blah.iv'
-      end
-
-      after do
-        File.delete(@key_filename) if File.exist?(@key_filename)
-        File.delete(@iv_filename) if File.exist?(@iv_filename)
-      end
-
-      it 'creates new files' do
-        key_encryption_key = SymmetricEncryption::KeyEncryptionKey.generate
-        h                  = SymmetricEncryption::Cipher.generate_random_keys(
-          key_filename:    @key_filename,
-          iv_filename:     @iv_filename,
-          private_rsa_key: key_encryption_key
-        )
-        assert_equal 'aes-256-cbc', h[:cipher_name]
-        assert_equal :base64strict, h[:encoding]
-        assert h.has_key?(:key_filename), h
-        assert h.has_key?(:iv_filename), h
-        assert File.exist?(@key_filename)
-        assert File.exist?(@iv_filename)
-      end
-
-      it 'exception on missing rsa key' do
-        assert_raises SymmetricEncryption::ConfigError do
-          SymmetricEncryption::Cipher.generate_random_keys(
-            key_filename: @key_filename,
-            iv_filename:  @iv_filename
-          )
+          it 'exception on missing rsa key' do
+            assert_raises SymmetricEncryption::ConfigError do
+              SymmetricEncryption::Cipher.generate_random_keys(
+                key_filename: @key_filename,
+                iv_filename:  @iv_filename
+              )
+            end
+          end
         end
       end
     end
