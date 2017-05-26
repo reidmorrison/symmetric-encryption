@@ -85,17 +85,17 @@ begin
           encrypted_social_security_number: @social_security_number_encrypted,
           name:                             'Joe Bloggs',
           # data type specific fields
-          integer_value:                    @integer_value,
-          aliased_integer_value:            @integer_value,
-          float_value:                      @float_value,
-          decimal_value:                    @decimal_value,
-          datetime_value:                   @datetime_value,
-          time_value:                       @time_value,
-          date_value:                       @date_value,
-          true_value:                       true,
-          false_value:                      false,
-          data_yaml:                        @h.dup,
-          data_json:                        @h.dup
+          integer_value:         @integer_value,
+          aliased_integer_value: @integer_value,
+          float_value:           @float_value,
+          decimal_value:         @decimal_value,
+          datetime_value:        @datetime_value,
+          time_value:            @time_value,
+          date_value:            @date_value,
+          true_value:            true,
+          false_value:           false,
+          data_yaml:             @h.dup,
+          data_json:             @h.dup
         )
       end
 

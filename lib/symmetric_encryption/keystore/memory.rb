@@ -20,7 +20,7 @@ module SymmetricEncryption
 
       # Write the encrypted Encryption key to `encrypted_key` attribute.
       def write(key)
-        binary = key_encryption_key.encrypt(key)
+        binary             = key_encryption_key.encrypt(key)
         self.encrypted_key = encoder.encode(binary)
       end
 

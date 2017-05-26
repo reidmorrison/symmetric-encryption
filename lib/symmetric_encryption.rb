@@ -21,7 +21,7 @@ module SymmetricEncryption
   autoload :CLI,                    'symmetric_encryption/cli'
   module Keystore
     autoload :File,                 'symmetric_encryption/keystore/file'
-    autoload :String,               'symmetric_encryption/keystore/string'
+    autoload :Memory,               'symmetric_encryption/keystore/memory'
   end
   module Utils
     autoload :Generate,             'symmetric_encryption/utils/generate'

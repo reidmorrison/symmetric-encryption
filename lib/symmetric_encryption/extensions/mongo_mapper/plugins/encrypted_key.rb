@@ -20,8 +20,8 @@ module MongoMapper
 
       module ClassMethods
         def encrypted_key(key_name, type, full_options={})
-          full_options       = full_options.is_a?(Hash) ? full_options.dup : {}
-          options            = full_options.delete(:encrypted) || {}
+          full_options = full_options.is_a?(Hash) ? full_options.dup : {}
+          options      = full_options.delete(:encrypted) || {}
           # Support overriding the name of the decrypted attribute
           encrypted_key_name = options.delete(:encrypt_as) || "encrypted_#{key_name}"
           options[:type]     = COERCION_MAP[type] unless [:yaml, :json].include?(options[:type])

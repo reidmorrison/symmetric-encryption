@@ -7,8 +7,8 @@ class SymmetricEncryptionTest < Minitest::Test
 
     describe 'configuration' do
       before do
-        config                             = SymmetricEncryption::Config.read_config(File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
-        @ciphers                           = SymmetricEncryption::Config.extract_ciphers(config)
+        config                                         = SymmetricEncryption::Config.read_config(File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
+        @ciphers                                       = SymmetricEncryption::Config.extract_ciphers(config)
         @cipher_v2, @cipher_v6, @cipher_v1, @cipher_v0 = @ciphers
       end
 
@@ -115,7 +115,7 @@ class SymmetricEncryptionTest < Minitest::Test
       before do
         @social_security_number = '987654321'
         # Encrypt data without a header and encode with base64 which has a trailing '\n'
-        @encrypted_0_ssn        = SymmetricEncryption.cipher(0).encode(SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number, false, false, false))
+        @encrypted_0_ssn = SymmetricEncryption.cipher(0).encode(SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number, false, false, false))
 
         SymmetricEncryption.select_cipher do |encoded_str, decoded_str|
           # Use cipher version 0 if the encoded string ends with "\n" otherwise

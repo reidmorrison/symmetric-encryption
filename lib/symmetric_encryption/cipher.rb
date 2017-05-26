@@ -11,75 +11,6 @@ module SymmetricEncryption
     attr_reader :encoding, :key_filename, :iv_filename, :key_encryption_key
     attr_writer :key
 
-    # Generate new randomized keys and generate key and iv files if supplied.
-    # Overwrites key files for the current environment.
-    #
-    # Parameters
-    #   :key_filename
-    #     Name of file that will contain the symmetric key encrypted using the public
-    #     key from the private_rsa_key.
-    #  Or,
-    #   :encrypted_key
-    #     Symmetric key encrypted using the public key from the private_rsa_key
-    #     and then Base64 encoded
-    #
-    #  Note:
-    #    If :key_filename and :encrypted_key are not supplied then a new :key will be returned.
-    #    :key is the Symmetric Key to use for encryption and decryption.
-    #
-    #
-    #   :iv_filename
-    #     Name of file containing symmetric key initialization vector
-    #     encrypted using the public key from the private_rsa_key
-    #     Deprecated: It is _not_ necessary to encrypt the initialization vector (IV)
-    #  Or,
-    #   :encrypted_iv
-    #     Initialization vector encrypted using the public key from the private_rsa_key
-    #     and then Base64 encoded
-    #     Deprecated: It is _not_ necessary to encrypt the initialization vector (IV)
-    #
-    #  Note:
-    #    If :iv_filename and :encrypted_iv are not supplied then a new :iv will be returned.
-    #    :iv is the Initialization Vector to use with Symmetric Key.
-    #
-    #
-    #   private_rsa_key [String]
-    #     Key encryption key.
-    #     To generate a new one: SymmetricEncryption::KeyEncryptionKey.generate
-    #     Required if :key_filename, :encrypted_key, :iv_filename, or :encrypted_iv is supplied
-    #
-    #   :cipher_name [String]
-    #     Encryption Cipher to use.
-    #     Default: aes-256-cbc
-    #
-    #   :encoding [Symbol]
-    #     :base64strict
-    #       Return as a base64 encoded string that does not include additional newlines
-    #       This is the recommended format since newlines in the values to
-    #       SQL queries are cumbersome. Also the newline reformatting is unnecessary
-    #       It is not the default for backward compatibility
-    #     :base64
-    #       Return as a base64 encoded string
-    #     :base16
-    #       Return as a Hex encoded string
-    #     :none
-    #       Return as raw binary data string. Note: String can contain embedded nulls
-    #     Default: :base64strict
-    def self.generate_random_keys(cipher_name: 'aes-256-cbc', encoding: :base64,
-      private_rsa_key: nil,
-      key_filename: nil, encrypted_key: nil,
-      iv_filename: nil, encrypted_iv: nil)
-
-      cipher = new(
-        cipher_name:     cipher_name,
-        encoding:        encoding,
-        private_rsa_key: private_rsa_key,
-        key_filename:    key_filename,
-        iv_filename:     iv_filename
-      )
-      cipher.to_h
-    end
-
     # Create a Symmetric::Cipher for encryption and decryption purposes
     #
     # Parameters:
@@ -146,7 +77,10 @@ module SymmetricEncryption
     #     Key encryption key to encrypt/decrypt the key and/or iv with.
     #     Note:
     #     - `private_rsa_key` is not used if `key_encryption_key` is supplied.
-    def initialize(cipher_name: 'aes-256-cbc', encoding: :base64strict, version: 0, always_add_header: true,
+    def initialize(cipher_name: 'aes-256-cbc',
+                   encoding: :base64strict,
+                   version: 0,
+                   always_add_header: true,
                    private_rsa_key: nil, key_encryption_key: nil,
                    key_filename: nil, encrypted_key: nil, key: :random,
                    iv_filename: nil, encrypted_iv: nil, iv: :random)
@@ -168,16 +102,16 @@ module SymmetricEncryption
       raise(ArgumentError, "Cipher version has a valid range of 0 to 255. #{@version} is too high, or negative") if (@version > 255) || (@version < 0)
 
       if key_filename || encrypted_key || iv_filename || encrypted_iv
-        raise(SymmetricEncryption::ConfigError, 'Missing required :private_rsa_key, or :key_encryption_key') unless key_encryption_key
+        raise(SymmetricEncryption::ConfigError, 'Missing required :private_rsa_key, or :key_encryption_key') unless @key_encryption_key
       end
 
       @key =
         if key != :random && key != nil
           key
         elsif key_filename
-          Keystore::File.new(file_name: key_filename, key_encryption_key: key_encryption_key).read
+          Keystore::File.new(file_name: key_filename, key_encryption_key: @key_encryption_key).read
         elsif encrypted_key
-          Keystore::String.new(encrypted_key: encrypted_key, key_encryption_key: key_encryption_key).read
+          Keystore::Memory.new(encrypted_key: encrypted_key, key_encryption_key: @key_encryption_key).read
         elsif key == :random
           random_key
         else
@@ -188,9 +122,9 @@ module SymmetricEncryption
         if iv != :random && iv != nil
           iv
         elsif iv_filename
-          Keystore::File.new(file_name: iv_filename, key_encryption_key: key_encryption_key).read
+          Keystore::File.new(file_name: iv_filename, key_encryption_key: @key_encryption_key).read
         elsif encrypted_iv
-          Keystore::String.new(encrypted_key: encrypted_iv, key_encryption_key: key_encryption_key).read
+          Keystore::Memory.new(encrypted_key: encrypted_iv, key_encryption_key: @key_encryption_key).read
         elsif iv == :random
           random_iv
         end
@@ -306,7 +240,7 @@ module SymmetricEncryption
       return if str.nil?
       str = str.to_s
       return str if str.empty?
-      encrypted = binary_encrypt(str, random_iv, compress)
+      encrypted = binary_encrypt(str, random_iv: random_iv, compress: compress)
       self.encode(encrypted)
     end
 
@@ -407,7 +341,7 @@ module SymmetricEncryption
           iv                = random_iv ? openssl_cipher.random_iv : iv
           openssl_cipher.iv = iv if iv
           # Set the binary indicator on the header if string is Binary Encoded
-          header            = Header.new(version: version, compressed: compress, iv: random_iv ? iv : nil)
+          header = Header.new(version: version, compressed: compress, iv: random_iv ? iv : nil)
           header.to_s + openssl_cipher.update(compress ? Zlib::Deflate.deflate(string) : string)
         else
           openssl_cipher.iv = iv if iv
@@ -496,6 +430,21 @@ module SymmetricEncryption
         iv:          openssl_cipher.random_iv,
         cipher_name: cipher_name
       }
+    end
+
+    # DEPRECATED
+    def self.generate_random_keys(cipher_name: 'aes-256-cbc', encoding: :base64strict,
+      private_rsa_key: nil,
+      key_filename: nil, encrypted_key: nil,
+      iv_filename: nil, encrypted_iv: nil)
+
+      Utils::Generate.random_keys(
+        cipher_name:     cipher_name,
+        encoding:        encoding,
+        private_rsa_key: private_rsa_key,
+        key_filename:    key_filename,
+        iv_filename:     iv_filename
+      )
     end
 
     private

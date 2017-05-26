@@ -10,8 +10,8 @@ module SymmetricEncryption
     # Open a file for reading, or use the supplied IO Stream
     #
     # Parameters:
-    #   filename_or_stream:
-    #     The filename to open if a string, otherwise the stream to use
+    #   file_name_or_stream:
+    #     The file_name to open if a string, otherwise the stream to use
     #     The file or stream will be closed on completion, use .initialize to
     #     avoid having the stream closed automatically
     #
@@ -59,8 +59,8 @@ module SymmetricEncryption
     # ensure
     #   csv.close if csv
     # end
-    def self.open(filename_or_stream, buffer_size: 16384, &block)
-      ios = filename_or_stream.is_a?(String) ? ::File.open(filename_or_stream, 'rb') : filename_or_stream
+    def self.open(file_name_or_stream, buffer_size: 16384, &block)
+      ios = file_name_or_stream.is_a?(String) ? ::File.open(file_name_or_stream, 'rb') : file_name_or_stream
 
       begin
         file = self.new(ios, buffer_size: buffer_size)
@@ -77,10 +77,10 @@ module SymmetricEncryption
     #
     # Params:
     #   source: [String|IO]
-    #     Source filename or IOStream
+    #     Source file_name or IOStream
     #
     #   target: [String|IO]
-    #     Target filename or IOStream
+    #     Target file_name or IOStream
     #
     #   block_size: [Integer]
     #     Number of bytes to read into memory for each read.
@@ -104,13 +104,13 @@ module SymmetricEncryption
 
     # Returns [true|false] whether the file or stream contains any data
     # excluding the header should it have one
-    def self.empty?(filename_or_stream)
-      open(filename_or_stream) { |file| file.eof? }
+    def self.empty?(file_name_or_stream)
+      open(file_name_or_stream) { |file| file.eof? }
     end
 
     # Returns [true|false] whether the file contains the encryption header
-    def self.header_present?(filename)
-      ::File.open(filename, 'rb') { |file| new(file).header_present? }
+    def self.header_present?(file_name)
+      ::File.open(file_name, 'rb') { |file| new(file).header_present? }
     end
 
     # After opening a file Returns [true|false] whether the file being

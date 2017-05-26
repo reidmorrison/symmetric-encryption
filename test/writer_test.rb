@@ -6,21 +6,21 @@ require 'stringio'
 class WriterTest < Minitest::Test
   describe SymmetricEncryption::Writer do
     before do
-      @data            = [
+      @data             = [
         "Hello World\n",
         "Keep this secret\n",
         'And keep going even further and further...'
       ]
-      @data_str        = @data.inject('') { |sum, str| sum << str }
-      @data_len        = @data_str.length
-      @data_encrypted  = SymmetricEncryption.cipher.binary_encrypt(@data_str, false, false, false)
-      @filename        = '._test'
-      @source_filename = '._source_test'
+      @data_str         = @data.inject('') { |sum, str| sum << str }
+      @data_len         = @data_str.length
+      @data_encrypted   = SymmetricEncryption.cipher.binary_encrypt(@data_str, false, false, false)
+      @file_name        = '._test'
+      @source_file_name = '._source_test'
     end
 
     after do
-      File.delete(@filename) if File.exist?(@filename)
-      File.delete(@source_filename) if File.exist?(@source_filename)
+      File.delete(@file_name) if File.exist?(@file_name)
+      File.delete(@source_file_name) if File.exist?(@source_file_name)
     end
 
     describe '#write' do
@@ -51,12 +51,12 @@ class WriterTest < Minitest::Test
 
       it 'encrypt to file' do
         written_len = nil
-        SymmetricEncryption::Writer.open(@filename, header: false, random_key: false, random_iv: false) do |file|
+        SymmetricEncryption::Writer.open(@file_name, header: false, random_key: false, random_iv: false) do |file|
           written_len = @data.inject(0) { |sum, str| sum + file.write(str) }
           assert_equal @data_len, file.size
         end
         assert_equal @data_len, written_len
-        assert_equal @data_encrypted, File.read(@filename, mode: 'rb')
+        assert_equal @data_encrypted, File.read(@file_name, mode: 'rb')
       end
     end
 
@@ -70,10 +70,10 @@ class WriterTest < Minitest::Test
       end
 
       it 'file' do
-        File.write(@source_filename, 'wb') { |f| f.write(@data) }
-        source_bytes = SymmetricEncryption::Writer.encrypt(source: @source_filename, target: @filename)
+        File.write(@source_file_name, 'wb') { |f| f.write(@data) }
+        source_bytes = SymmetricEncryption::Writer.encrypt(source: @source_file_name, target: @file_name)
         assert_equal @data_len, source_bytes
-        assert_equal @data_encrypted, File.read(@filename, mode: 'rb')
+        assert_equal @data_encrypted, File.read(@file_name, mode: 'rb')
       end
     end
 

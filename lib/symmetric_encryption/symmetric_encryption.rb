@@ -256,15 +256,15 @@ module SymmetricEncryption
   end
 
   # Load the Encryption Configuration from a YAML file
-  #  filename:
+  #  file_name:
   #    Name of file to read.
   #        Mandatory for non-Rails apps
   #        Default: Rails.root/config/symmetric-encryption.yml
   #  environment:
   #    Which environments config to load. Usually: production, development, etc.
   #    Default: Rails.env
-  def self.load!(filename = nil, environment = nil)
-    Config.load!(filename, environment)
+  def self.load!(file_name = nil, env = nil)
+    Config.load!(file_name: file_name, env: env)
   end
 
   # Generate new random symmetric keys for use with this Encryption library
@@ -275,8 +275,8 @@ module SymmetricEncryption
   # which is encrypted with the key encryption key.
   #
   # Existing key files will be renamed if present
-  def self.generate_symmetric_key_files(filename = nil, environment = nil)
-    SymmetricEncryption::Utils::Generate.key_files(filename: filename, environment: environment)
+  def self.generate_symmetric_key_files(file_name = nil, environment = nil)
+    SymmetricEncryption::Utils::Generate.key_files(file_name: file_name, environment: environment)
   end
 
   # Generate a Random password

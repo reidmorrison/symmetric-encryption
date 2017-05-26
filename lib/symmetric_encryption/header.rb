@@ -145,7 +145,7 @@ module SymmetricEncryption
       header = buffer.byteslice(offset, MAGIC_HEADER_SIZE)
       return 0 unless header == MAGIC_HEADER
 
-      offset       += MAGIC_HEADER_SIZE
+      offset += MAGIC_HEADER_SIZE
 
       # Remove header and extract flags
       self.version = buffer.getbyte(offset)

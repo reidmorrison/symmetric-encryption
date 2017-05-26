@@ -6,7 +6,7 @@ module SymmetricEncryption
   class CLI
     attr_reader :parser, :key_path, :app_name, :encrypt, :config_file_path,
                 :decrypt, :random_password, :keys, :gen_config, :environment,
-                :heroku, :re_encrypt, :version, :output_filename, :compress
+                :heroku, :re_encrypt, :version, :output_file_name, :compress
 
     def initialize(argv)
       @version          = SymmetricEncyption.cipher.version
@@ -34,13 +34,13 @@ module SymmetricEncryption
         SymmetricEncryption.generate_symmetric_key_files(config_file_path, envirsonment)
       elsif gen_config
         generator = SymmetricEncryption::Utils::Generate.new
-        filename  = generator.config(
-          heroku:   heroku,
-          key_path: key_path,
-          app_name: app_name,
-          filename: config_file_path
+        file_name = generator.config(
+          heroku:    heroku,
+          key_path:  key_path,
+          app_name:  app_name,
+          file_name: config_file_path
         )
-        puts "New configuration file created at: #{filename}"
+        puts "New configuration file created at: #{file_name}"
       elsif re_encrypt
         SymmetricEncryption::Utils::ReEncrypt.new(version: version).process_directory(re_encrypt)
       else
@@ -58,16 +58,16 @@ module SymmetricEncryption
       @parser = OptionParser.new do |opts|
         opts.banner = "Symmetric Encryption #{VERSION} CLI\n\nsymmetric-encryption <options>\n"
 
-        opts.on '-e', '--encrypt FILE_NAME', 'Encrypt a file, or prompt for a text value if no file name is supplied.' do |filename|
-          @encrypt = filename || true
+        opts.on '-e', '--encrypt FILE_NAME', 'Encrypt a file, or prompt for a text value if no file name is supplied.' do |file_name|
+          @encrypt = file_name || true
         end
 
-        opts.on '-d', '--decrypt FILE_NAME', 'Decrypt a file, or prompt for an encrypted value if no file name is supplied.' do |filename|
-          @decrypt = filename || true
+        opts.on '-d', '--decrypt FILE_NAME', 'Decrypt a file, or prompt for an encrypted value if no file name is supplied.' do |file_name|
+          @decrypt = file_name || true
         end
 
-        opts.on '-o', '--output FILE_NAME', 'Write encrypted or decrypted file to this file.' do |filename|
-          @output_filename = filename
+        opts.on '-o', '--output FILE_NAME', 'Write encrypted or decrypted file to this file.' do |file_name|
+          @output_file_name = file_name
         end
 
         opts.on '-Z', '--compress', 'Compress encrypted output file. Default: false' do
@@ -151,17 +151,17 @@ module SymmetricEncryption
       text      = SymmetricEncryption.decrypt(value)
 
       puts "\nEncrypted: #{encrypted}"
-      output_filename ? File.open(output_filename, 'wb') { |f| f << text } : puts "Decrypted: #{text}\n\n"
+      output_file_name ? File.open(output_file_name, 'wb') { |f| f << text } : puts "Decrypted: #{text}\n\n"
     end
 
-    def decrypt_file(input_filename)
-      if output_filename
-        puts "\nDecrypting file: #{input_filename} and writing to: #{output_filename}\n\n"
-        SymmetricEncryption::Reader.decrypt(source: input_filename, target: output_filename)
-        puts "\n#{output_filename} now contains the decrypted contents of #{input_filename}\n\n"
+    def decrypt_file(input_file_name)
+      if output_file_name
+        puts "\nDecrypting file: #{input_file_name} and writing to: #{output_file_name}\n\n"
+        SymmetricEncryption::Reader.decrypt(source: input_file_name, target: output_file_name)
+        puts "\n#{output_file_name} now contains the decrypted contents of #{input_file_name}\n\n"
       else
         # No output file, so decrypt to stdout with no other output.
-        SymmetricEncryption::Reader.decrypt(source: input_filename, target: STDOUT)
+        SymmetricEncryption::Reader.decrypt(source: input_file_name, target: STDOUT)
       end
     end
 
@@ -184,17 +184,17 @@ module SymmetricEncryption
       end
 
       encrypted = SymmetricEncryption.encrypt(value1)
-      output_filename ? File.open(output_filename, 'wb') { |f| f << encrypted } : puts "\nEncrypted: #{encrypted}\n\n"
+      output_file_name ? File.open(output_file_name, 'wb') { |f| f << encrypted } : puts "\nEncrypted: #{encrypted}\n\n"
     end
 
-    def encrypt_file(input_filename)
-      if output_filename
-        puts "\nEncrypting file: #{input_filename} and writing to: #{output_filename}\n\n"
-        SymmetricEncryption::Writer.encrypt(source: input_filename, target: output_filename, compress: compress)
-        puts "\n#{output_filename} now contains the decrypted contents of #{input_filename}\n\n"
+    def encrypt_file(input_file_name)
+      if output_file_name
+        puts "\nEncrypting file: #{input_file_name} and writing to: #{output_file_name}\n\n"
+        SymmetricEncryption::Writer.encrypt(source: input_file_name, target: output_file_name, compress: compress)
+        puts "\n#{output_file_name} now contains the decrypted contents of #{input_file_name}\n\n"
       else
         # No output file, so decrypt to stdout with no other output.
-        SymmetricEncryption::Reader.decrypt(source: input_filename, target: STDOUT)
+        SymmetricEncryption::Reader.decrypt(source: input_file_name, target: STDOUT)
       end
     end
 
@@ -203,7 +203,7 @@ module SymmetricEncryption
       puts "\nGenerated Password: #{p}"
       encrypted = SymmetricEncryption.encrypt(p)
       puts "Encrypted: #{encrypted}\n\n"
-      File.open(output_filename, 'wb') { |f| f << encrypted } if output_filename
+      File.open(output_file_name, 'wb') { |f| f << encrypted } if output_file_name
     end
 
   end

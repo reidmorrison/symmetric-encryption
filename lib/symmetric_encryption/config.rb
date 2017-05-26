@@ -1,83 +1,76 @@
 module SymmetricEncryption
-  module Config
-    # Load the Encryption Configuration from a YAML file
-    #  filename:
-    #    Name of file to read.
-    #        Mandatory for non-Rails apps
-    #        Default: Rails.root/config/symmetric-encryption.yml
-    #  environment:
-    #    Which environments config to load. Usually: production, development, etc.
-    #    Default: Rails.env || ENV['RACK_ENV'] || ENV['RAILS_ENV'] || 'development'
-    def self.load!(filename = nil, environment = nil)
-      config  = read_config(filename, environment)
-      ciphers = extract_ciphers(config)
+  class Config
+    attr_reader :file_name, :env
 
+    # Load the Encryption Configuration from a YAML file
+    #  file_name:
+    #    Name of configuration file.
+    #    Default: "#{Rails.root}/config/symmetric-encryption.yml"
+    #
+    #  env:
+    #    Which environments config to load. Usually: production, development, etc.
+    #    Non-Rails apps can set env vars: RAILS_ENV, or RACK_ENV
+    #    Default: Rails.env || ENV['RACK_ENV'] || ENV['RAILS_ENV'] || 'development'
+    def self.load!(file_name: nil, env: nil)
+      config                                = new(file_name: file_name, env: env)
+      ciphers                               = config.ciphers
       SymmetricEncryption.cipher            = ciphers.shift
       SymmetricEncryption.secondary_ciphers = ciphers
       true
     end
 
-    private
-
-    # Returns [Hash] the configuration for the supplied environment
-    def self.read_config(filename = nil, environment = nil)
-      root            = defined?(Rails) ? Rails.root : '.'
-      config_filename = filename || File.join(root, 'config', 'symmetric-encryption.yml')
-      raise(ConfigError, "Cannot find config file: #{config_filename}") unless File.exist?(config_filename)
-
-      if defined?(Rails)
-        environment ||= Rails.env
-      else
-        environment ||= ENV['RACK_ENV'] || ENV['RAILS_ENV'] || 'development'
+    # Load the Encryption Configuration from a YAML file.
+    #
+    # See: `.load!` for parameters.
+    def initialize(file_name: nil, env: nil)
+      unless env
+        env = defined?(Rails) ? Rails.env : ENV['RACK_ENV'] || ENV['RAILS_ENV'] || 'development'
       end
-      raise(ConfigError, "Environment must be specified") unless environment
 
-      cfg = YAML.load(ERB.new(File.new(config_filename).read).result)[environment || Rails.env]
-      extract_config(cfg)
+      unless file_name
+        root      = defined?(Rails) ? Rails.root : '.'
+        file_name = File.join(root, 'config', 'symmetric-encryption.yml')
+        raise(ConfigError, "Cannot find config file: #{file_name}") unless File.exist?(file_name)
+      end
+
+      @env       = env
+      @file_name = file_name
     end
 
-    # Returns [ private_rsa_key, ciphers ] config
-    def self.extract_config(config)
-      config = deep_symbolize_keys(config)
-
-      # Old format?
-      unless config.has_key?(:ciphers)
-        config = {
-          private_rsa_key: config.delete(:private_rsa_key),
-          ciphers:         [config]
-        }
+    # Returns [Hash] the configuration for the supplied environment
+    def config
+      @config ||= begin
+        cfg = YAML.load(ERB.new(File.new(file_name).read).result)[env]
+        deep_symbolize_keys(cfg)
       end
-
-      # Old format cipher name?
-      config[:ciphers] = config[:ciphers].collect do |cipher|
-        if old_key_name_cipher = cipher.delete(:cipher)
-          cipher[:cipher_name] = old_key_name_cipher
-        end
-        cipher
-      end
-      config
     end
 
     # Returns [Array(SymmetricEncrytion::Cipher)] ciphers specified in the configuration file
     #
     # Read the configuration from the YAML file and return in the latest format
     #
-    #  filename:
+    #  file_name:
     #    Name of file to read.
     #        Mandatory for non-Rails apps
     #        Default: Rails.root/config/symmetric-encryption.yml
-    #  environment:
+    #  env:
     #    Which environments config to load. Usually: production, development, etc.
-    def self.extract_ciphers(config)
-      private_rsa_key = config[:private_rsa_key]
+    def ciphers
+      @ciphers ||= begin
+        private_rsa_key = config[:private_rsa_key]
+        ciphers         = config[:ciphers]
+        raise(SymmetricEncryption::ConfigError, 'Missing required :ciphers') unless ciphers
 
-      config[:ciphers].collect do |cipher_config|
-        Cipher.new({private_rsa_key: private_rsa_key}.merge(cipher_config))
+        ciphers.collect do |cipher_config|
+          Cipher.new({private_rsa_key: private_rsa_key}.merge(cipher_config))
+        end
       end
     end
 
+    private
+
     # Iterate through the Hash symbolizing all keys
-    def self.deep_symbolize_keys(x)
+    def deep_symbolize_keys(x)
       case x
       when Hash
         result = {}

@@ -105,26 +105,26 @@ class ActiveRecordTest < Minitest::Test
 
       @user = User.new(
         # Encrypted Attribute
-        bank_account_number:    @bank_account_number,
+        bank_account_number: @bank_account_number,
         # Encrypted Attribute
         social_security_number: @social_security_number,
         name:                   @name,
         # data type specific fields
-        string_value:           STRING_VALUE,
-        long_string_value:      LONG_STRING_VALUE,
-        binary_string_value:    BINARY_STRING_VALUE,
-        integer_value:          INTEGER_VALUE,
-        float_value:            FLOAT_VALUE,
-        decimal_value:          DECIMAL_VALUE,
-        datetime_value:         DATETIME_VALUE,
-        time_value:             TIME_VALUE,
-        date_value:             DATE_VALUE,
-        true_value:             true,
-        false_value:            false,
-        data_yaml:              @h.dup,
-        data_json:              @h.dup,
-        text:                   'hello',
-        number:                 '21'
+        string_value:        STRING_VALUE,
+        long_string_value:   LONG_STRING_VALUE,
+        binary_string_value: BINARY_STRING_VALUE,
+        integer_value:       INTEGER_VALUE,
+        float_value:         FLOAT_VALUE,
+        decimal_value:       DECIMAL_VALUE,
+        datetime_value:      DATETIME_VALUE,
+        time_value:          TIME_VALUE,
+        date_value:          DATE_VALUE,
+        true_value:          true,
+        false_value:         false,
+        data_yaml:           @h.dup,
+        data_json:           @h.dup,
+        text:                'hello',
+        number:              '21'
       )
     end
 

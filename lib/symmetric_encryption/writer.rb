@@ -13,8 +13,8 @@ module SymmetricEncryption
     # Open a file for writing, or use the supplied IO Stream.
     #
     # Parameters:
-    #   filename_or_stream: [String|IO]
-    #     The filename to open if a string, otherwise the stream to use.
+    #   file_name_or_stream: [String|IO]
+    #     The file_name to open if a string, otherwise the stream to use.
     #     The file or stream will be closed on completion, use .initialize to
     #     avoid having the stream closed automatically.
     #
@@ -47,8 +47,8 @@ module SymmetricEncryption
     #  ensure
     #    csv.close if csv
     #  end
-    def self.open(filename_or_stream, compress: false)
-      ios = filename_or_stream.is_a?(String) ? ::File.open(filename_or_stream, 'wb') : filename_or_stream
+    def self.open(file_name_or_stream, compress: false)
+      ios = file_name_or_stream.is_a?(String) ? ::File.open(file_name_or_stream, 'wb') : file_name_or_stream
 
       begin
         file = self.new(ios, compress: compress)
@@ -65,10 +65,10 @@ module SymmetricEncryption
     #
     # Params:
     #   source: [String|IO]
-    #     Source filename or IOStream
+    #     Source file_name or IOStream
     #
     #   target: [String|IO]
-    #     Target filename or IOStream
+    #     Target file_name or IOStream
     #
     #   compress: [true|false]
     #     Whether to compress the target file prior to encryption.
