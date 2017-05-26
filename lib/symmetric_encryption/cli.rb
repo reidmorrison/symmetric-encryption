@@ -86,7 +86,7 @@ module SymmetricEncryption
         # which is encrypted with the key encryption key.
         #
         # Existing key files will be renamed if present
-        opts.on '-k', '--keys', 'Generate encryption key files listed in the config file for this environment.' do |keys|
+        opts.on '-k', '--keys', 'Generate the encryption key files listed in the config file for this environment.' do |keys|
           @keys = keys
         end
 

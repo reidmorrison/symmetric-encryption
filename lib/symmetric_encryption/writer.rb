@@ -1,89 +1,38 @@
 require 'openssl'
 
 module SymmetricEncryption
-  # Write to encrypted files and other IO streams
+  # Write to encrypted files and other IO streams.
   #
   # Features:
   # * Encryption on the fly whilst writing files.
-  # * Large file support by only buffering small amounts of data in memory
+  # * Large file support by only buffering small amounts of data in memory.
   # * Underlying buffering to ensure that encrypted data fits
-  #   into the Symmetric Encryption Cipher block size
-  #   Only the last block in the file will be padded if it is less than the block size
+  #   into the Symmetric Encryption Cipher block size.
+  #   Only the last block in the file will be padded if it is less than the block size.
   class Writer
-    # Open a file for writing, or use the supplied IO Stream
+    # Open a file for writing, or use the supplied IO Stream.
     #
     # Parameters:
-    #   filename_or_stream:
-    #     The filename to open if a string, otherwise the stream to use
+    #   filename_or_stream: [String|IO]
+    #     The filename to open if a string, otherwise the stream to use.
     #     The file or stream will be closed on completion, use .initialize to
-    #     avoid having the stream closed automatically
+    #     avoid having the stream closed automatically.
     #
-    #   options:
-    #     :compress [true|false]
-    #          Uses Zlib to compress the data before it is encrypted and
-    #          written to the file
-    #          If true, it forces header to true.
-    #          Default: false
-    #
-    #     :random_key [true|false]
-    #          Generates a new random key for every new file or stream
-    #          If true, it forces header to true. Version below then has no effect
-    #          The Random key will be written to the file/stream in encrypted
-    #          form as part of the header
-    #          The key is encrypted using the global key
-    #          Default: true
-    #          Recommended: true.
-    #            Setting to false will eventually expose the
-    #            encryption key since too much data will be encrypted using the
-    #            same encryption key
-    #
-    #     :random_iv [true|false]
-    #          Generates a new random iv for every new file or stream
-    #          If true, it forces header to true.
-    #          The Random iv will be written to the file/stream in encrypted
-    #          form as part of the header
-    #          Default: Value supplied above for :random_key
-    #          Recommended: true. Setting to false will eventually expose the
-    #            encryption key since too much data will be encrypted using the
-    #            same encryption key
-    #
-    #     :header [true|false]
-    #          Whether to include the magic header that indicates the file
-    #          is encrypted and whether its contents are compressed
-    #
-    #          The header contains:
-    #             Version of the encryption key used to encrypt the file
-    #             Indicator if the data was compressed
-    #          Default: true
-    #
-    #     :version
-    #          When random_key is true, the version of the encryption key to use
-    #          when encrypting the header portion of the file
-    #
-    #          When random_key is false, the version of the encryption key to use
-    #          to encrypt the entire file
-    #          Default: SymmetricEncryption.cipher
-    #
-    #     :mode
-    #          See File.open for open modes
-    #          Default: 'w'
-    #
-    #     :cipher_name
-    #          The name of the cipher to use only if both :random_key and
-    #          :random_iv are true.
-    #          Default: SymmetricEncryption.cipher.cipher_name
+    #   compress: [true|false]
+    #     Uses Zlib to compress the data before it is encrypted and
+    #     written to the file/stream.
+    #     Default: false
     #
     # Note: Compression occurs before encryption
     #
-    #
     # # Example: Encrypt and write data to a file
-    # SymmetricEncryption::Writer.open('test_file') do |file|
+    # SymmetricEncryption::Writer.open('test_file.enc') do |file|
     #   file.write "Hello World\n"
     #   file.write 'Keep this secret'
     # end
     #
     # # Example: Compress, Encrypt and write data to a file
-    # SymmetricEncryption::Writer.open('encrypted_compressed.zip', compress: true) do |file|
+    # SymmetricEncryption::Writer.open('encrypted_compressed.enc', compress: true) do |file|
     #   file.write "Hello World\n"
     #   file.write "Compress this\n"
     #   file.write "Keep this safe and secure\n"
@@ -93,21 +42,20 @@ module SymmetricEncryption
     #  require 'csv'
     #  begin
     #    # Must supply :row_sep for CSV otherwise it will attempt to read from and then rewind the file
-    #    csv = CSV.new(SymmetricEncryption::Writer.open('csv_encrypted'), row_sep: "\n")
+    #    csv = CSV.new(SymmetricEncryption::Writer.open('csv.enc'), row_sep: "\n")
     #    csv << [1,2,3,4,5]
     #  ensure
     #    csv.close if csv
     #  end
-    def self.open(filename_or_stream, mode: 'wb', compress: false, &block)
-      raise(ArgumentError, 'options must be a hash') unless options.respond_to?(:each_pair)
-      ios = filename_or_stream.is_a?(String) ? ::File.open(filename_or_stream, mode) : filename_or_stream
+    def self.open(filename_or_stream, compress: false)
+      ios = filename_or_stream.is_a?(String) ? ::File.open(filename_or_stream, 'wb') : filename_or_stream
 
       begin
-        file = self.new(ios, options)
+        file = self.new(ios, compress: compress)
         file = Zlib::GzipWriter.new(file) if compress
-        block ? block.call(file) : file
+        block_given? ? yield(file) : file
       ensure
-        file.close if block && file && (file.respond_to?(:closed?) && !file.closed?)
+        file.close if block_given? && file && (file.respond_to?(:closed?) && !file.closed?)
       end
     end
 
@@ -134,7 +82,7 @@ module SymmetricEncryption
     # Notes:
     # * The file contents are streamed so that the entire file is _not_ loaded into memory.
     def self.encrypt(source:, target:, compress: false, block_size: 65535)
-      source_ios = source.is_a?(String) ? ::File.open(source, 'rb') : source
+      source_ios    = source.is_a?(String) ? ::File.open(source, 'rb') : source
       bytes_written = 0
       open(target, compress: compress) do |input_file|
         while !source_ios.eof?
@@ -147,16 +95,10 @@ module SymmetricEncryption
     end
 
     # Encrypt data before writing to the supplied stream
-    def initialize(ios, options={})
-      @ios       = ios
-      header     = options.fetch(:header, true)
-      random_key = options.fetch(:random_key, true)
-      random_iv  = options.fetch(:random_iv, random_key)
-      raise(ArgumentError, 'When :random_key is true, :random_iv must also be true') if random_key && !random_iv
+    def initialize(ios, version: nil, cipher_name: nil, header: true, random_key: true, random_iv: true, compress: false)
       # Compress is only used at this point for setting the flag in the header
-      compress    = options.fetch(:compress, false)
-      version     = options[:version]
-      cipher_name = options[:cipher_name]
+      @ios = ios
+      raise(ArgumentError, 'When :random_key is true, :random_iv must also be true') if random_key && !random_iv
       raise(ArgumentError, 'Cannot supply a :cipher_name unless both :random_key and :random_iv are true') if cipher_name && !random_key && !random_iv
 
       # Force header if compressed or using random iv, key
@@ -188,18 +130,18 @@ module SymmetricEncryption
       @closed = false
     end
 
-    # Close the IO Stream
-    # Flushes any unwritten data
+    # Close the IO Stream.
     #
-    # Note: Once an EncryptionWriter has been closed a new instance must be
-    #       created before writing again
-    #
-    # Note: Also closes the passed in io stream or file
-    # Note: This method must be called _before_ the supplied stream is closed
+    # Notes:
+    # * Flushes any unwritten data.
+    # * Once an EncryptionWriter has been closed a new instance must be
+    #   created before writing again.
+    # * Closes the passed in io stream or file.
+    # * `close` must be called _before_ the supplied stream is closed.
     #
     # It is recommended to call Symmetric::EncryptedStream.open
-    # rather than creating an instance of Symmetric::EncryptedStream directly to
-    # ensure that the encrypted stream is closed before the stream itself is closed
+    # rather than creating an instance of Symmetric::Writer directly to
+    # ensure that the encrypted stream is closed before the stream itself is closed.
     def close(close_child_stream = true)
       return if closed?
       if size > 0
@@ -210,8 +152,9 @@ module SymmetricEncryption
       @closed = true
     end
 
-    # Write to the IO Stream as encrypted data
-    # Returns the number of bytes written
+    # Write to the IO Stream as encrypted data.
+    #
+    # Returns [Integer] the number of bytes written.
     def write(data)
       return unless data
 
@@ -222,8 +165,9 @@ module SymmetricEncryption
       data.length
     end
 
-    # Write to the IO Stream as encrypted data
-    # Returns self
+    # Write to the IO Stream as encrypted data.
+    #
+    # Returns [SymmetricEncryption::Writer] self
     #
     # Example:
     #   file << "Hello.\n" << 'This is Jack'
@@ -232,20 +176,21 @@ module SymmetricEncryption
       self
     end
 
-    # Flush the output stream
+    # Flush the output stream.
     # Does not flush internal buffers since encryption requires all data to
-    # be written following the encryption block size
-    #  Needed by XLS gem
+    # be written following the encryption block size.
+    #  Needed by XLS gem.
     def flush
       @ios.flush
     end
 
+    # Returns [true|false] whether this stream is closed.
     def closed?
       @closed || @ios.respond_to?(:closed?) && @ios.closed?
     end
 
     # Returns [Integer] the number of unencrypted and uncompressed bytes
-    # written to the file so far
+    # written to the file so far.
     attr_reader :size
 
   end

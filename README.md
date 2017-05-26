@@ -36,6 +36,50 @@ Symmetric Encryption works with the following Ruby VMs:
 - Ruby 2.1 and higher.
 - JRuby 9.1 and higher.
 
+## Upgrading to SymmetricEncryption V4
+
+Version 4 of Symmetric Encryption has completely adopted the Ruby keyword arguments on most API's where
+multiple arguments are being passed, or where a Hash was being used before.
+
+The encrypt and decrypt API now require keyword arguments for any optional arguments.
+
+The following does _not_ change:
+
+~~~ruby
+encrypted = SymmetricEncryption.encrypt('Hello World')
+SymmetricEncryption.decrypt(encrypted)
+~~~
+
+The following is _not_ backward compatible:
+~~~ruby
+SymmetricEncryption.encrypt('Hello World', false, false, :date)
+~~~
+
+Needs to be changed to:
+~~~ruby
+SymmetricEncryption.encrypt('Hello World', random_iv: false, compress: false, type: :date)
+~~~
+
+Or, just to change the type:
+~~~ruby
+SymmetricEncryption.encrypt('Hello World', type: :date)
+~~~
+
+Similarly the `decrypt` api has also changed:
+~~~ruby
+SymmetricEncryption.decrypt(encrypted, 2, :date)
+~~~
+
+Needs to be changed to:
+~~~ruby
+SymmetricEncryption.decrypt(encrypted, version: 2, type: :string)
+~~~
+
+The Rake tasks have been replaced with a new command line interface. For more info:
+~~~
+symmetric-encryption --help
+~~~
+
 ## Upgrading to SymmetricEncryption V3
 
 In version 3 of SymmetricEncryption, the following changes have been made that

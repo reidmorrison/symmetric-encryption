@@ -15,27 +15,10 @@ module SymmetricEncryption
     #     The file or stream will be closed on completion, use .initialize to
     #     avoid having the stream closed automatically
     #
-    #   options:
-    #     :mode
-    #          See File.open for open modes
-    #          Default: 'rb'
-    #
-    #     :buffer_size
-    #          Amount of data to read at a time
-    #          Minimum Value 128
-    #          Default: 4096
-    #
-    #   The following options are only used if the stream/file has no header
-    #     :compress [true|false]
-    #          Uses Zlib to decompress the data after it is decrypted
-    #          Note: This option is only used if the file does not have a header
-    #                indicating whether it is compressed
-    #          Default: false
-    #
-    #     :version
-    #          Version of the encryption key to use when decrypting and the
-    #          file/stream does not include a header at the beginning
-    #          Default: Current primary key
+    #   buffer_size:
+    #     Amount of data to read at a time.
+    #     Minimum Value 128
+    #     Default: 16384
     #
     # Note: Decryption occurs before decompression
     #
@@ -76,15 +59,12 @@ module SymmetricEncryption
     # ensure
     #   csv.close if csv
     # end
-    def self.open(filename_or_stream, options={}, &block)
-      raise(ArgumentError, 'options must be a hash') unless options.respond_to?(:each_pair)
-      mode     = options.fetch(:mode, 'rb')
-      compress = options.fetch(:compress, false)
-      ios      = filename_or_stream.is_a?(String) ? ::File.open(filename_or_stream, mode) : filename_or_stream
+    def self.open(filename_or_stream, buffer_size: 16384, &block)
+      ios = filename_or_stream.is_a?(String) ? ::File.open(filename_or_stream, 'rb') : filename_or_stream
 
       begin
-        file = self.new(ios, options)
-        file = Zlib::GzipReader.new(file) if !file.eof? && (file.compressed? || compress)
+        file = self.new(ios, buffer_size: buffer_size)
+        file = Zlib::GzipReader.new(file) if !file.eof? && file.compressed?
         block ? block.call(file) : file
       ensure
         file.close if block && file && (file.respond_to?(:closed?) && !file.closed?)
@@ -140,10 +120,10 @@ module SymmetricEncryption
     end
 
     # Decrypt data before reading from the supplied stream
-    def initialize(ios, options={})
+    def initialize(ios, buffer_size: 4096, version: nil)
       @ios            = ios
-      @buffer_size    = options.fetch(:buffer_size, 4096).to_i
-      @version        = options[:version]
+      @buffer_size    = buffer_size
+      @version        = version
       @header_present = false
       @closed         = false
 
@@ -347,10 +327,10 @@ module SymmetricEncryption
 
     # Read the header from the file if present
     def read_header
-      @pos              = 0
+      @pos = 0
 
       # Read first block and check for the header
-      buf               = @ios.read(@buffer_size)
+      buf = @ios.read(@buffer_size)
 
       # Use cipher specified in header, or global cipher if it has no header
       iv, key           = nil

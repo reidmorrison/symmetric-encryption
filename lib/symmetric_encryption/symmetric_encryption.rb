@@ -26,7 +26,7 @@ module SymmetricEncryption
   #   :date      => Date
   #   :json      => Uses JSON serialization, useful for hashes and arrays
   #   :yaml      => Uses YAML serialization, useful for hashes and arrays
-  COERCION_TYPES      = [:string, :integer, :float, :decimal, :datetime, :time, :date, :boolean, :json, :yaml]
+  COERCION_TYPES = [:string, :integer, :float, :decimal, :datetime, :time, :date, :boolean, :json, :yaml]
 
   # Set the Primary Symmetric Cipher to be used
   #
@@ -39,6 +39,7 @@ module SymmetricEncryption
   #   )
   def self.cipher=(cipher)
     raise(ArgumentError, 'Cipher must respond to :encrypt and :decrypt') unless cipher.nil? || (cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt))
+
     @@cipher = cipher
   end
 
@@ -47,7 +48,8 @@ module SymmetricEncryption
   #   Returns the primary cipher if no match was found and version == 0
   #   Returns nil if no match was found and version != 0
   def self.cipher(version = nil)
-    raise(SymmetricEncryption::ConfigError, 'Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data') unless @@cipher
+    raise(SymmetricEncryption::ConfigError, 'Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data') unless cipher?
+
     return @@cipher if version.nil? || (@@cipher.version == version)
     secondary_ciphers.find { |c| c.version == version } || (@@cipher if version == 0)
   end
@@ -60,6 +62,7 @@ module SymmetricEncryption
   # Set the Secondary Symmetric Ciphers Array to be used
   def self.secondary_ciphers=(secondary_ciphers)
     raise(ArgumentError, 'secondary_ciphers must be a collection') unless secondary_ciphers.respond_to? :each
+
     secondary_ciphers.each do |cipher|
       raise(ArgumentError, 'secondary_ciphers can only consist of SymmetricEncryption::Ciphers') unless cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt)
     end
@@ -106,14 +109,13 @@ module SymmetricEncryption
   #       yet significant number of cases it is possible to decrypt data using
   #       the incorrect key. Clearly the data returned is garbage, but it still
   #       successfully returns a string of data
-  def self.decrypt(encrypted_and_encoded_string, version=nil, type=:string)
-    raise(SymmetricEncryption::ConfigError, 'Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data') unless @@cipher
+  def self.decrypt(encrypted_and_encoded_string, version: nil, type: :string)
     return encrypted_and_encoded_string if encrypted_and_encoded_string.nil? || (encrypted_and_encoded_string == '')
 
-    str     = encrypted_and_encoded_string.to_s
+    str = encrypted_and_encoded_string.to_s
 
     # Decode before decrypting supplied string
-    decoded = @@cipher.decode(str)
+    decoded = cipher.decode(str)
     return unless decoded
     return decoded if decoded.empty?
 
@@ -136,7 +138,6 @@ module SymmetricEncryption
   # Returns the header for the encrypted string
   # Returns [nil] if no header is present
   def self.header(encrypted_and_encoded_string)
-    raise(SymmetricEncryption::ConfigError, 'Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data') unless @@cipher
     return if encrypted_and_encoded_string.nil? || (encrypted_and_encoded_string == '')
 
     # Decode before decrypting supplied string
@@ -189,11 +190,11 @@ module SymmetricEncryption
   #     Note: If type is set to something other than :string, it's expected that
   #       the coercible gem is available in the path.
   #     Default: :string
-  def self.encrypt(str, random_iv=false, compress=false, type=:string)
-    raise(SymmetricEncryption::ConfigError, 'Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data') unless @@cipher
+  def self.encrypt(str, random_iv: false, compress: false, type: :string)
+    return str if str.nil? || (str == '')
 
     # Encrypt and then encode the supplied string
-    @@cipher.encrypt(Coerce.coerce_to_string(str, type), random_iv, compress)
+    cipher.encrypt(Coerce.coerce_to_string(str, type), random_iv, compress)
   end
 
   # Invokes decrypt
@@ -208,12 +209,9 @@ module SymmetricEncryption
   # WARNING: It is possible to decrypt data using the wrong key, so the value
   #          returned should not be relied upon
   def self.try_decrypt(str)
-    raise(SymmetricEncryption::ConfigError, 'Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data') unless @@cipher
-    begin
-      decrypt(str)
-    rescue OpenSSL::Cipher::CipherError, SymmetricEncryption::CipherError
-      nil
-    end
+    decrypt(str)
+  rescue OpenSSL::Cipher::CipherError, SymmetricEncryption::CipherError
+    nil
   end
 
   # Returns [true|false] whether the string is encrypted.
@@ -278,46 +276,7 @@ module SymmetricEncryption
   #
   # Existing key files will be renamed if present
   def self.generate_symmetric_key_files(filename = nil, environment = nil)
-    config        = Config.read_config(filename, environment)
-
-    # Only regenerating the first configured cipher
-    cipher_config = config[:ciphers].first
-
-    # Delete unused config keys to generate new random keys
-    [:version, :always_add_header].each do |key|
-      cipher_config.delete(key)
-    end
-
-    key_config = {private_rsa_key: config[:private_rsa_key]}
-    cipher_cfg = Cipher.generate_random_keys(key_config.merge(cipher_config))
-
-    puts
-    if encoded_encrypted_key = cipher_cfg[:encrypted_key]
-      puts 'If running in Heroku, add the environment specific key:'
-      puts "heroku config:add #{environment.upcase}_KEY1=#{encoded_encrypted_key}\n"
-    end
-
-    if encoded_encrypted_iv = cipher_cfg[:encrypted_iv]
-      puts 'If running in Heroku, add the environment specific key:'
-      puts "heroku config:add #{environment.upcase}_IV1=#{encoded_encrypted_iv}"
-    end
-
-    if key = cipher_cfg[:key]
-      puts "Please add the key: #{key} to your config file"
-    end
-
-    if iv = cipher_cfg[:iv]
-      puts "Please add the iv: #{iv} to your config file"
-    end
-
-    if file_name = cipher_cfg[:key_filename]
-      puts("Please copy #{file_name} to the other servers in #{environment}.")
-    end
-
-    if file_name = cipher_cfg[:iv_filename]
-      puts("Please copy #{file_name} to the other servers in #{environment}.")
-    end
-    cipher_cfg
+    SymmetricEncryption::Utils::Generate.key_files(filename: filename, environment: environment)
   end
 
   # Generate a Random password

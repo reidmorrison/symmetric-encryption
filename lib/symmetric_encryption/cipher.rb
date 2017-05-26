@@ -70,7 +70,7 @@ module SymmetricEncryption
       key_filename: nil, encrypted_key: nil,
       iv_filename: nil, encrypted_iv: nil)
 
-      cipher = self.class.new(
+      cipher = new(
         cipher_name:     cipher_name,
         encoding:        encoding,
         private_rsa_key: private_rsa_key,
@@ -80,41 +80,37 @@ module SymmetricEncryption
       cipher.to_h
     end
 
-    # Create a Symmetric::Key for encryption and decryption purposes
+    # Create a Symmetric::Cipher for encryption and decryption purposes
     #
     # Parameters:
-    #   :key [String]
+    #   key [String]
     #     The Symmetric Key to use for encryption and decryption.
     #     Default: :random, generate a new random key if `key_filename` or `encrypted_key` is not supplied.
     #  Or,
-    #   :key_filename
-    #     Name of file containing symmetric key encrypted using the public
-    #     key from the private_rsa_key.
+    #   key_filename
+    #     Name of file containing symmetric key encrypted using the key encryption key.
     #  Or,
-    #   :encrypted_key
-    #     Symmetric key encrypted using the public key from the private_rsa_key
-    #     and then encoded with supplied `encoding`.
+    #   encrypted_key
+    #     Symmetric key encrypted using key encryption key and then encoded with supplied `encoding`.
     #
-    #   :iv [String]
-    #     Optional. The Initialization Vector to use with Symmetric Key
-    #     Highly Recommended as it is the input into the CBC algorithm
+    #   iv [String]
+    #     Optional. The Initialization Vector to use with Symmetric Key.
+    #     Highly Recommended as it is the input into the CBC algorithm.
     #     Default: :random, generate a new random IV if `iv_filename` or `encrypted_iv` is not supplied.
     #  Or,
-    #   :iv_filename
-    #     Name of file containing symmetric key initialization vector
-    #     encrypted using the public key from the private_rsa_key
-    #     Deprecated: It is _not_ necessary to encrypt the initialization vector (IV)
+    #   iv_filename
+    #     Name of file containing the IV (initialization vector) encrypted using the key encryption key.
+    #     DEPRECATED: It is _not_ necessary to encrypt the initialization vector (IV).
     #  Or,
-    #   :encrypted_iv
-    #     Initialization vector encrypted using the public key from the private_rsa_key
-    #     and then Base64 encoded
-    #     Deprecated: It is _not_ necessary to encrypt the initialization vector (IV)
+    #   encrypted_iv
+    #     IV (initialization vector) encrypted using key encryption key and then encoded with supplied `encoding`.
+    #     DEPRECATED: It is _not_ necessary to encrypt the initialization vector (IV).
     #
-    #   :cipher_name [String]
+    #   cipher_name [String]
     #     Optional. Encryption Cipher to use
     #     Default: aes-256-cbc
     #
-    #   :encoding [Symbol]
+    #   encoding [Symbol]
     #     :base64strict
     #       Return as a base64 encoded string that does not include additional newlines
     #       This is the recommended format since newlines in the values to
@@ -128,13 +124,13 @@ module SymmetricEncryption
     #       Return as raw binary data string. Note: String can contain embedded nulls
     #     Default: :base64strict
     #
-    #   :version [Fixnum]
+    #   version [Fixnum]
     #     Optional. The version number of this encryption key
     #     Used by SymmetricEncryption to select the correct key when decrypting data
     #     Valid Range: 0..255
     #     Default: 1
     #
-    #   :always_add_header [true|false]
+    #   always_add_header [true|false]
     #     Whether to always include the header when encrypting data.
     #     ** Highly recommended to set this value to true **
     #     Increases the length of the encrypted data by a few bytes, but makes
@@ -306,7 +302,7 @@ module SymmetricEncryption
     #     compression
     #     Note: Adds a 6 byte header prior to encoding, only if :random_iv is false
     #     Default: false
-    def encrypt(str, random_iv=false, compress=false)
+    def encrypt(str, random_iv: false, compress: false)
       return if str.nil?
       str = str.to_s
       return str if str.empty?

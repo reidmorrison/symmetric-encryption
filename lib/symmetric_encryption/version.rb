@@ -1,3 +1,3 @@
 module SymmetricEncryption #:nodoc
-  VERSION = '3.9.0'
+  VERSION = '4.0.0.alpha1'
 end

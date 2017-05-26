@@ -13,17 +13,19 @@ module SymmetricEncryption
   autoload :Coerce,                 'symmetric_encryption/coerce'
   autoload :Config,                 'symmetric_encryption/config'
   autoload :Encoder,                'symmetric_encryption/encoder'
+  autoload :Generator,              'symmetric_encryption/generator'
   autoload :Header,                 'symmetric_encryption/header'
   autoload :KeyEncryptionKey,       'symmetric_encryption/key_encryption_key'
   autoload :Reader,                 'symmetric_encryption/reader'
   autoload :Writer,                 'symmetric_encryption/writer'
-  autoload :Generator,              'symmetric_encryption/generator'
   autoload :CLI,                    'symmetric_encryption/cli'
   module Keystore
     autoload :File,                 'symmetric_encryption/keystore/file'
+    autoload :String,               'symmetric_encryption/keystore/string'
   end
   module Utils
-    autoload :ReEncryptConfigFiles, 'symmetric_encryption/re_encrypt_config_files'
+    autoload :Generate,             'symmetric_encryption/utils/generate'
+    autoload :ReEncryptFiles,       'symmetric_encryption/utils/re_encrypt_files'
   end
 end
 #@formatter:on
@@ -36,6 +38,6 @@ end
 require 'symmetric_encryption/railties/symmetric_encryption_validator' if defined?(ActiveModel)
 require 'symmetric_encryption/extensions/mongoid/encrypted' if defined?(Mongoid)
 if defined?(MongoMapper)
-  warn 'MongoMapper support is deprecated. Consider upgrading to Mongoid.'
+  warn 'MongoMapper support is deprecated. Upgrade to Mongoid.'
   require 'symmetric_encryption/extensions/mongo_mapper/plugins/encrypted_key'
 end
