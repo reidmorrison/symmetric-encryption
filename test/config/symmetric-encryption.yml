@@ -46,6 +46,15 @@ test:
       version:           2
       always_add_header: true
 
+    # For testing a higher version that is not active yet
+    -
+      key:               6BCDEF1234567890ABCDEF1234567890
+      iv:                6BCDEF1234567890
+      cipher_name:       aes-256-cbc
+      version:           6
+      encoding:          :base64strict
+      always_add_header: true
+
     # Prior Symmetric Encryption Key specified in environment variable
     -
       # Encryption Key

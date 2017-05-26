@@ -217,7 +217,7 @@ module SymmetricEncryption
     def initialize(params={})
       params             = params.dup
       @cipher_name       = params.delete(:cipher_name) || params.delete(:cipher) || 'aes-256-cbc'
-      @version           = params.delete(:version)
+      @version           = params.delete(:version) || 0
       @always_add_header = params.delete(:always_add_header) || false
       self.encoding      = (params.delete(:encoding) || :base64).to_sym
       private_rsa_key    = params.delete(:private_rsa_key)
@@ -461,10 +461,9 @@ module SymmetricEncryption
     #     The cipher_name string to to put in the header
     #     Default: nil : Exclude cipher_name name from header
     def self.build_header(version, compressed=false, iv=nil, key=nil, cipher_name=nil)
-      # Ruby V2 named parameters would be perfect here
+      version ||= SymmetricEncryption.cipher.version
 
-      # Version number of supplied encryption key, or use the global cipher version if none was supplied
-      flags  = iv || key ? (SymmetricEncryption.cipher.version || 0) : (version || 0) # Same as 0b0000_0000_0000_0000
+      flags  = version # Same as 0b0000_0000_0000_0000
 
       # If the data is to be compressed before being encrypted, set the
       # compressed bit in the flags word
@@ -478,7 +477,7 @@ module SymmetricEncryption
         header << iv
       end
       if key
-        encrypted = SymmetricEncryption.cipher.binary_encrypt(key, false, false, false)
+        encrypted = SymmetricEncryption.cipher(version).binary_encrypt(key, false, false, false)
         header << [encrypted.length].pack('v').force_encoding(SymmetricEncryption::BINARY_ENCODING)
         header << encrypted
       end
