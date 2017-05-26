@@ -9,7 +9,7 @@ class SymmetricEncryptionTest < Minitest::Test
       before do
         config                             = SymmetricEncryption::Config.read_config(File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'), 'test')
         @ciphers                           = SymmetricEncryption::Config.extract_ciphers(config)
-        @cipher_v2, @cipher_v1, @cipher_v0 = @ciphers
+        @cipher_v2, @cipher_v6, @cipher_v1, @cipher_v0 = @ciphers
       end
 
       it 'matches config file for first cipher' do
@@ -156,6 +156,13 @@ class SymmetricEncryptionTest < Minitest::Test
       it 'encrypt and then decrypt using random iv' do
         # Encrypt with random iv
         assert encrypted = SymmetricEncryption.encrypt(@social_security_number, true)
+        assert_equal true, SymmetricEncryption.encrypted?(encrypted)
+        assert_equal @social_security_number, SymmetricEncryption.decrypt(encrypted)
+      end
+
+      it 'encrypt and then decrypt using random iv with higher version' do
+        # Encrypt with random iv
+        assert encrypted = SymmetricEncryption.cipher(6).encrypt(@social_security_number, true)
         assert_equal true, SymmetricEncryption.encrypted?(encrypted)
         assert_equal @social_security_number, SymmetricEncryption.decrypt(encrypted)
       end
