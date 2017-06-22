@@ -25,7 +25,7 @@ module SymmetricEncryption
         # Freeze the decrypted field value so that it is not modified directly
         def #{decrypted_name}=(value)
           v = SymmetricEncryption::Coerce.coerce(value, :#{type})
-          self.#{encrypted_name} = @stored_#{encrypted_name} = ::SymmetricEncryption.encrypt(v, #{random_iv}, #{compress}, :#{type})
+          self.#{encrypted_name} = @stored_#{encrypted_name} = ::SymmetricEncryption.encrypt(v, random_iv: #{random_iv}, compress: #{compress}, type: :#{type})
           @#{decrypted_name} = v.freeze
         end
 
@@ -34,7 +34,7 @@ module SymmetricEncryption
         # If this method is not called, then the encrypted value is never decrypted
         def #{decrypted_name}
           if !defined?(@stored_#{encrypted_name}) || (@stored_#{encrypted_name} != self.#{encrypted_name})
-            @#{decrypted_name} = ::SymmetricEncryption.decrypt(self.#{encrypted_name}, nil, :#{type}).freeze
+            @#{decrypted_name} = ::SymmetricEncryption.decrypt(self.#{encrypted_name}, type: :#{type}).freeze
             @stored_#{encrypted_name} = self.#{encrypted_name}
           end
           @#{decrypted_name}

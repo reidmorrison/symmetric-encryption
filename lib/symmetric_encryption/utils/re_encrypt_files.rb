@@ -108,7 +108,7 @@ module SymmetricEncryption
 
       # Standard header to search for
       def header
-        @header ||= SymmetricEncryption.cipher.encoder.encode(SymmetricEncryption::MAGIC_HEADER).gsub('=', '')
+        @header ||= SymmetricEncryption.cipher.encoder.encode(SymmetricEncryption::Header::MAGIC_HEADER).gsub('=', '')
       end
 
     end

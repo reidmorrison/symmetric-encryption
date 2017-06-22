@@ -41,20 +41,11 @@ module SymmetricEncryption
     def config
       @config ||= begin
         cfg = YAML.load(ERB.new(File.new(file_name).read).result)[env]
-        deep_symbolize_keys(cfg)
+        self.class.deep_symbolize_keys(cfg)
       end
     end
 
     # Returns [Array(SymmetricEncrytion::Cipher)] ciphers specified in the configuration file
-    #
-    # Read the configuration from the YAML file and return in the latest format
-    #
-    #  file_name:
-    #    Name of file to read.
-    #        Mandatory for non-Rails apps
-    #        Default: Rails.root/config/symmetric-encryption.yml
-    #  env:
-    #    Which environments config to load. Usually: production, development, etc.
     def ciphers
       @ciphers ||= begin
         private_rsa_key = config[:private_rsa_key]
@@ -70,7 +61,7 @@ module SymmetricEncryption
     private
 
     # Iterate through the Hash symbolizing all keys
-    def deep_symbolize_keys(x)
+    def self.deep_symbolize_keys(x)
       case x
       when Hash
         result = {}

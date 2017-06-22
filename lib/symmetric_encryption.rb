@@ -19,10 +19,7 @@ module SymmetricEncryption
   autoload :Reader,                 'symmetric_encryption/reader'
   autoload :Writer,                 'symmetric_encryption/writer'
   autoload :CLI,                    'symmetric_encryption/cli'
-  module Keystore
-    autoload :File,                 'symmetric_encryption/keystore/file'
-    autoload :Memory,               'symmetric_encryption/keystore/memory'
-  end
+  autoload :Keystore,               'symmetric_encryption/keystore'
   module Utils
     autoload :Generate,             'symmetric_encryption/utils/generate'
     autoload :ReEncryptFiles,       'symmetric_encryption/utils/re_encrypt_files'

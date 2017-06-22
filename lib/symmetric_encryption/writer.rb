@@ -84,7 +84,7 @@ module SymmetricEncryption
     def self.encrypt(source:, target:, compress: false, block_size: 65535)
       source_ios    = source.is_a?(String) ? ::File.open(source, 'rb') : source
       bytes_written = 0
-      open(target, compress: compress) do |input_file|
+      open(target, compress: compress) do |output_file|
         while !source_ios.eof?
           bytes_written += output_file.write(source_ios.read(block_size))
         end

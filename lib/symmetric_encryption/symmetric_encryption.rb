@@ -194,7 +194,7 @@ module SymmetricEncryption
     return str if str.nil? || (str == '')
 
     # Encrypt and then encode the supplied string
-    cipher.encrypt(Coerce.coerce_to_string(str, type), random_iv, compress)
+    cipher.encrypt(Coerce.coerce_to_string(str, type), random_iv: random_iv, compress: compress)
   end
 
   # Invokes decrypt
@@ -222,7 +222,7 @@ module SymmetricEncryption
   def self.encrypted?(encrypted_data)
     return false if encrypted_data.nil? || (encrypted_data == '')
 
-    @header ||= SymmetricEncryption.cipher.encoder.encode(SymmetricEncryption::MAGIC_HEADER).gsub('=', '')
+    @header ||= SymmetricEncryption.cipher.encoder.encode(SymmetricEncryption::Header::MAGIC_HEADER).gsub('=', '')
     encrypted_data.to_s.start_with?(@header)
   end
 
@@ -265,18 +265,6 @@ module SymmetricEncryption
   #    Default: Rails.env
   def self.load!(file_name = nil, env = nil)
     Config.load!(file_name: file_name, env: env)
-  end
-
-  # Generate new random symmetric keys for use with this Encryption library
-  #
-  # Note: Only the current Encryption key settings are used
-  #
-  # Creates Symmetric Key .key and initialization vector .iv
-  # which is encrypted with the key encryption key.
-  #
-  # Existing key files will be renamed if present
-  def self.generate_symmetric_key_files(file_name = nil, environment = nil)
-    SymmetricEncryption::Utils::Generate.key_files(file_name: file_name, environment: environment)
   end
 
   # Generate a Random password

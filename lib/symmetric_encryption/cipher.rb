@@ -8,7 +8,7 @@ module SymmetricEncryption
   class Cipher
     # Cipher to use for encryption and decryption
     attr_accessor :cipher_name, :version, :iv, :always_add_header
-    attr_reader :encoding, :key_filename, :iv_filename, :key_encryption_key
+    attr_reader :encoding, :key_filename, :iv_filename, :key_encryption_key, :key_env_var
     attr_writer :key
 
     # Create a Symmetric::Cipher for encryption and decryption purposes
@@ -23,6 +23,9 @@ module SymmetricEncryption
     #  Or,
     #   encrypted_key
     #     Symmetric key encrypted using key encryption key and then encoded with supplied `encoding`.
+    #  Or,
+    #   key_env_var [String]
+    #     Name of the environment variable from which to read the encrypted encryption key.
     #
     #   iv [String]
     #     Optional. The Initialization Vector to use with Symmetric Key.
@@ -82,7 +85,7 @@ module SymmetricEncryption
                    version: 0,
                    always_add_header: true,
                    private_rsa_key: nil, key_encryption_key: nil,
-                   key_filename: nil, encrypted_key: nil, key: :random,
+                   key_filename: nil, encrypted_key: nil, key: :random, key_env_var: nil,
                    iv_filename: nil, encrypted_iv: nil, iv: :random)
 
       @cipher_name       = cipher_name
@@ -91,6 +94,7 @@ module SymmetricEncryption
       @always_add_header = always_add_header
       @key_filename      = key_filename
       @iv_filename       = iv_filename
+      @key_env_var       = key_env_var
 
       @key_encryption_key =
         if key_encryption_key
@@ -112,6 +116,8 @@ module SymmetricEncryption
           Keystore::File.new(file_name: key_filename, key_encryption_key: @key_encryption_key).read
         elsif encrypted_key
           Keystore::Memory.new(encrypted_key: encrypted_key, key_encryption_key: @key_encryption_key).read
+        elsif key_env_var
+          Keystore::Environment.new(key_env_var: key_env_var, key_encryption_key: @key_encryption_key).read
         elsif key == :random
           random_key
         else
@@ -131,39 +137,6 @@ module SymmetricEncryption
 
     end
 
-    # Returns [Cipher] a new cipher based on the current cipher.
-    # Updates the following attributes:
-    # - New randomized key.
-    # - New randomized iv.
-    # - Increments the version number, with rollover.
-    # - Changes the version number in the key_filename if present.
-    #     - For example replaces the text v10 with v11.
-    # Params
-    #   save: [true|false]
-    #     After creating a random cipher, also write the new values to its keystore (file).
-    #
-    # Note:
-    # - iv_filename is no longer supported and is removed when creating a new random cipher.
-    #     - `iv` is always included in the clear.
-    def random_cipher(save: true)
-      cipher     = clone
-      cipher.key = random_key
-      cipher.iv  = random_iv
-
-      version >= 255 ? cipher.version = 1 : cipher.version += 1
-
-      # Not necessary to encrypt IV
-      cipher.iv_filename = nil
-
-      # Update version number in key_filename
-      if key_filename
-        cipher.key_filename = key_filename.sub("v#{version}", "v#{cipher.version}")
-        Keystore::File.new(file_name: cipher.key_filename, key_encryption_key: key_encryption_key).write(key) if save
-      end
-
-      cipher
-    end
-
     # Returns [Hash] the configuration for this cipher.
     def to_h
       h = {
@@ -176,7 +149,6 @@ module SymmetricEncryption
       if key_filename
         h[:key_filename] = key_filename
       else
-        encrypted_key     = key_encryption_key.encrypt(key)
         h[:encrypted_key] = encoder.encode(encrypted_key)
       end
 
@@ -187,6 +159,11 @@ module SymmetricEncryption
       end
 
       h
+    end
+
+    # Returns the key encrypted with the key encryption key.
+    def encrypted_key
+      key_encryption_key.encrypt(key)
     end
 
     # Change the encoding
@@ -433,18 +410,19 @@ module SymmetricEncryption
     end
 
     # DEPRECATED
-    def self.generate_random_keys(cipher_name: 'aes-256-cbc', encoding: :base64strict,
+    def self.generate_random_keys(cipher_name: 'aes-256-cbc',
+      encoding: :base64strict,
       private_rsa_key: nil,
       key_filename: nil, encrypted_key: nil,
       iv_filename: nil, encrypted_iv: nil)
 
-      Utils::Generate.random_keys(
+      Cipher.new(
         cipher_name:     cipher_name,
         encoding:        encoding,
         private_rsa_key: private_rsa_key,
         key_filename:    key_filename,
         iv_filename:     iv_filename
-      )
+      ).to_h
     end
 
     private

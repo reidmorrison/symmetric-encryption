@@ -77,7 +77,13 @@ module SymmetricEncryption
     #     `key` if supplied is encrypted with the cipher name based on the cipher version in this header.
     #     Intended for use when encrypting large files with a different cipher to the global one.
     #     Default: nil : Exclude cipher_name name from header
-    def initialize(version: SymmetricEncryption.cipher.version, compressed: false, iv: nil, key: nil, cipher_name: nil, auth_tag: nil)
+    def initialize(version: SymmetricEncryption.cipher.version,
+                   compressed: false,
+                   iv: nil,
+                   key: nil,
+                   cipher_name: nil,
+                   auth_tag: nil)
+
       @version     = version
       @compressed  = compressed
       @iv          = iv
@@ -165,7 +171,7 @@ module SymmetricEncryption
 
       if (flags & FLAG_KEY) != 0
         encrypted_key, offset = read_string(buffer, offset)
-        self.key              = cipher.binary_decrypt(encrypted_key, false)
+        self.key              = cipher.binary_decrypt(encrypted_key, header: self)
       else
         self.key = nil
       end
@@ -202,7 +208,7 @@ module SymmetricEncryption
       end
 
       if key
-        encrypted = cipher.binary_encrypt(key, false, false, false)
+        encrypted = cipher.binary_encrypt(key, add_header: false)
         header << [encrypted.length].pack('v')
         header << encrypted
       end

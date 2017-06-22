@@ -75,10 +75,38 @@ Needs to be changed to:
 SymmetricEncryption.decrypt(encrypted, version: 2, type: :string)
 ~~~
 
-The Rake tasks have been replaced with a new command line interface. For more info:
+The Rake tasks have been replaced with a new command line interface for managing key configuration and generation. 
+For more info:
 ~~~
 symmetric-encryption --help
 ~~~
+
+#### Configuration changes
+
+In Symmetric Encryption V4 the configuration file is now modified directly instead
+of using templates. This change is necessary to allow the command line interface to
+generate new keys and automatically update the configuration file.
+ 
+Please backup your existing `symmetric-encryption.yml` prior to upgrading if it is not
+already in a version control system. This is critical for configurations that have custom
+code or for prior configurations targeting heroku.
+
+In Symmetric Encryption V4 the defaults for `encoding` and `always_add_header` have changed.
+If these values are not explicitly set in the `symmetric-encryption.yml` file, set them
+prior to upgrading.
+
+Prior defaults, set explicitly to these values if missing for all environments:
+~~~yaml
+      encoding:          :base64
+      always_add_header: false
+~~~
+
+New defaults are:
+~~~yaml
+      encoding:          :base64strict
+      always_add_header: true
+~~~
+
 
 ## Upgrading to SymmetricEncryption V3
 

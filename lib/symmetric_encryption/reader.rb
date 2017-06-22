@@ -336,7 +336,7 @@ module SymmetricEncryption
       iv, key           = nil
       cipher_name       = nil
       decryption_cipher = nil
-      if header = SymmetricEncryption::Cipher::Header.parse!(buf)
+      if header = SymmetricEncryption::Header.new.parse!(buf)
         @header_present   = true
         @compressed       = header.compressed
         decryption_cipher = header.decryption_cipher
