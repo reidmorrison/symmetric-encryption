@@ -35,7 +35,8 @@ module SymmetricEncryption
               {
                 'key'         => '1234567890ABCDEF',
                 'iv'          => '1234567890ABCDEF',
-                'cipher_name' => 'aes-128-cbc'
+                'cipher_name' => 'aes-128-cbc',
+                'version'     => 1
               }
             ]
         }

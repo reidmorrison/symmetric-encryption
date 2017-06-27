@@ -103,12 +103,7 @@ module SymmetricEncryption
       end
 
       def regexp
-        @regexp ||= /#{header}(?:[A-Za-z0-9+\/]{4})*(?:[A-Za-z0-9+\/]{2}==|[A-Za-z0-9+\/]{3}=)/
-      end
-
-      # Standard header to search for
-      def header
-        @header ||= SymmetricEncryption.cipher.encoder.encode(SymmetricEncryption::Header::MAGIC_HEADER).gsub('=', '')
+        @regexp ||= /#{SymmetricEncryption.cipher.encoded_magic_header}(?:[A-Za-z0-9+\/]{4})*(?:[A-Za-z0-9+\/]{2}==|[A-Za-z0-9+\/]{3}=)/
       end
 
     end

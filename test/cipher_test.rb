@@ -175,9 +175,9 @@ class CipherTest < Minitest::Test
           it 'build and parse header' do
             assert random_key_pair = SymmetricEncryption::Cipher.random_key_pair('aes-128-cbc')
             assert binary_header = SymmetricEncryption::Cipher.build_header(SymmetricEncryption.cipher.version, true, random_key_pair[:iv], random_key_pair[:key], random_key_pair[:cipher_name])
-            header = SymmetricEncryption::Cipher.parse_header!(binary_header)
-            ap header
-            assert_equal true, header.compressed
+            header = SymmetricEncryption::Header.new
+            header.parse(binary_header)
+            assert_equal true, header.compressed?
             assert random_cipher = SymmetricEncryption::Cipher.new(random_key_pair)
             assert_equal random_cipher.cipher_name, header.cipher_name, 'Ciphers differ'
             assert_equal random_cipher.send(:key), header.key, 'Keys differ'
@@ -186,21 +186,21 @@ class CipherTest < Minitest::Test
             string = 'Hello World'
             cipher = SymmetricEncryption::Cipher.new(key: header.key, iv: header.iv, cipher_name: header.cipher_name)
             # Test Encryption
-            assert_equal random_cipher.encrypt(string, false, false), cipher.encrypt(string, false, false), 'Encrypted values differ'
+            assert_equal random_cipher.encrypt(string), cipher.encrypt(string), 'Encrypted values differ'
           end
 
           it 'encrypt and then decrypt without a header' do
-            assert encrypted = @cipher.binary_encrypt(@social_security_number, false, false, false)
+            assert encrypted = @cipher.binary_encrypt(@social_security_number, header: false)
             assert_equal @social_security_number, @cipher.decrypt(encrypted)
           end
 
           it 'encrypt and then decrypt using random iv' do
-            assert encrypted = @cipher.encrypt(@social_security_number, true)
+            assert encrypted = @cipher.encrypt(@social_security_number, random_iv: true)
             assert_equal @social_security_number, @cipher.decrypt(encrypted)
           end
 
           it 'encrypt and then decrypt using random iv with compression' do
-            assert encrypted = @cipher.encrypt(@social_security_number, true, true)
+            assert encrypted = @cipher.encrypt(@social_security_number, random_iv: true, compress: true)
             assert_equal @social_security_number, @cipher.decrypt(encrypted)
           end
         end

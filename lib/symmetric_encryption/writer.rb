@@ -47,11 +47,11 @@ module SymmetricEncryption
     #  ensure
     #    csv.close if csv
     #  end
-    def self.open(file_name_or_stream, compress: false)
+    def self.open(file_name_or_stream, compress: false, **args)
       ios = file_name_or_stream.is_a?(String) ? ::File.open(file_name_or_stream, 'wb') : file_name_or_stream
 
       begin
-        file = self.new(ios, compress: compress)
+        file = self.new(ios, compress: compress, **args)
         file = Zlib::GzipWriter.new(file) if compress
         block_given? ? yield(file) : file
       ensure
@@ -101,31 +101,32 @@ module SymmetricEncryption
       raise(ArgumentError, 'When :random_key is true, :random_iv must also be true') if random_key && !random_iv
       raise(ArgumentError, 'Cannot supply a :cipher_name unless both :random_key and :random_iv are true') if cipher_name && !random_key && !random_iv
 
-      # Force header if compressed or using random iv, key
-      header = true if compress || random_key || random_iv
-
       # Cipher to encrypt the random_key, or the entire file
       cipher = SymmetricEncryption.cipher(version)
       raise(SymmetricEncryption::CipherError, "Cipher with version:#{version} not found in any of the configured SymmetricEncryption ciphers") unless cipher
 
+      # Force header if compressed or using random iv, key
+      if (header == true) || compress || random_key || random_iv
+        header = Header.new(version: cipher.version, compress: compress, cipher_name: cipher_name)
+      end
+
       @stream_cipher = ::OpenSSL::Cipher.new(cipher_name || cipher.cipher_name)
       @stream_cipher.encrypt
 
-      key = random_key ? @stream_cipher.random_key : cipher.send(:key)
-      iv  = random_iv ? @stream_cipher.random_iv : cipher.send(:iv)
-
-      @stream_cipher.key = key
-      @stream_cipher.iv  = iv if iv
-
-      # Write the Encryption header including the random iv, key, and cipher
-      if header
-        @ios.write(Cipher.build_header(
-          cipher.version,
-          compress,
-          random_iv ? iv : nil,
-          random_key ? key : nil,
-          cipher_name))
+      if random_key
+        header.key = @stream_cipher.key = @stream_cipher.random_key
+      else
+        @stream_cipher.key = cipher.send(:key)
       end
+
+      if random_iv
+        header.iv = @stream_cipher.iv = @stream_cipher.random_iv
+      else
+        @stream_cipher.iv = cipher.iv if cipher.iv
+      end
+
+      @ios.write(header.to_s) if header
+
       @size   = 0
       @closed = false
     end

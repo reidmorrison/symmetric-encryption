@@ -13,7 +13,6 @@ class WriterTest < Minitest::Test
       ]
       @data_str         = @data.inject('') { |sum, str| sum << str }
       @data_len         = @data_str.length
-      @data_encrypted   = SymmetricEncryption.cipher.binary_encrypt(@data_str, false, false, false)
       @file_name        = '._test'
       @source_file_name = '._source_test'
     end
@@ -26,15 +25,13 @@ class WriterTest < Minitest::Test
     describe '#write' do
       it 'encrypt to string stream' do
         stream      = StringIO.new
-        file        = SymmetricEncryption::Writer.new(stream, header: false, random_key: false, random_iv: false)
+        file        = SymmetricEncryption::Writer.new(stream)
         written_len = @data.inject(0) { |sum, str| sum + file.write(str) }
         assert_equal @data_len, file.size
         file.close
 
         assert_equal @data_len, written_len
-        result = stream.string
-        result.force_encoding('binary') if defined?(Encoding)
-        assert_equal @data_encrypted, result
+        assert_equal @data_str, SymmetricEncryption::Reader.read(StringIO.new(stream.string))
       end
     end
 
@@ -51,29 +48,29 @@ class WriterTest < Minitest::Test
 
       it 'encrypt to file' do
         written_len = nil
-        SymmetricEncryption::Writer.open(@file_name, header: false, random_key: false, random_iv: false) do |file|
+        SymmetricEncryption::Writer.open(@file_name) do |file|
           written_len = @data.inject(0) { |sum, str| sum + file.write(str) }
           assert_equal @data_len, file.size
         end
         assert_equal @data_len, written_len
-        assert_equal @data_encrypted, File.read(@file_name, mode: 'rb')
+        assert_equal @data_str, SymmetricEncryption::Reader.read(@file_name)
       end
     end
 
     describe '.encrypt' do
       it 'stream' do
         target_stream = StringIO.new
-        source_stream = StringIO.new(@data)
+        source_stream = StringIO.new(@data_str)
         source_bytes  = SymmetricEncryption::Writer.encrypt(source: source_stream, target: target_stream)
         assert_equal @data_len, source_bytes
-        assert_equal @data_encrypted, target_stream.string
+        assert_equal @data_str, SymmetricEncryption::Reader.read(StringIO.new(target_stream.string))
       end
 
       it 'file' do
-        File.write(@source_file_name, 'wb') { |f| f.write(@data) }
+        File.open(@source_file_name, 'wb') { |f| f.write(@data_str) }
         source_bytes = SymmetricEncryption::Writer.encrypt(source: @source_file_name, target: @file_name)
         assert_equal @data_len, source_bytes
-        assert_equal @data_encrypted, File.read(@file_name, mode: 'rb')
+        assert_equal @data_str, SymmetricEncryption::Reader.read(@file_name)
       end
     end
 

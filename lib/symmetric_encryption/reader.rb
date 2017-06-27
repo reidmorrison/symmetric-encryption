@@ -59,16 +59,24 @@ module SymmetricEncryption
     # ensure
     #   csv.close if csv
     # end
-    def self.open(file_name_or_stream, buffer_size: 16384, &block)
+    def self.open(file_name_or_stream, buffer_size: 16384, **args, &block)
       ios = file_name_or_stream.is_a?(String) ? ::File.open(file_name_or_stream, 'rb') : file_name_or_stream
 
       begin
-        file = self.new(ios, buffer_size: buffer_size)
+        file = self.new(ios, buffer_size: buffer_size, **args)
         file = Zlib::GzipReader.new(file) if !file.eof? && file.compressed?
         block ? block.call(file) : file
       ensure
         file.close if block && file && (file.respond_to?(:closed?) && !file.closed?)
       end
+    end
+
+    # Read the entire contents of a file or stream into memory.
+    #
+    # Notes:
+    # * Do not use this method for reading large files.
+    def self.read(file_name_or_stream, **args)
+      open(file_name_or_stream, **args) { |f| f.read }
     end
 
     # Decrypt an entire file.
@@ -333,27 +341,27 @@ module SymmetricEncryption
       buf = @ios.read(@buffer_size)
 
       # Use cipher specified in header, or global cipher if it has no header
-      iv, key           = nil
-      cipher_name       = nil
-      decryption_cipher = nil
-      if header = SymmetricEncryption::Header.new.parse!(buf)
-        @header_present   = true
-        @compressed       = header.compressed
-        decryption_cipher = header.decryption_cipher
-        cipher_name       = header.cipher_name || decryption_cipher.cipher_name
-        key               = header.key
-        iv                = header.iv
+      iv, key, cipher_name, cipher = nil
+      header                       = Header.new
+      if header.parse!(buf)
+        @header_present = true
+        @compressed     = header.compressed?
+        @version        = header.version
+        cipher          = header.cipher
+        cipher_name     = header.cipher_name || cipher.cipher_name
+        key             = header.key
+        iv              = header.iv
       else
-        @header_present   = false
-        @compressed       = nil
-        decryption_cipher = SymmetricEncryption.cipher(@version)
-        cipher_name       = decryption_cipher.cipher_name
+        @header_present = false
+        @compressed     = nil
+        cipher          = SymmetricEncryption.cipher(@version)
+        cipher_name     = cipher.cipher_name
       end
 
       @stream_cipher = ::OpenSSL::Cipher.new(cipher_name)
       @stream_cipher.decrypt
-      @stream_cipher.key = key || decryption_cipher.send(:key)
-      @stream_cipher.iv  = iv || decryption_cipher.iv
+      @stream_cipher.key = key || cipher.send(:key)
+      @stream_cipher.iv  = iv || cipher.iv
 
       # First call to #update should return an empty string anyway
       if buf && buf.length > 0

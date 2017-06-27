@@ -4,8 +4,7 @@
 ---
 test:
   # Test Key encryption key, DO NOT use this key, generate a new one using
-  #    SymmetricEncryption::KeyEncryptionKey.generate
-  # Or use the rails generator to create a new config file as described in the readme
+  #    symmetric-encrypt --generate
   private_rsa_key: |
     -----BEGIN RSA PRIVATE KEY-----
     MIIEpAIBAAKCAQEAxIL9H/jYUGpA38v6PowRSRJEo3aNVXULNM/QNRpx2DTf++KH
@@ -52,7 +51,7 @@ test:
       iv:                6BCDEF1234567890
       cipher_name:       aes-256-cbc
       version:           6
-      encoding:          :base64strict
+      encoding:          base64strict
       always_add_header: true
 
     # Prior Symmetric Encryption Key specified in environment variable

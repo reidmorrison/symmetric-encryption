@@ -193,26 +193,23 @@ module SymmetricEncryption
     #   random_iv [true|false]
     #     Whether the encypted value should use a random IV every time the
     #     field is encrypted.
-    #     It is recommended to set this to true where feasible. If the encrypted
-    #     value could be used as part of a SQL where clause, or as part
-    #     of any lookup, then it must be false.
-    #     Setting random_iv to true will result in a different encrypted output for
-    #     the same input string.
-    #     Note: Only set to true if the field will never be used as part of
-    #       the where clause in an SQL query.
-    #     Note: When random_iv is true it will add a 8 byte header, plus the bytes
-    #       to store the random IV in every returned encrypted string, prior to the
-    #       encoding if any.
+    #     Notes:
+    #     * Setting random_iv to true will result in a different encrypted output for
+    #       the same input string.
+    #     * It is recommended to set this to true, except if it will be used as a lookup key.
+    #     * Only set to true if the field will never be used as a lookup key, since
+    #       the encrypted value needs to be same every time in this case.
+    #     * When random_iv is true it adds the random IV string to the header.
     #     Default: false
     #     Highly Recommended where feasible: true
     #
     #   compress [true|false]
-    #     Whether to compress str before encryption
-    #     Should only be used for large strings since compression overhead and
-    #     the overhead of adding the encryption header may exceed any benefits of
-    #     compression
-    #     Note: Adds a 6 byte header prior to encoding, only if :random_iv is false
+    #     Whether to compress str before encryption.
     #     Default: false
+    #     Notes:
+    #     * Should only be used for large strings since compression overhead and
+    #       the overhead of adding the encryption header may exceed any benefits of
+    #       compression
     def encrypt(str, random_iv: false, compress: false)
       return if str.nil?
       str = str.to_s
@@ -293,32 +290,58 @@ module SymmetricEncryption
 
     # Advanced use only
     #
-    # Returns a Binary encrypted string without applying any Base64, or other encoding
+    # Returns a Binary encrypted string without applying Base64, or any other encoding.
     #
-    #   add_header [true|false]
+    #   str [String]
+    #     String to be encrypted. If str is not a string, #to_s will be called on it
+    #     to convert it to a string
+    #
+    #   random_iv [true|false]
+    #     Whether the encypted value should use a random IV every time the
+    #     field is encrypted.
+    #     Notes:
+    #     * Setting random_iv to true will result in a different encrypted output for
+    #       the same input string.
+    #     * It is recommended to set this to true, except if it will be used as a lookup key.
+    #     * Only set to true if the field will never be used as a lookup key, since
+    #       the encrypted value needs to be same every time in this case.
+    #     * When random_iv is true it adds the random IV string to the header.
+    #     Default: false
+    #     Highly Recommended where feasible: true
+    #
+    #   compress [true|false]
+    #     Whether to compress str before encryption.
+    #     Default: false
+    #     Notes:
+    #     * Should only be used for large strings since compression overhead and
+    #       the overhead of adding the encryption header may exceed any benefits of
+    #       compression
+    #
+    #   header [true|false]
     #     Whether to add a header to the encrypted string.
     #     Default: `always_add_header`
     #
-    # Use #encrypt to encrypt and encode the result as a string.
-    def binary_encrypt(str, random_iv: false, compress: false, add_header: always_add_header)
+    # See #encrypt to encrypt and encode the result as a string.
+    def binary_encrypt(str, random_iv: false, compress: false, header: always_add_header)
       return if str.nil?
       string = str.to_s
       return string if string.empty?
+
+      # Header required when adding a random_iv or compressing
+      header = Header.new(version: version, compress: compress) if (header == true) || random_iv || compress
 
       # Creates a new OpenSSL::Cipher with every call so that this call is thread-safe.
       openssl_cipher = ::OpenSSL::Cipher.new(cipher_name)
       openssl_cipher.encrypt
       openssl_cipher.key = @key
 
-      # Header required when adding a random_iv or compressing
-      add_header         = true if random_iv || compress
-
       result =
-        if add_header
-          iv                = random_iv ? openssl_cipher.random_iv : iv
-          openssl_cipher.iv = iv if iv
-          # Set the binary indicator on the header if string is Binary Encoded
-          header = Header.new(version: version, compressed: compress, iv: random_iv ? iv : nil)
+        if header
+          if random_iv
+            openssl_cipher.iv = header.iv = openssl_cipher.random_iv
+          elsif self.iv
+            openssl_cipher.iv = self.iv
+          end
           header.to_s + openssl_cipher.update(compress ? Zlib::Deflate.deflate(string) : string)
         else
           openssl_cipher.iv = iv if iv
@@ -373,7 +396,12 @@ module SymmetricEncryption
       end
       result = openssl_cipher.update(data)
       result << openssl_cipher.final
-      header.compressed ? Zlib::Inflate.inflate(result) : result
+      header.compressed? ? Zlib::Inflate.inflate(result) : result
+    end
+
+    # Returns the magic header after applying the encoding in this cipher
+    def encoded_magic_header
+      @encoded_magic_header ||= encoder.encode(SymmetricEncryption::Header::MAGIC_HEADER).gsub('=', '').strip
     end
 
     # Returns [String] object represented as a string, filtering out the key
@@ -389,12 +417,13 @@ module SymmetricEncryption
     # DEPRECATED
     def self.parse_header!(buffer)
       header = SymmetricEncryption::Header.new
-      header.parse!(buffer) == 0 ? nil : header
+      header.parse!(buffer) ? header : nil
     end
 
     # DEPRECATED
-    def self.build_header(version, compressed = false, iv = nil, key = nil, cipher_name = nil)
-      Header.new(version: version, compressed: compressed, iv: iv, key: key, cipher_name: cipher_name).to_s
+    def self.build_header(version, compress = false, iv = nil, key = nil, cipher_name = nil)
+      h = Header.new(version: version, compress: compress, iv: iv, key: key, cipher_name: cipher_name)
+      h.to_s
     end
 
     # DEPRECATED

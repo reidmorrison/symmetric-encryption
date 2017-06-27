@@ -6,21 +6,14 @@ module SymmetricEncryption
   # * Decode data first before trying to extract its header.
   # * Decoding is not required when encoding is set to `:none`.
   class Header
-    # Binary encrypted data includes this magic header so that we can quickly
-    # identify binary data versus base64 encoded data that does not have this header
-    MAGIC_HEADER        = '@EnC'.force_encoding(SymmetricEncryption::BINARY_ENCODING)
-    MAGIC_HEADER_SIZE   = MAGIC_HEADER.size
-    MAGIC_HEADER_UNPACK = "a#{MAGIC_HEADER_SIZE}v"
+    # Encrypted data includes this header prior to encoding when
+    # `always_add_header` is true.
+    MAGIC_HEADER      = '@EnC'.force_encoding(SymmetricEncryption::BINARY_ENCODING)
+    MAGIC_HEADER_SIZE = MAGIC_HEADER.size
 
-    FLAG_COMPRESSED  = 0b1000_0000
-    FLAG_IV          = 0b0100_0000
-    FLAG_KEY         = 0b0010_0000
-    FLAG_CIPHER_NAME = 0b0001_0000
-    FLAG_AUTH_TAG    = 0b0000_1000
-
-    # [true|false] Whether the data is compressed.
+    # [true|false] Whether to compress the data before encryption.
     # If supplied in the header.
-    attr_accessor :compressed
+    attr_accessor :compress
 
     # [String] IV used to encrypt the data.
     # If supplied in the header.
@@ -53,8 +46,8 @@ module SymmetricEncryption
     # the beginning of a file or stream to indicate how the data was encrypted
     #
     # Parameters
-    #   compressed [true|false]
-    #     Sets the compressed indicator in the header
+    #   compress [true|false]
+    #     Whether the data should be compressed before encryption.
     #     Default: false
     #
     #   iv [String]
@@ -78,14 +71,14 @@ module SymmetricEncryption
     #     Intended for use when encrypting large files with a different cipher to the global one.
     #     Default: nil : Exclude cipher_name name from header
     def initialize(version: SymmetricEncryption.cipher.version,
-                   compressed: false,
+                   compress: false,
                    iv: nil,
                    key: nil,
                    cipher_name: nil,
                    auth_tag: nil)
 
       @version     = version
-      @compressed  = compressed
+      @compress  = compress
       @iv          = iv
       @key         = key
       @cipher_name = cipher_name
@@ -103,7 +96,11 @@ module SymmetricEncryption
       @cipher  = nil
     end
 
-    # Returns [Header] from the supplied string
+    def compressed?
+      @compress
+    end
+
+    # Returns [String] the encrypted data without header
     # Returns nil if no header is present
     #
     # The supplied buffer will be updated directly and
@@ -112,11 +109,10 @@ module SymmetricEncryption
     # Parameters
     #   buffer
     #     String to extract the header from
-    #
     def parse!(buffer)
       offset = parse(buffer)
       return if offset == 0
-      buffer.slice!(offset)
+      buffer.slice!(0..offset - 1)
       buffer
     end
 
@@ -161,7 +157,7 @@ module SymmetricEncryption
       flags  = buffer.getbyte(offset)
       offset += 1
 
-      self.compressed = (flags & FLAG_COMPRESSED) != 0
+      self.compress = (flags & FLAG_COMPRESSED) != 0
 
       if (flags & FLAG_IV) != 0
         self.iv, offset = read_string(buffer, offset)
@@ -171,7 +167,7 @@ module SymmetricEncryption
 
       if (flags & FLAG_KEY) != 0
         encrypted_key, offset = read_string(buffer, offset)
-        self.key              = cipher.binary_decrypt(encrypted_key, header: self)
+        self.key              = cipher.binary_decrypt(encrypted_key)
       else
         self.key = nil
       end
@@ -194,7 +190,7 @@ module SymmetricEncryption
     # Returns [String] this header as a string
     def to_s
       flags = 0
-      flags |= FLAG_COMPRESSED if compressed
+      flags |= FLAG_COMPRESSED if compressed?
       flags |= FLAG_IV if iv
       flags |= FLAG_KEY if key
       flags |= FLAG_CIPHER_NAME if cipher_name
@@ -208,7 +204,7 @@ module SymmetricEncryption
       end
 
       if key
-        encrypted = cipher.binary_encrypt(key, add_header: false)
+        encrypted = cipher.binary_encrypt(key, header: false)
         header << [encrypted.length].pack('v')
         header << encrypted
       end
@@ -228,6 +224,12 @@ module SymmetricEncryption
 
     private
 
+    FLAG_COMPRESSED  = 0b1000_0000
+    FLAG_IV          = 0b0100_0000
+    FLAG_KEY         = 0b0010_0000
+    FLAG_CIPHER_NAME = 0b0001_0000
+    FLAG_AUTH_TAG    = 0b0000_1000
+
     attr_writer :auth_tag
 
     # Extracts a string from the supplied buffer.
@@ -238,11 +240,11 @@ module SymmetricEncryption
     #   offset [Integer]
     #     Start position within the buffer.
     #
-    # Returns [length, string]
-    #   new_offset [Integer]
-    #     The new offset within the buffer
+    # Returns [string, offset]
     #   string [String]
-    #     The string copied from the buffer
+    #     The string copied from the buffer.
+    #   offset [Integer]
+    #     The new offset within the buffer.
     def read_string(buffer, offset)
       # TODO: Length check
       #   Exception when
@@ -250,7 +252,7 @@ module SymmetricEncryption
       #   byteslice truncates when too long, but returns nil when start is beyond end of buffer
       len    = buffer.byteslice(offset, 2).unpack('v').first
       offset += 2
-      out    = buffer.byteslice(offset, offset + len)
+      out    = buffer.byteslice(offset, len)
       [out, offset + len]
     end
 

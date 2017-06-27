@@ -119,12 +119,22 @@ module SymmetricEncryption
     return unless decoded
     return decoded if decoded.empty?
 
+    header    = Header.new
     decrypted =
-      if header = Header.parse!(decoded)
-        header.decryption_cipher.binary_decrypt(decoded, header)
+      if header.parse!(decoded)
+        header.cipher.binary_decrypt(decoded, header: header)
       else
-        # Use cipher_selector if present to decide which cipher to use
-        c = @@select_cipher.nil? ? cipher(version) : @@select_cipher.call(str, decoded)
+        c =
+          if version
+            # Supplied version takes preference
+            cipher(version)
+          elsif @@select_cipher
+            # Use cipher_selector if present to decide which cipher to use
+            @@select_cipher.call(str, decoded)
+          else
+            # Global cipher
+            cipher
+          end
         c.binary_decrypt(decoded)
       end
 
@@ -216,13 +226,13 @@ module SymmetricEncryption
 
   # Returns [true|false] whether the string is encrypted.
   #
-  # NOTE:
-  # * This method only works when the encrypted data includes the
-  #   symmetric encryption header.
+  # Notes:
+  # * This method only works reliably when the encrypted data includes the symmetric encryption header.
+  # * nil and '' are considered "encrypted" so that validations do not blow up on empty values.
   def self.encrypted?(encrypted_data)
-    return false if encrypted_data.nil? || (encrypted_data == '')
+    return true if encrypted_data.nil? || (encrypted_data == '')
 
-    @header ||= SymmetricEncryption.cipher.encoder.encode(SymmetricEncryption::Header::MAGIC_HEADER).gsub('=', '')
+    @header ||= SymmetricEncryption.cipher.encoded_magic_header
     encrypted_data.to_s.start_with?(@header)
   end
 

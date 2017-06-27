@@ -15,16 +15,15 @@ class ReaderTest < Minitest::Test
       @data_len = @data_str.length
       # Use Cipher 0 since it does not always include a header
       @cipher                        = SymmetricEncryption.cipher(0)
-      @data_encrypted_without_header = @cipher.binary_encrypt(@data_str)
+      @data_encrypted_without_header = @cipher.binary_encrypt(@data_str, header: false)
 
-      @data_encrypted_with_header = SymmetricEncryption::Cipher.build_header(
-        @cipher.version,
-        false,
-        @cipher.send(:iv),
-        @cipher.send(:key),
-        @cipher.cipher_name
+      header                      = SymmetricEncryption::Header.new(
+        version:     @cipher.version,
+        iv:          @cipher.iv,
+        key:         @cipher.send(:key),
+        cipher_name: @cipher.cipher_name
       )
-      @data_encrypted_with_header << @cipher.binary_encrypt(@data_str)
+      @data_encrypted_with_header = @cipher.binary_encrypt(@data_str, header: header)
 
       # Verify regular decrypt can decrypt this string
       @cipher.binary_decrypt(@data_encrypted_without_header)
@@ -314,7 +313,7 @@ class ReaderTest < Minitest::Test
       it 'decrypt from file in a single read with different version' do
         # Should fail since file was encrypted using version 0 key
         assert_raises OpenSSL::Cipher::CipherError do
-          SymmetricEncryption::Reader.open(@file_name, version: 2) { |file| file.read }
+          SymmetricEncryption::Reader.read(@file_name, version: 34)
         end
       end
     end
