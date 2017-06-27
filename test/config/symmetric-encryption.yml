@@ -4,7 +4,7 @@
 ---
 test:
   # Test Key encryption key, DO NOT use this key, generate a new one using
-  #    symmetric-encrypt --generate
+  #    symmetric-encrypt --generate --key-path /etc/symmetric-encryption
   private_rsa_key: |
     -----BEGIN RSA PRIVATE KEY-----
     MIIEpAIBAAKCAQEAxIL9H/jYUGpA38v6PowRSRJEo3aNVXULNM/QNRpx2DTf++KH

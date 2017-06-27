@@ -210,11 +210,11 @@ module SymmetricEncryption
     #     * Should only be used for large strings since compression overhead and
     #       the overhead of adding the encryption header may exceed any benefits of
     #       compression
-    def encrypt(str, random_iv: false, compress: false)
+    def encrypt(str, random_iv: false, compress: false, header: always_add_header)
       return if str.nil?
       str = str.to_s
       return str if str.empty?
-      encrypted = binary_encrypt(str, random_iv: random_iv, compress: compress)
+      encrypted = binary_encrypt(str, random_iv: random_iv, compress: compress, header: header)
       self.encode(encrypted)
     end
 

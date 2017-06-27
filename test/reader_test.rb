@@ -292,7 +292,7 @@ class ReaderTest < Minitest::Test
       before do
         @file_name = '_test'
         # Create encrypted file with old encryption key
-        SymmetricEncryption::Writer.open(@file_name, version: 0, header: false, random_key: false) do |file|
+        SymmetricEncryption::Writer.open(@file_name, version: 0, header: false, random_key: false, random_iv: false) do |file|
           @data.inject(0) { |sum, str| sum + file.write(str) }
         end
       end
@@ -313,7 +313,7 @@ class ReaderTest < Minitest::Test
       it 'decrypt from file in a single read with different version' do
         # Should fail since file was encrypted using version 0 key
         assert_raises OpenSSL::Cipher::CipherError do
-          SymmetricEncryption::Reader.read(@file_name, version: 34)
+          SymmetricEncryption::Reader.read(@file_name, version: 1)
         end
       end
     end

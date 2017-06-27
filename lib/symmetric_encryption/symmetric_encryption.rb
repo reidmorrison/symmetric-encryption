@@ -200,11 +200,11 @@ module SymmetricEncryption
   #     Note: If type is set to something other than :string, it's expected that
   #       the coercible gem is available in the path.
   #     Default: :string
-  def self.encrypt(str, random_iv: false, compress: false, type: :string)
+  def self.encrypt(str, random_iv: false, compress: false, type: :string, header: cipher.always_add_header)
     return str if str.nil? || (str == '')
 
     # Encrypt and then encode the supplied string
-    cipher.encrypt(Coerce.coerce_to_string(str, type), random_iv: random_iv, compress: compress)
+    cipher.encrypt(Coerce.coerce_to_string(str, type), random_iv: random_iv, compress: compress, header: header)
   end
 
   # Invokes decrypt
@@ -230,7 +230,7 @@ module SymmetricEncryption
   # * This method only works reliably when the encrypted data includes the symmetric encryption header.
   # * nil and '' are considered "encrypted" so that validations do not blow up on empty values.
   def self.encrypted?(encrypted_data)
-    return true if encrypted_data.nil? || (encrypted_data == '')
+    return false if encrypted_data.nil? || (encrypted_data == '')
 
     @header ||= SymmetricEncryption.cipher.encoded_magic_header
     encrypted_data.to_s.start_with?(@header)

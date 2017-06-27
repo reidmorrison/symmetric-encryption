@@ -112,6 +112,9 @@ class SymmetricEncryptionTest < Minitest::Test
           if encoding == :base64strict || encoding == :base64
             assert SymmetricEncryption.encrypted?(@social_security_number_encrypted)
             refute SymmetricEncryption.encrypted?(@social_security_number)
+
+            # Without a header it can only assume it is not encrypted
+            refute SymmetricEncryption.encrypted?(SymmetricEncryption.encrypt(@social_security_number, header: false))
           end
         end
       end
@@ -162,21 +165,18 @@ class SymmetricEncryptionTest < Minitest::Test
       it 'encrypt and then decrypt using random iv' do
         # Encrypt with random iv
         assert encrypted = SymmetricEncryption.encrypt(@social_security_number, random_iv: true)
-        assert_equal true, SymmetricEncryption.encrypted?(encrypted)
         assert_equal @social_security_number, SymmetricEncryption.decrypt(encrypted)
       end
 
       it 'encrypt and then decrypt using random iv with higher version' do
         # Encrypt with random iv
         assert encrypted = SymmetricEncryption.cipher(6).encrypt(@social_security_number, random_iv: true)
-        assert_equal true, SymmetricEncryption.encrypted?(encrypted)
         assert_equal @social_security_number, SymmetricEncryption.decrypt(encrypted)
       end
 
       it 'encrypt and then decrypt using random iv with compression' do
         # Encrypt with random iv and compress
         assert encrypted = SymmetricEncryption.encrypt(@social_security_number, random_iv: true, compress: true)
-        assert_equal true, SymmetricEncryption.encrypted?(encrypted)
         assert_equal @social_security_number, SymmetricEncryption.decrypt(encrypted)
       end
     end
@@ -189,123 +189,52 @@ class SymmetricEncryptionTest < Minitest::Test
 
         it 'encrypt and decrypt value to and from a string' do
           assert encrypted = SymmetricEncryption.encrypt(@social_security_number, type: :string)
-          assert_equal true, SymmetricEncryption.encrypted?(encrypted)
           assert_equal @social_security_number, SymmetricEncryption.decrypt(encrypted, type: :string)
         end
-      end
 
-      describe 'integer' do
-        before do
-          @age = 21
+        it 'retains empty' do
+          encrypted = SymmetricEncryption.encrypt('', type: :string)
+          assert_equal '', encrypted
+          assert_equal '', SymmetricEncryption.decrypt(encrypted, type: :string)
         end
 
-        it 'encrypt and decrypt value to and from an integer' do
-          assert encrypted = SymmetricEncryption.encrypt(@age, type: :integer)
-          assert_equal true, SymmetricEncryption.encrypted?(encrypted)
-          assert_equal @age, SymmetricEncryption.decrypt(encrypted, type: :integer)
-        end
-      end
-
-      describe 'float' do
-        before do
-          @miles = 2.5
-        end
-
-        it 'encrypt and decrypt value to and from a float' do
-          assert encrypted = SymmetricEncryption.encrypt(@miles, type: :float)
-          assert_equal true, SymmetricEncryption.encrypted?(encrypted)
-          assert_equal @miles, SymmetricEncryption.decrypt(encrypted, type: :float)
+        it 'retains nil' do
+          assert_nil encrypted = SymmetricEncryption.encrypt(nil, type: :string)
+          assert_nil SymmetricEncryption.decrypt(encrypted, type: :string)
         end
       end
 
-      describe 'decimal' do
-        before do
-          @account_balance = BigDecimal.new('12.58')
-        end
-
-        it 'encrypt and decrypt value to and from a BigDecimal' do
-          assert encrypted = SymmetricEncryption.encrypt(@account_balance, type: :decimal)
-          assert_equal true, SymmetricEncryption.encrypted?(encrypted)
-          assert_equal @account_balance, SymmetricEncryption.decrypt(encrypted, type: :decimal)
-        end
-      end
-
-      describe 'datetime' do
-        before do
-          @checked_in_at = DateTime.new(2001, 11, 26, 20, 55, 54, "-5")
-        end
-
-        it 'encrypt and decrypt value to and from a DateTime' do
-          assert encrypted = SymmetricEncryption.encrypt(@checked_in_at, type: :datetime)
-          assert_equal true, SymmetricEncryption.encrypted?(encrypted)
-          assert_equal @checked_in_at, SymmetricEncryption.decrypt(encrypted, type: :datetime)
-        end
-      end
-
-      describe 'time' do
-        before do
-          @closing_time = Time.new(2013, 01, 01, 22, 30, 00, "-04:00")
-        end
-
-        it 'encrypt and decrypt value to and from a Time' do
-          assert encrypted = SymmetricEncryption.encrypt(@closing_time, type: :time)
-          assert_equal true, SymmetricEncryption.encrypted?(encrypted)
-          assert_equal @closing_time, SymmetricEncryption.decrypt(encrypted, type: :time)
-        end
-      end
-
-      describe 'date' do
-        before do
-          @birthdate = Date.new(1927, 04, 01)
-        end
-
-        it 'encrypt and decrypt value to and from a Date' do
-          assert encrypted = SymmetricEncryption.encrypt(@birthdate, type: :date)
-          assert_equal true, SymmetricEncryption.encrypted?(encrypted)
-          assert_equal @birthdate, SymmetricEncryption.decrypt(encrypted, type: :date)
-        end
-      end
-
-      describe 'boolean' do
-        describe 'when true' do
-          before do
-            @is_working = true
+      {
+        integer:  21,
+        float:    2.5,
+        decimal:  BigDecimal.new('12.58'),
+        datetime: DateTime.new(2001, 11, 26, 20, 55, 54, "-5"),
+        time:     Time.new(2013, 01, 01, 22, 30, 00, "-04:00"),
+        date:     Date.new(1927, 04, 01),
+        boolean:  true,
+        yaml:     {:a => :b},
+        json:     {'a' => 'b'}
+      }.each_pair do |type, value|
+        describe type.to_s do
+          it 'encrypt and decrypt' do
+            assert encrypted = SymmetricEncryption.encrypt(value, type: type)
+            assert_equal value, SymmetricEncryption.decrypt(encrypted, type: type)
           end
 
-          it 'encrypt and decrypt a true value to and from a boolean' do
-            assert encrypted = SymmetricEncryption.encrypt(@is_working, type: :boolean)
-            assert_equal true, SymmetricEncryption.encrypted?(encrypted)
-            assert_equal @is_working, SymmetricEncryption.decrypt(encrypted, type: :boolean)
+          it 'retains nil' do
+            assert_nil encrypted = SymmetricEncryption.encrypt(nil, type: type)
+            assert_nil SymmetricEncryption.decrypt(encrypted, type: type)
           end
         end
-
-        describe 'when false' do
-          before do
-            @is_broken = false
-          end
-
-          it 'encrypt and decrypt a false value to and from a boolean' do
-            assert encrypted = SymmetricEncryption.encrypt(@is_broken, type: :boolean)
-            assert_equal true, SymmetricEncryption.encrypted?(encrypted)
-            assert_equal @is_broken, SymmetricEncryption.decrypt(encrypted, type: :boolean)
-          end
-        end
-
-        describe 'when yaml' do
-          before do
-            @test = {:a => :b}
-          end
-
-          it 'encrypt and decrypt a false value to and from a boolean' do
-            assert encrypted = SymmetricEncryption.encrypt(@test, type: :yaml)
-            assert_equal true, SymmetricEncryption.encrypted?(encrypted)
-            assert_equal @test, SymmetricEncryption.decrypt(encrypted, type: :yaml)
-          end
-        end
-
       end
+
+      describe 'boolean false' do
+        it 'encrypt and decrypt' do
+          assert encrypted = SymmetricEncryption.encrypt(false, type: :boolean)
+          assert_equal false, SymmetricEncryption.decrypt(encrypted, type: :boolean)
+        end
+      end
+
     end
-
   end
-
 end
