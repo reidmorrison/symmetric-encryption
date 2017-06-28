@@ -58,7 +58,9 @@ module SymmetricEncryption
 
       # Returns the Encryption key in the clear.
       def read
-        binary = encoder.decode(ENV[key_env_var])
+        encrypted = ENV[key_env_var]
+        raise "The Environment Variable #{key_env_var} must be set with the encrypted encryption key." unless encrypted
+        binary = encoder.decode(encrypted)
         key_encryption_key.decrypt(binary)
       end
 
