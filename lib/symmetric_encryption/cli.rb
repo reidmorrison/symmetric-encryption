@@ -5,9 +5,15 @@ require 'erb'
 module SymmetricEncryption
   class CLI
     attr_reader :parser, :key_path, :app_name, :encrypt, :config_file_path,
-                :decrypt, :random_password, :new_keys, :gen_config, :environment,
-                :env_var, :re_encrypt, :version, :output_file_name, :compress,
+                :decrypt, :random_password, :new_keys, :generate, :environment,
+                :keystore, :re_encrypt, :version, :output_file_name, :compress,
                 :environments, :cipher_name, :rolling_deploy, :rotate_keys, :prompt, :show_version
+
+    KEYSTORES = [:heroku, :environment, :file]
+
+    def self.run!(argv)
+      new(argv).run!
+    end
 
     def initialize(argv)
       @version          = current_version
@@ -19,13 +25,13 @@ module SymmetricEncryption
       @rolling_deploy   = false
       @prompt           = false
       @show_version     = false
+      @environments     = %w(development test release production)
 
-      setup
-      parser.parse!(argv.dup)
+      parse_args(argv)
     end
 
     def run!
-      Config.load!(file_name: config_file_path, env: environment) unless gen_config || rotate_keys
+      Config.load!(file_name: config_file_path, env: environment) unless generate || rotate_keys || show_version
 
       if show_version
         puts "Symmetric Encryption v#{VERSION}"
@@ -37,23 +43,25 @@ module SymmetricEncryption
         prompt ? decrypt_string : decrypt_file(decrypt)
       elsif random_password
         gen_random_password(random_password)
-      elsif gen_config
+      elsif generate
         config_file_does_not_exist!
-        environments ||= %w(development test release production)
-        cfg          =
-          if env_var
+        cfg =
+          if keystore == :file
             SymmetricEncryption::Keystore::Environment.new_config(
               app_name:     app_name,
               environments: environments,
               cipher_name:  cipher_name
             )
-          else
+          elsif [:heroku, :environment].include?(keystore)
             SymmetricEncryption::Keystore::File.new_config(
               key_path:     key_path,
               app_name:     app_name,
               environments: environments,
               cipher_name:  cipher_name
             )
+          else
+            puts "Invalid keystore option: #{keystore}, must be one of #{KEYSTORES.join(', ')}"
+            exit -3
           end
         save_config(cfg)
         puts "New configuration file created at: #{config_file_path}"
@@ -72,15 +80,11 @@ module SymmetricEncryption
       end
     end
 
-    def self.run!(argv)
-      new(argv).run!
-    end
-
     private
 
-    def setup
+    def parse_args(argv)
       @parser = OptionParser.new do |opts|
-        opts.banner = "Symmetric Encryption v#{VERSION}\n\nsymmetric-encryption [options]\n"
+        opts.banner = "Symmetric Encryption v#{VERSION}\n\n  For more information, see: https://rocketjob.github.io/symmetric-encryption/\n\nsymmetric-encryption [options]\n"
 
         opts.on '-e', '--encrypt [FILE_NAME]', 'Encrypt a file, or read from stdin if no file name is supplied.' do |file_name|
           @encrypt = file_name || STDIN
@@ -119,7 +123,11 @@ module SymmetricEncryption
         end
 
         opts.on '-g', '--generate', 'Generate a new configuration file and encryption keys for every environment.' do |config|
-          @gen_config = config
+          @generate = config
+        end
+
+        opts.on '-s', '--keystore [heroku|environment|file]', 'Generate a new configuration file and encryption keys for every environment.' do |keystore|
+          @keystore = (keystore || 'file').downcase.to_sym
         end
 
         opts.on '-K', '--key-path KEY_PATH', 'Output path in which to write generated key files. Default: /etc/symmetric-encryption' do |path|
@@ -136,14 +144,6 @@ module SymmetricEncryption
 
         opts.on '-C', '--cipher-name NAME', "Name of the cipher to use when generating a new config file, or when rotating keys. Default: aes-256-cbc" do |name|
           @cipher_name = name
-        end
-
-        opts.on '-H', '--heroku', 'Target Heroku when generating a new config file, or when creating news keys.' do
-          @env_var = true
-        end
-
-        opts.on '-T', '--environment', 'Store the encrypted key in an environment variable when generating a new config file, instead of using a file store.' do
-          @env_var = true
         end
 
         opts.on '-R', '--rotate-keys', 'Generates a new encryption key version, encryption key files, and updates symmetric-encryption.yml.' do
@@ -174,6 +174,7 @@ module SymmetricEncryption
         end
 
       end
+      parser.parse!(argv)
     end
 
     def encrypt_file(input_file_name)
@@ -188,7 +189,8 @@ module SymmetricEncryption
       begin
         require 'highline'
       rescue LoadError
-        raise(SymmetricEncryption::ConfigError, "Please install gem highline before using the command line task to encrypt an entered string.\n   gem install \"highline\"")
+        puts("\nPlease install gem highline before using the command line task to decrypt an entered string.\n   gem install \"highline\"\n\n")
+        exit -2
       end
 
       encrypted = HighLine.new.ask('Enter the value to decrypt:')
@@ -202,7 +204,8 @@ module SymmetricEncryption
       begin
         require 'highline'
       rescue LoadError
-        raise(SymmetricEncryption::ConfigError, "Please install gem highline before using the command line task to encrypt an entered string.\n   gem install \"highline\"")
+        puts("\nPlease install gem highline before using the command line task to encrypt an entered string.\n   gem install \"highline\"\n\n")
+        exit -2
       end
       value1 = nil
       value2 = 0
@@ -236,7 +239,9 @@ module SymmetricEncryption
 
     # Ensure that the config file does not already exist before generating a new one.
     def config_file_does_not_exist!
-      raise "Configuration file already exists, please move or delete: #{config_file_path}" if File.exist?(config_file_path)
+      return unless File.exist?(config_file_path)
+      puts "\nConfiguration file already exists, please move or rename: #{config_file_path}\n\n"
+      exit -1
     end
 
     def save_config(config)

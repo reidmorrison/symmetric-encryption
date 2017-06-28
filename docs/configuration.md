@@ -56,14 +56,21 @@ Options:
 * `--config CONFIG_FILE`
     * Path and filename of the generated configuration file.
     * Default: `config/symmetric-encryption.yml`.
-* `--heroku`
-    * Generate a configuration file for use on heroku.
-    * Follow the instructions displayed to store the encrypted encryption key
-      as a heroku environment settings.
-* `--environment`
-    * Generate a configuration file where the encrypted encryption key is held in an environment variable
-      instead of using the default file store.
-    * Follow the instructions displayed to set the encrypted key in each environment.
+* `--keystore [heroku|environment|file]`
+    * Specify which keystore to use to hold the encryption keys.
+    * Valid values:
+        * `heroku`
+            * Generate a configuration file for use on heroku.
+            * Follow the instructions displayed to store the encrypted encryption key
+              as a heroku environment settings.
+        * `environment`
+            * Generate a configuration file where the encrypted encryption key is held in an environment variable
+              instead of using the default file store.
+            * Follow the instructions displayed to set the encrypted encryption key in each environment.
+        * `file`
+            * Stores the encrypted encryption key as files on disk. 
+            * See `--key-path` to change the location of the file keystore.
+    * Default: `file`
 
 ##### Example
 
@@ -90,6 +97,7 @@ The following files were created:
 
 ~~~
 config/symmetric-encryption.yml
+
 /etc/symmetric-encryption/my_app_preprod_v1.key
 /etc/symmetric-encryption/my_app_acceptance_v1.key
 /etc/symmetric-encryption/my_app_production_v1.key
@@ -98,9 +106,8 @@ config/symmetric-encryption.yml
 Move the file for each environment to all of the servers for that environment that will be running Symmetric Encryption.
 Do not copy all files to every environment since each environment should only be able decrypt data from its own environment.
 
-When running multiple Rails servers in a particular environment copy the same
-key files to every server in that environment. I.e. All Rails servers in each
-environment must run the same encryption keys.
+When running multiple Rails servers in a particular environment copy the same key files to every server in that environment. 
+I.e. All Rails servers in each environment must run the same encryption keys.
 
 The file `config/symmetric-encryption.yml` should be stored in the source control system along with the other source code.
 Do not store any of the key files in `/etc/symmetric-encryption` in the source control system since they must be kept separate
@@ -114,21 +121,10 @@ It is recommended to lock down the key files to prevent any other user from bein
 sudo chmod -R 0400 /etc/symmetric-encryption
 ~~~
   
-## Encryption Key Rotation
+##### Heroku Example
 
-According to the PCI Compliance documentation: "Cryptographic keys must be changed on an annual basis."
+Specify Heroku as the keystore so that the encrypted encryption keys can be stored in Heroku instead of in files.
 
-During the transition period of moving from one encryption key to another
-symmetric-encryption supports multiple Symmetric Encryption keys. If decryption
-with the current key fails, any previous keys will also be tried automatically.
-
-By default the latest key is used for encrypting data. Another key can be specified
-for encryption so that old data can be looked in queries, etc.
-
-Since just the Symmetric Encryption keys are being changed, we can still continue to
-use the same Key Encryption Key (RSA Private key) for gaining access to the Symmetric Encryption Keys.
-
-### Generate new encryption keys
-
+    symmetric-encryption --generate --keystore heroku --app_name my_app --envs "development,test,production"
 
 ### Next => [Command Line](cli.html)
