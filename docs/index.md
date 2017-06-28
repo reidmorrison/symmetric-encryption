@@ -8,7 +8,7 @@ Any project that wants to meet PCI compliance has to ensure that the data is enc
 whilst in flight and at rest. Amongst many other requirements all passwords
 in configuration files have to be encrypted.
 
-This Gem helps achieve compliance by supporting encryption of data in a simple
+Symmetric Encryption helps achieve compliance by supporting encryption of data in a simple
 and consistent way for Ruby and Rails projects.
 
 Symmetric Encryption uses OpenSSL to encrypt and decrypt data, and can therefore
@@ -16,13 +16,13 @@ expose all the encryption algorithms supported by OpenSSL.
 
 ### Examples
 
-#### Encryption Example
+#### Encryption
 
 ~~~ruby
 SymmetricEncryption.encrypt "Sensitive data"
 ~~~
 
-#### Decryption Example
+#### Decryption
 
 ~~~ruby
 SymmetricEncryption.decrypt "JqLJOi6dNjWI9kX9lSL1XQ=="
@@ -30,53 +30,55 @@ SymmetricEncryption.decrypt "JqLJOi6dNjWI9kX9lSL1XQ=="
 
 ## Features
 
-### Encryption
+### Encryption of
 
-* Encryption of passwords in configuration files
-* Encryption of ActiveRecord model attributes by prefixing attributes / column
-  names with encrypted_
-* Encryption of Mongoid model fields by adding :encrypted option to field
-  definitions
+* Passwords in configuration files.
+* ActiveRecord model attributes.
+* Mongoid model fields.
+* Files.
 
 ### Security
 
 * Externalization of symmetric encryption keys so that they are not in the
-  source code, or the source code control system
-* For maximum security supports fully random keys and initialization vectors
-  extracted from the entire encryption key space
-* Ability to randomly generate a new initialization vector (IV) with every
-  encryption and put the IV in the encrypted data as its header
+  source code, or the source code control system.
+* For maximum security uses randomized keys and initialization vectors extracted 
+  from the entire encryption key space.
+* Option to generate a new initialization vector (IV) with every encrypted value.
 
-### Validators
+### Validations
 
-* Validator for ActiveRecord Models to ensure fields contain encrypted data
+* Validations for ActiveRecord Models to ensure fields contain encrypted data.
 
 ### Files and Streams
 
 * Stream based encryption and decryption so that large files can be read or
-  written with encryption, along with a random key and IV for every file
-* Stream based encryption and decryption also supports compression and decompression
-  on the fly
-* Randomly generate a new key and initialization vector (IV) with every
-  file encryption and put the key and IV in the encrypted data as its header which
-  is encrypted using the global key and IV
+  written with encryption.
+* When selected, compress and decompress file streams on the fly.
+* Generate a new randomized key and initialization vector (IV) for every file. 
 
 ### Compression
 
-* When :compress => true option is specified Symmetric Encryption will transparently
-  compress the data prior to encryption.
-* When decrypting compressed data Symmetric Encryption will transparently decompress
-  the data after decryption based on information in the header stored in the encrypted data
-* Uses built-in support in Ruby for OpenSSL and Zlib for high performance and
-  maximum portability without introducing any additional dependencies
+* Transparently compress data prior to encryption.
+* During decryption data is automatically decompressed. 
+* Uses Ruby built-in support for OpenSSL and Zlib for high performance and
+  maximum portability without introducing any additional dependencies.
 
 ### Backgound Job Processing
 
-* The sister-project [Rocket Job](http://rocketjob.io) uses Symmetric Encryption
-  to encrypt job data to keep it secure.
-    * Rocket Job Pro can also read and write encrypted files created by Symmetric Encryption.
-    * Rocket Job Pro re-uses the existing Symmetric Encryption setup for encryption and decryption.
+The sister-project [Rocket Job](http://rocketjob.io) uses Symmetric Encryption
+to encrypt job data to keep it secure.
+* Rocket Job Pro can also read and write encrypted files created by Symmetric Encryption.
+* Rocket Job Pro re-uses the existing Symmetric Encryption configuration and setup.
 
+### Command Line Interface
+
+Symmetric Encryption v4 introduces an extensive command line interface to:
+* Encrypt files
+* Decrypt files
+* Generate new passwords
+* Generate a new configuration file
+* Perform Key rotation
+  
 ## Encrypting Passwords in configuration files
 
 Passwords can be encrypted in any YAML configuration file.
@@ -142,9 +144,8 @@ end
 
 ### Ruby Platform Support
 
-* Ruby v2.1.8, v2.2, v2.3, or higher
-* JRuby v1.7.23, v9.0.5.0, or higher
-* Or, Rubinius v2 or higher
+* Ruby v2.1, v2.2, v2.3, v2.4, or higher.
+* JRuby v1.7.23, v9.0.5.0, or higher.
 
 ### Installation
 
@@ -216,19 +217,19 @@ must always return the same encrypted result. The drawback is that this
 technique is not considered secure when encypting large amounts of data.
 
 For non-key fields, such as storing encrypted raw responses,
-use the :random_iv => true option where possible so that a
+use the `random_iv: true` option where possible so that a
 randomly generated IV is used and included in every encrypted string.
 
-The Symmetric Encryption streaming interface SymmetricEncryption::Writer avoids this
-problem by using a random IV and key in every file/stream by default.
+The Symmetric Encryption streaming interface `SymmetricEncryption::Writer` avoids this
+problem by automatically generating a randomized key and IV for every file or stream.
 The random IV and key are stored in the header of the output stream so that it
 is available when reading back the encrypted file/stream. The key is placed
-in a header on the file in encrypted form using the current global key/cipher.
+in the file header in encrypted form using the current global key.
 
 The ActiveRecord `attr_encrypted` method supports the `random_iv: true` option.
-Similarly for Mongoid the `random_iv: true` option can be added.
+Similarly for Mongoid the `random_iv: true` option is available.
 
-Note that encrypting the same input string with the same key and :random_iv => true
+Note that encrypting the same input string with the same key and `random_iv: true`
 option will result in different encrypted output every time it is encrypted.
 
 ### Recommendations
