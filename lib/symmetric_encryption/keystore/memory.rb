@@ -10,14 +10,13 @@ module SymmetricEncryption
       #
       # Notes:
       # * For development and testing purposes only!!
-      # * Never store the encryption key in the clear.
       # * Never store the encrypted encryption key in the source code / config file.
       def self.new_cipher(cipher_name:, key_encryption_key:, app_name:, environment:, version: 0)
         version >= 255 ? (version = 1) : (version += 1)
 
         cipher        = Cipher.new(cipher_name: cipher_name, key_encryption_key: key_encryption_key)
         encrypted_key = cipher.encrypted_key
-        iv            = cipher.encoder.encode(cipher.iv)
+        iv            = cipher.iv
         store         = new(key_encryption_key: key_encryption_key).write_encrypted(encrypted_key)
         {
           'encrypted_key' => store.read,

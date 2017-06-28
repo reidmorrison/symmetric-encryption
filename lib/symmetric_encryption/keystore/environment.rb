@@ -36,9 +36,9 @@ module SymmetricEncryption
 
         cipher        = Cipher.new(cipher_name: cipher_name, key_encryption_key: key_encryption_key)
         encrypted_key = cipher.encrypted_key
-        iv            = cipher.encoder.encode(cipher.iv)
+        iv            = cipher.iv
 
-        key_env_var = "#{app_name}_#{environment}_v#{version}".upcase
+        key_env_var = "#{app_name}_#{environment}_v#{version}".upcase.gsub('-', '_')
         new(key_env_var: key_env_var, key_encryption_key: key_encryption_key).write_encrypted(encrypted_key)
         {
           'key_env_var' => key_env_var,

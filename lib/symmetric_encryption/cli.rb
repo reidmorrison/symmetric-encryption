@@ -26,6 +26,7 @@ module SymmetricEncryption
       @prompt           = false
       @show_version     = false
       @environments     = %w(development test release production)
+      @keystore         = :file
 
       parse_args(argv)
     end
@@ -47,14 +48,14 @@ module SymmetricEncryption
         config_file_does_not_exist!
         cfg =
           if keystore == :file
-            SymmetricEncryption::Keystore::Environment.new_config(
+            SymmetricEncryption::Keystore::File.new_config(
+              key_path:     key_path,
               app_name:     app_name,
               environments: environments,
               cipher_name:  cipher_name
             )
           elsif [:heroku, :environment].include?(keystore)
-            SymmetricEncryption::Keystore::File.new_config(
-              key_path:     key_path,
+            SymmetricEncryption::Keystore::Environment.new_config(
               app_name:     app_name,
               environments: environments,
               cipher_name:  cipher_name
@@ -126,7 +127,7 @@ module SymmetricEncryption
           @generate = config
         end
 
-        opts.on '-s', '--keystore [heroku|environment|file]', 'Generate a new configuration file and encryption keys for every environment.' do |keystore|
+        opts.on '-s', '--keystore heroku|environment|file', 'Generate a new configuration file and encryption keys for every environment.' do |keystore|
           @keystore = (keystore || 'file').downcase.to_sym
         end
 
@@ -138,7 +139,7 @@ module SymmetricEncryption
           @app_name = name
         end
 
-        opts.on '-S', '--envs ENVIRONMENTS', "Comma separated list of environments for which to generate the config file. Default: development,test,release,production" do |environments|
+        opts.on '-S', '--environments ENVIRONMENTS', "Comma separated list of environments for which to generate the config file. Default: development,test,release,production" do |environments|
           @environments = environments.split(',').collect(&:strip)
         end
 

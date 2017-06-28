@@ -36,7 +36,7 @@ module SymmetricEncryption
 
         cipher        = Cipher.new(cipher_name: cipher_name, key_encryption_key: key_encryption_key)
         encrypted_key = cipher.encrypted_key
-        iv            = cipher.encoder.encode(cipher.iv)
+        iv            = cipher.iv
 
         file_name = ::File.join(key_path, "#{app_name}_#{environment}_v#{version}.key")
         new(file_name: file_name, key_encryption_key: key_encryption_key).write_encrypted(encrypted_key)
