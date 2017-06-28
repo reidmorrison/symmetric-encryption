@@ -2,7 +2,7 @@
 layout: default
 ---
 
-## Rake Tasks
+## Rake Tasks for Symmetric Encryption v3
 
 For PCI compliance developers should not be the ones creating or encrypting
 passwords. The following rake tasks can be used by system administrators to

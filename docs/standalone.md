@@ -2,7 +2,7 @@
 layout: default
 ---
 
-## Configuring a standalone Symmetric Encryption installation
+## Configuring a standalone Symmetric Encryption v3 installation
 
 SymmetricEncryption can also be used standalone and in non-Rails environments.
 
@@ -122,4 +122,4 @@ When running Ruby servers in a particular environment copy the same
 key files to every server in that environment. I.e. All Ruby servers in each
 environment must run the same encryption keys.
 
-### Next => [Rake Tasks](rake_tasks.html)
+### Next => [Key Rotation](key_rotation.html)

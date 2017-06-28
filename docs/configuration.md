@@ -2,11 +2,11 @@
 layout: default
 ---
 
-## Rails Configuration
+## Configuration
 
-If deploying to Heroku, see: [Heroku Configuration](heroku.html)
+If running Symmetric Encryption v3, see [v3 Configuration](v3_configuration.html)
 
-For a standalone environment without Rails, see: [Standalone Configuration](standalone.html)
+The notes below apply to Symmetric Encryption v4 and above.
 
 ### Add to Gemfile
 
@@ -22,73 +22,99 @@ Install using bundler:
 
 ### Creating the configuration file
 
-Generate the configuration file:
+Generate the configuration file and encryption keys for every environment:
 
-    rails generate symmetric_encryption:config /etc/rails/keys
+    symmetric-encryption --generate 
+    
+Options:
+* `--key-path OUTPUT_PATH`
+    * The path where the encrypted key files should be written to.
+      For example `/etc/symmetric-encryption`.
+    * This path should be outside of the application and definitely under a 
+      path that would _not_ be included in the source control system.
+    * Secure the path and generated files so that only the user under which the
+      application runs can access them.
+    * Move the environment specific key files to their relevant environments
+      and then destroy them from development machines.
+    * Only used by the file keystore, when using `--heroku` or `--environment` then `--key-path` is not used.
+    * If the directory does not exist it will attempt to create it. However, the default of `/etc/symmetric-encryption` 
+      is seldom writable by regular user accounts.
+    * Default: `/etc/symmetric-encryption`
+* `--app-name NAME`
+    * Set an application name. 
+    * If running rails, recommended to set this to the rails application name.
+    * The file keystore uses the app name as part of the file name.
+    * The environment keystore uses the app name as part of the environment variable name.
+    * Recommed using a lowercase application name.
+    * Default: `symmetric-encryption`
+* `--envs ENVIRONMENTS`
+    * Comma separated list of environments for which to generate the config file. 
+    * Default: development,test,release,production
+* `--cipher-name NAME`
+    * Name of the cipher to use when generating a new config file, or when rotating keys. 
+    * Default: `aes-256-cbc` 
+* `--config CONFIG_FILE`
+    * Path and filename of the generated configuration file.
+    * Default: `config/symmetric-encryption.yml`.
+* `--heroku`
+    * Generate a configuration file for use on heroku.
+    * Follow the instructions displayed to store the encrypted encryption key
+      as a heroku environment settings.
+* `--environment`
+    * Generate a configuration file where the encrypted encryption key is held in an environment variable
+      instead of using the default file store.
+    * Follow the instructions displayed to set the encrypted key in each environment.
 
-The only parameter is the path where the encrypted key files should be placed,
-and is put in the configuration file. The actual files will only be generated in
-a step further below.
+##### Example
 
-Note: Ignore the warning about "Symmetric Encryption config not found" since it is
-being generated
+It is recommended to run the following commands using the same user that the application will run under. In this
+example it will use the user `rails`
+Create the directory to act as the file keystore, and lock it down so that :
 
-#### Save to version control
+~~~
+sudo mkdir /etc/symmetric-encryption
+sudo chown rails /etc/symmetric-encryption
+chown rails /etc/rails/keys/*
+~~~
 
-This configuration file should be checked into the source code control system.
-It does Not include the Symmetric Encryption keys. They will be generated in the
-next step.
+Generate file keystore, using an application name of `my_app`. Create keystores for each of the environments 
+`development`, `test`, `preprod`, `acceptance`, and `production`.
 
-### Generating and securing the Symmetric Encryption keys
+    symmetric-encryption --generate --app_name my_app --envs "development,test,preprod,acceptance,production"
+    
+Output
 
-Once development and testing is complete we need to generate secure encryption
-key files for production. It is recommended that the step below be run on only
-one of the production servers. The generated key files must then be copied to
-all the production web servers.
+    New configuration file created at: config/symmetric-encryption.yml
 
-#### Notes
+The following files were created:
 
-* Do not run this step more than once, otherwise new keys will be generated
-  and any encrypted data will no longer be accessible.
+~~~
+config/symmetric-encryption.yml
+/etc/symmetric-encryption/my_app_preprod_v1.key
+/etc/symmetric-encryption/my_app_acceptance_v1.key
+/etc/symmetric-encryption/my_app_production_v1.key
+~~~
 
-* Do not run this step on more than one server in each environment otherwise
-  each server will be encrypting with it's own key and the servers will not be able
-  to decrypt data encrypted on another server. Just copy the generated files to each
-  server
-
-The symmetric encryption key consists of the key itself and an optional
-initialization vector.
-
-To generate the keys run the following Rake task once only in each environment:
-
-    rails generate symmetric_encryption:new_keys production
-
-Replace `production` above as necessary for each environment.
-
-Make sure that the current user has read and write access to the folder listed
-in the config file option key_filename.
-
-Note: Ignore the warning about the key files "not found or readable" since they
-are being generated
-
-Once the Symmetric Encryption keys have been generated, secure them further by
-making the files read-only to the Rails user and not readable by any other user.
-Change ownership of the keys to the rails user and only give it access to read the key files:
-
-    chown rails /etc/rails/keys/*
-    chmod 0400 /etc/rails/keys/*
-
-Change `rails` above to the userid under which your Rails processes are run
-and update the path to the one supplied when generating the config file or
-look in the config file itself
+Move the file for each environment to all of the servers for that environment that will be running Symmetric Encryption.
+Do not copy all files to every environment since each environment should only be able decrypt data from its own environment.
 
 When running multiple Rails servers in a particular environment copy the same
 key files to every server in that environment. I.e. All Rails servers in each
 environment must run the same encryption keys.
 
-Note: The generate step above must only be run once in each environment
+The file `config/symmetric-encryption.yml` should be stored in the source control system along with the other source code.
+Do not store any of the key files in `/etc/symmetric-encryption` in the source control system since they must be kept separate
+at all times from the above `config/symmetric-encryption.yml` file.
 
-## Supporting Multiple Encryption Keys
+To meet PCI Compliance the above steps need to be completed by an Operations Administrator and not by a developer
+or software engineer. The developers should never have access to the key files, or have copies of them on their machines.
+
+It is recommended to lock down the key files to prevent any other user from being able to read them:
+~~~
+sudo chmod -R 0400 /etc/symmetric-encryption
+~~~
+  
+## Encryption Key Rotation
 
 According to the PCI Compliance documentation: "Cryptographic keys must be changed on an annual basis."
 
@@ -100,94 +126,9 @@ By default the latest key is used for encrypting data. Another key can be specif
 for encryption so that old data can be looked in queries, etc.
 
 Since just the Symmetric Encryption keys are being changed, we can still continue to
-use the same RSA Private key for gaining access to the Symmetric Encryption Keys
+use the same Key Encryption Key (RSA Private key) for gaining access to the Symmetric Encryption Keys.
 
-### Configuring multiple Symmetric Encryption keys
+### Generate new encryption keys
 
-Create a configuration file in config/symmetric-encryption.yml per the following example:
 
-~~~yaml
-#
-# Symmetric Encryption for Ruby
-#
----
-# For the development and test environments the test symmetric encryption keys
-# can be placed directly in the source code.
-# And therefore no RSA private key is required
-development: &development_defaults
-  key:    1234567890ABCDEF
-  iv:     1234567890ABCDEF
-  cipher_name: aes-128-cbc
-
-test:
-  <<: *development_defaults
-
-production:
-  # Since the key to encrypt and decrypt with must NOT be stored along with the
-  # source code, we only hold a RSA key that is used to unlock the file
-  # containing the actual symmetric encryption key
-  #
-  # Sample RSA Key, DO NOT use this RSA key, generate a new one using
-  #    openssl genrsa 2048
-  private_rsa_key: |
-     -----BEGIN RSA PRIVATE KEY-----
-     MIIEpAIBAAKCAQEAxIL9H/jYUGpA38v6PowRSRJEo3aNVXULNM/QNRpx2DTf++KH
-     6DcuFTFcNSSSxG9n4y7tKi755be8N0uwCCuOzvXqfWmXYjbLwK3Ib2vm0btpHyvA
-     qxgqeJOOCxKdW/cUFLWn0tACUcEjVCNfWEGaFyvkOUuR7Ub9KfhbW9cZO3BxZMUf
-     IPGlHl/gWyf484sXygd+S7cpDTRRzo9RjG74DwfE0MFGf9a1fTkxnSgeOJ6asTOy
-     fp9tEToUlbglKaYGpOGHYQ9TV5ZsyJ9jRUyb4SP5wK2eK6dHTxTcHvT03kD90Hv4
-     WeKIXv3WOjkwNEyMdpnJJfSDb5oquQvCNi7ZSQIDAQABAoIBAQCbzR7TUoBugU+e
-     ICLvpC2wOYOh9kRoFLwlyv3QnH7WZFWRZzFJszYeJ1xr5etXQtyjCnmOkGAg+WOI
-     k8GlOKOpAuA/PpB/leJFiYL4lBwU/PmDdTT0cdx6bMKZlNCeMW8CXGQKiFDOcMqJ
-     0uGtH5YD+RChPIEeFsJxnC8SyZ9/t2ra7XnMGiCZvRXIUDSEIIsRx/mOymJ7bL+h
-     Lbp46IfXf6ZuIzwzoIk0JReV/r+wdmkAVDkrrMkCmVS4/X1wN/Tiik9/yvbsh/CL
-     ztC55eSIEjATkWxnXfPASZN6oUfQPEveGH3HzNjdncjH/Ho8FaNMIAfFpBhhLPi9
-     nG5sbH+BAoGBAOdoUyVoAA/QUa3/FkQaa7Ajjehe5MR5k6VtaGtcxrLiBjrNR7x+
-     nqlZlGvWDMiCz49dgj+G1Qk1bbYrZLRX/Hjeqy5dZOGLMfgf9eKUmS1rDwAzBMcj
-     M9jnnJEBx8HIlNzaR6wzp3GMd0rrccs660A8URvzkgo9qNbvMLq9vyUtAoGBANll
-     SY1Iv9uaIz8klTXU9YzYtsfUmgXzw7K8StPdbEbo8F1J3JPJB4D7QHF0ObIaSWuf
-     suZqLsvWlYGuJeyX2ntlBN82ORfvUdOrdrbDlmPyj4PfFVl0AK3U3Ai374DNrjKR
-     hF6YFm4TLDaJhUjeV5C43kbE1N2FAMS9LYtPJ44NAoGAFDGHZ/E+aCLerddfwwun
-     MBS6MnftcLPHTZ1RimTrNfsBXipBw1ItWEvn5s0kCm9X24PmdNK4TnhqHYaF4DL5
-     ZjbQK1idEA2Mi8GGPIKJJ2x7P6I0HYiV4qy7fe/w1ZlCXE90B7PuPbtrQY9wO7Ll
-     ipJ45X6I1PnyfOcckn8yafUCgYACtPAlgjJhWZn2v03cTbqA9nHQKyV/zXkyUIXd
-     /XPLrjrP7ouAi5A8WuSChR/yx8ECRgrEM65Be3qBEtoGCB4AS1G0NcigM6qhKBFi
-     VS0aMXr3+V8argcUIwJaWW/x+p2go48yXlJpLHPweeXe8mXEt4iM+QZte6p2yKQ4
-     h9PGQQKBgQCqSydmXBnXGIVTp2sH/2GnpxLYnDBpcJE0tM8bJ42HEQQgRThIChsn
-     PnGA91G9MVikYapgI0VYBHQOTsz8rTIUzsKwXG+TIaK+W84nxH5y6jUkjqwxZmAz
-     r1URaMAun2PfAB4g2N/kEZTExgeOGqXjFhvvjdzl97ux2cTyZhaTXg==
-     -----END RSA PRIVATE KEY-----
-
-  # List Symmetric Key files in the order of current / latest first
-  ciphers:
-     -
-        # Filename containing Symmetric Encryption Key encrypted using the
-        # RSA public key derived from the private key above
-        key_filename: /etc/rails/.rails.key
-        iv_filename:  /etc/rails/.rails.iv
-
-        # Encryption cipher_name
-        #   Recommended values:
-        #      aes-256-cbc
-        #         256 AES CBC Algorithm. Very strong
-        #         Ruby 1.8.7 MRI Approximately 100,000 encryptions or decryptions per second
-        #         JRuby 1.6.7 with Ruby 1.8.7 Approximately 22,000 encryptions or decryptions per second
-        #      aes-128-cbc
-        #         128 AES CBC Algorithm. Less strong.
-        #         Ruby 1.8.7 MRI Approximately 100,000 encryptions or decryptions per second
-        #         JRuby 1.6.7 with Ruby 1.8.7 Approximately 22,000 encryptions or decryptions per second
-        cipher_name:  aes-256-cbc
-
-     -
-        # OPTIONAL:
-        #
-        # Any previous Symmetric Encryption Keys
-        #
-        # Only used when old data still exists that requires old decryption keys
-        # to be used
-        key_filename: /etc/rails/.rails_old.key
-        iv_filename:  /etc/rails/.rails_old.iv
-        cipher_name:  aes-256-cbc
-~~~
-
-### Next => [Heroku Configuration](heroku.html)
+### Next => [Command Line](cli.html)

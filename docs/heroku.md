@@ -2,7 +2,7 @@
 layout: default
 ---
 
-## Configuring Symmetric Encryption for Heroku
+## Configuring Symmetric Encryption v3 for Heroku
 
 
 ### Add to Gemfile

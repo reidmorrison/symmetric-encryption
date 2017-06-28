@@ -274,18 +274,18 @@ module SymmetricEncryption
     # Return a new random key using the configured cipher_name
     # Useful for generating new symmetric keys
     def random_key
-      ::OpenSSL::Cipher::Cipher.new(cipher_name).random_key
+      ::OpenSSL::Cipher.new(cipher_name).random_key
     end
 
     # Return a new random IV using the configured cipher_name
     # Useful for generating new symmetric keys
     def random_iv
-      ::OpenSSL::Cipher::Cipher.new(cipher_name).random_iv
+      ::OpenSSL::Cipher.new(cipher_name).random_iv
     end
 
     # Returns the block size for the configured cipher_name
     def block_size
-      ::OpenSSL::Cipher::Cipher.new(cipher_name).block_size
+      ::OpenSSL::Cipher.new(cipher_name).block_size
     end
 
     # Advanced use only

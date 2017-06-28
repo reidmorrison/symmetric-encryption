@@ -7,7 +7,7 @@ module SymmetricEncryption
     attr_reader :parser, :key_path, :app_name, :encrypt, :config_file_path,
                 :decrypt, :random_password, :new_keys, :gen_config, :environment,
                 :env_var, :re_encrypt, :version, :output_file_name, :compress,
-                :environments, :cipher_name, :rolling_deploy, :rotate_keys
+                :environments, :cipher_name, :rolling_deploy, :rotate_keys, :prompt, :show_version
 
     def initialize(argv)
       @version          = current_version
@@ -17,6 +17,8 @@ module SymmetricEncryption
       @key_path         = '/etc/symmetric-encryption'
       @cipher_name      = 'aes-256-cbc'
       @rolling_deploy   = false
+      @prompt           = false
+      @show_version     = false
 
       setup
       parser.parse!(argv.dup)
@@ -25,12 +27,16 @@ module SymmetricEncryption
     def run!
       Config.load!(file_name: config_file_path, env: environment) unless gen_config || rotate_keys
 
-      if encrypt
-        encrypt == true ? encrypt_string : encrypt_file(encrypt)
+      if show_version
+        puts "Symmetric Encryption v#{VERSION}"
+        puts "OpenSSL v#{OpenSSL::VERSION}"
+        puts "Environment: #{environment}"
+      elsif encrypt
+        prompt ? encrypt_string : encrypt_file(encrypt)
       elsif decrypt
-        decrypt == true ? decrypt_string : decrypt_file(decrypt)
+        prompt ? decrypt_string : decrypt_file(decrypt)
       elsif random_password
-        gen_random_password
+        gen_random_password(random_password)
       elsif gen_config
         config_file_does_not_exist!
         environments ||= %w(development test release production)
@@ -74,62 +80,30 @@ module SymmetricEncryption
 
     def setup
       @parser = OptionParser.new do |opts|
-        opts.banner = "Symmetric Encryption #{VERSION} CLI\n\nsymmetric-encryption <options>\n"
+        opts.banner = "Symmetric Encryption v#{VERSION}\n\nsymmetric-encryption [options]\n"
 
-        opts.on '-e', '--encrypt FILE_NAME', 'Encrypt a file, or prompt for a text value if no file name is supplied.' do |file_name|
-          @encrypt = file_name || true
+        opts.on '-e', '--encrypt [FILE_NAME]', 'Encrypt a file, or read from stdin if no file name is supplied.' do |file_name|
+          @encrypt = file_name || STDIN
         end
 
-        opts.on '-d', '--decrypt FILE_NAME', 'Decrypt a file, or prompt for an encrypted value if no file name is supplied.' do |file_name|
-          @decrypt = file_name || true
+        opts.on '-d', '--decrypt [FILE_NAME]', 'Decrypt a file, or read from stdin if no file name is supplied.' do |file_name|
+          @decrypt = file_name || STDIN
         end
 
-        opts.on '-o', '--output FILE_NAME', 'Write encrypted or decrypted file to this file.' do |file_name|
+        opts.on '-o', '--output FILE_NAME', 'Write encrypted or decrypted file to this file, otherwise output goes to stdout.' do |file_name|
           @output_file_name = file_name
         end
 
-        opts.on '-Z', '--compress', 'Compress encrypted output file. Default: false' do
+        opts.on '-P', '--prompt', 'When encrypting or decrypting, prompt for a string encrypt or decrypt.' do
+          @prompt = true
+        end
+
+        opts.on '-z', '--compress', 'Compress encrypted output file.' do
           @compress = true
         end
 
-        opts.on '-P', '--password', 'Generate a random password.' do
-          @random_password = true
-        end
-
-        opts.on '-r', '--rotate-keys', 'Generates a new encryption key version, encryption key files, and updates symmetric-encryption.yml.' do
-          @rotate_keys = true
-        end
-
-        opts.on '-r', '--rolling_deploy', 'During key rotation, support a rolling deploy by placing the new key second in the list so that it is not activated yet.' do
-          @rolling_deploy = true
-        end
-
-        opts.on '-g', '--generate', 'Generate a new configuration file and encryption keys for every environment.' do |config|
-          @gen_config = config
-        end
-
-        opts.on '-h', '--heroku', 'Target Heroku when generating a new config file, or when creating news keys.' do
-          @env_var = true
-        end
-
-        opts.on '-E', '--environment-vars', 'Store the encrypted key in an environment variable when generating a new config file.' do
-          @env_var = true
-        end
-
-        opts.on '-K', '--key-path KEY_PATH', 'Output path in which to write generated key files. Default: /etc/symmetric-encryption' do |path|
-          @key_path = path
-        end
-
-        opts.on '-a', '--app-name NAME', 'Application name to use in the configuration generator. Default: symmetric-encryption' do |name|
-          @app_name = name
-        end
-
-        opts.on '-v', '--env ENVIRONMENT', "Environment to use in the config file. Default: RACK_ENV || RAILS_ENV || 'development'" do |environment|
+        opts.on '-E', '--env ENVIRONMENT', "Environment to use in the config file. Default: RACK_ENV || RAILS_ENV || 'development'" do |environment|
           @environment = environment
-        end
-
-        opts.on '-V', '--envs ENVIRONMENTS', "Comma separated list of environments for which to generate the config file. Default: development,test,release,production" do |environments|
-          @environments = environments.split(',').collect(&:strip)
         end
 
         opts.on '-c', '--config CONFIG_FILE_PATH', 'File name & path to the Symmetric Encryption configuration file. Default: config/symmetric-encryption.yml' do |path|
@@ -140,15 +114,74 @@ module SymmetricEncryption
           @re_encrypt = pattern || '**/*.yml'
         end
 
-        opts.on '-v', '--version NUMBER', "Encryption key version to use when encrypting or re-encrypting. Default: Current: #{current_version}" do |number|
-          @version = number
+        opts.on '-n', '--new-password [SIZE]', 'Generate a new random password using only characters that are URL-safe base64. Default size is 22.' do |size|
+          @random_password = (size || 22).to_i
+        end
+
+        opts.on '-g', '--generate', 'Generate a new configuration file and encryption keys for every environment.' do |config|
+          @gen_config = config
+        end
+
+        opts.on '-K', '--key-path KEY_PATH', 'Output path in which to write generated key files. Default: /etc/symmetric-encryption' do |path|
+          @key_path = path
+        end
+
+        opts.on '-a', '--app-name NAME', 'Application name to use when generating a new configuration. Default: symmetric-encryption' do |name|
+          @app_name = name
+        end
+
+        opts.on '-S', '--envs ENVIRONMENTS', "Comma separated list of environments for which to generate the config file. Default: development,test,release,production" do |environments|
+          @environments = environments.split(',').collect(&:strip)
         end
 
         opts.on '-C', '--cipher-name NAME', "Name of the cipher to use when generating a new config file, or when rotating keys. Default: aes-256-cbc" do |name|
           @cipher_name = name
         end
 
+        opts.on '-H', '--heroku', 'Target Heroku when generating a new config file, or when creating news keys.' do
+          @env_var = true
+        end
+
+        opts.on '-T', '--environment', 'Store the encrypted key in an environment variable when generating a new config file, instead of using a file store.' do
+          @env_var = true
+        end
+
+        opts.on '-R', '--rotate-keys', 'Generates a new encryption key version, encryption key files, and updates symmetric-encryption.yml.' do
+          @rotate_keys = true
+        end
+
+        opts.on '-D', '--rolling-deploy', 'During key rotation, support a rolling deploy by placing the new key second in the list so that it is not activated yet.' do
+          @rolling_deploy = true
+        end
+
+        opts.on '-V', '--key-version NUMBER', "Encryption key version to use when encrypting or re-encrypting. Default: (Current global version)." do |number|
+          @version = number
+        end
+
+        opts.on '-L', '--ciphers', 'List available OpenSSL ciphers.' do
+          puts "OpenSSL v#{OpenSSL::VERSION}. Available Ciphers:"
+          puts OpenSSL::Cipher.ciphers.join("\n")
+          exit
+        end
+
+        opts.on '-v', '--version', 'Display Symmetric Encryption version.' do
+          @show_version = true
+        end
+
+        opts.on('-h', '--help', 'Prints this help.') do
+          puts opts
+          exit
+        end
+
       end
+    end
+
+    def encrypt_file(input_file_name)
+      SymmetricEncryption::Writer.encrypt(source: input_file_name, target: output_file_name || STDOUT, compress: compress, version: version)
+    end
+
+    def decrypt_file(input_file_name)
+      SymmetricEncryption::Reader.decrypt(source: input_file_name, target: output_file_name || STDOUT, version: version)
     end
 
     def decrypt_string
@@ -159,21 +192,10 @@ module SymmetricEncryption
       end
 
       encrypted = HighLine.new.ask('Enter the value to decrypt:')
-      text      = SymmetricEncryption.decrypt(value)
+      text      = SymmetricEncryption.cipher(version).decrypt(encrypted)
 
       puts("\nEncrypted: #{encrypted}")
       output_file_name ? File.open(output_file_name, 'wb') { |f| f << text } : puts("Decrypted: #{text}\n\n")
-    end
-
-    def decrypt_file(input_file_name)
-      if output_file_name
-        puts("\nDecrypting file: #{input_file_name} and writing to: #{output_file_name}\n\n")
-        SymmetricEncryption::Reader.decrypt(source: input_file_name, target: output_file_name)
-        puts("\n#{output_file_name} now contains the decrypted contents of #{input_file_name}\n\n")
-      else
-        # No output file, so decrypt to stdout with no other output.
-        SymmetricEncryption::Reader.decrypt(source: input_file_name, target: STDOUT)
-      end
     end
 
     def encrypt_string
@@ -194,23 +216,12 @@ module SymmetricEncryption
         end
       end
 
-      encrypted = SymmetricEncryption.encrypt(value1)
+      encrypted = SymmetricEncryption.cipher(version).encrypt(value1)
       output_file_name ? File.open(output_file_name, 'wb') { |f| f << encrypted } : puts("\nEncrypted: #{encrypted}\n\n")
     end
 
-    def encrypt_file(input_file_name)
-      if output_file_name
-        puts("\nEncrypting file: #{input_file_name} and writing to: #{output_file_name}\n\n")
-        SymmetricEncryption::Writer.encrypt(source: input_file_name, target: output_file_name, compress: compress)
-        puts("\n#{output_file_name} now contains the decrypted contents of #{input_file_name}\n\n")
-      else
-        # No output file, so encrypt to stdout with no other output.
-        SymmetricEncryption::Writer.encrypt(source: input_file_name, target: STDOUT)
-      end
-    end
-
-    def gen_random_password
-      p = SymmetricEncryption.random_password
+    def gen_random_password(size)
+      p = SymmetricEncryption.random_password(size)
       puts("\nGenerated Password: #{p}")
       encrypted = SymmetricEncryption.encrypt(p)
       puts("Encrypted: #{encrypted}\n\n")
