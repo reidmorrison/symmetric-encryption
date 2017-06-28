@@ -77,5 +77,22 @@ module SymmetricEncryption
       end
     end
 
+    # Iterate through the Hash symbolizing all keys
+    def self.deep_stringify_keys(x)
+      case x
+      when Hash
+        result = {}
+        x.each_pair do |key, value|
+          key         = key.to_s if key.is_a?(Symbol)
+          result[key] = deep_stringify_keys(value)
+        end
+        result
+      when Array
+        x.collect { |i| deep_stringify_keys(i) }
+      else
+        x
+      end
+    end
+
   end
 end

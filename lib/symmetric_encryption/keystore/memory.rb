@@ -19,23 +19,23 @@ module SymmetricEncryption
         iv            = cipher.iv
         store         = new(key_encryption_key: key_encryption_key).write_encrypted(encrypted_key)
         {
-          'encrypted_key' => store.read,
-          'iv'            => iv,
-          'cipher_name'   => cipher_name,
-          'version'       => version
+          encrypted_key: store.read,
+          iv:            iv,
+          cipher_name:   cipher_name,
+          version:       version
         }
       end
 
       # The default development config.
       def self.dev_config
         {
-          'ciphers' =>
+          ciphers:
             [
               {
-                'key'         => '1234567890ABCDEF',
-                'iv'          => '1234567890ABCDEF',
-                'cipher_name' => 'aes-128-cbc',
-                'version'     => 1
+                key:         '1234567890ABCDEF',
+                iv:          '1234567890ABCDEF',
+                cipher_name: 'aes-128-cbc',
+                version:     1
               }
             ]
         }
