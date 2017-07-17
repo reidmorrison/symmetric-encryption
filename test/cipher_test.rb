@@ -151,7 +151,6 @@ class CipherTest < Minitest::Test
       describe 'with configuration' do
         before do
           @cipher                 = SymmetricEncryption::Cipher.new(
-            cipher_name: cipher_name,
             key:         '1234567890ABCDEF',
             iv:          '1234567890ABCDEF',
             cipher_name: 'aes-128-cbc',

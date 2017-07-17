@@ -153,9 +153,9 @@ begin
       it 'support a random iv' do
         @user.string = @string
         assert first_value = @user.encrypted_string
-        # Assign the same value
+        @user.string = 'blah'
         @user.string = @string.dup
-        assert_equal true, first_value != @user.encrypted_string
+        refute_equal first_value, @user.encrypted_string
       end
 
       it 'support a random iv and compress' do
