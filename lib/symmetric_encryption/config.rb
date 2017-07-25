@@ -50,8 +50,9 @@ module SymmetricEncryption
     def config
       @config ||= begin
         raise(ConfigError, "Cannot find config file: #{file_name}") unless File.exist?(file_name)
-        cfg = YAML.load(ERB.new(File.new(file_name).read).result)[env]
-        self.class.deep_symbolize_keys(cfg)
+        cfg    = YAML.load(ERB.new(File.new(file_name).read).result)[env]
+        cfg = self.class.deep_symbolize_keys(cfg)
+        migrate_old_formats(cfg)
       end
     end
 
@@ -102,6 +103,25 @@ module SymmetricEncryption
       else
         x
       end
+    end
+
+    def migrate_old_formats(config)
+      # Old format?
+      unless config.has_key?(:ciphers)
+        config = {
+          private_rsa_key: config.delete(:private_rsa_key),
+          ciphers:         [config]
+        }
+      end
+
+      # Old format cipher name?
+      config[:ciphers] = config[:ciphers].collect do |cipher|
+        if old_key_name_cipher = cipher.delete(:cipher)
+          cipher[:cipher_name] = old_key_name_cipher
+        end
+        cipher
+      end
+      config
     end
 
   end
