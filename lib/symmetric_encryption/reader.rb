@@ -97,10 +97,10 @@ module SymmetricEncryption
     #
     # Notes:
     # * The file contents are streamed so that the entire file is _not_ loaded into memory.
-    def self.decrypt(source:, target:, block_size: 65535)
+    def self.decrypt(source:, target:, block_size: 65535, **args)
       target_ios    = target.is_a?(String) ? ::File.open(target, 'wb') : target
       bytes_written = 0
-      open(source) do |input_ios|
+      open(source, **args) do |input_ios|
         while !input_ios.eof?
           bytes_written += target_ios.write(input_ios.read(block_size))
         end

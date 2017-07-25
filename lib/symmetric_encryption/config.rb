@@ -2,10 +2,14 @@ module SymmetricEncryption
   class Config
     attr_reader :file_name, :env
 
-    # Load the Encryption Configuration from a YAML file
+    # Load the Encryption Configuration from a YAML file.
+    #
     #  file_name:
     #    Name of configuration file.
     #    Default: "#{Rails.root}/config/symmetric-encryption.yml"
+    #    Note:
+    #      The Symmetric Encryption config file name can also be set using the `SYMMETRIC_ENCRYPTION_CONFIG`
+    #      environment variable.
     #
     #  env:
     #    Which environments config to load. Usually: production, development, etc.
@@ -29,7 +33,12 @@ module SymmetricEncryption
 
       unless file_name
         root      = defined?(Rails) ? Rails.root : '.'
-        file_name = File.join(root, 'config', 'symmetric-encryption.yml')
+        file_name =
+          if env_var = ENV['SYMMETRIC_ENCRYPTION_CONFIG']
+            File.expand_path(env_var)
+          else
+            File.join(root, 'config', 'symmetric-encryption.yml')
+          end
         raise(ConfigError, "Cannot find config file: #{file_name}") unless File.exist?(file_name)
       end
 
@@ -37,15 +46,16 @@ module SymmetricEncryption
       @file_name = file_name
     end
 
-    # Returns [Hash] the configuration for the supplied environment
+    # Returns [Hash] the configuration for the supplied environment.
     def config
       @config ||= begin
+        raise(ConfigError, "Cannot find config file: #{file_name}") unless File.exist?(file_name)
         cfg = YAML.load(ERB.new(File.new(file_name).read).result)[env]
         self.class.deep_symbolize_keys(cfg)
       end
     end
 
-    # Returns [Array(SymmetricEncrytion::Cipher)] ciphers specified in the configuration file
+    # Returns [Array(SymmetricEncrytion::Cipher)] ciphers specified in the configuration file.
     def ciphers
       @ciphers ||= begin
         private_rsa_key = config[:private_rsa_key]
@@ -60,7 +70,7 @@ module SymmetricEncryption
 
     private
 
-    # Iterate through the Hash symbolizing all keys
+    # Iterate through the Hash symbolizing all keys.
     def self.deep_symbolize_keys(x)
       case x
       when Hash
@@ -77,7 +87,7 @@ module SymmetricEncryption
       end
     end
 
-    # Iterate through the Hash symbolizing all keys
+    # Iterate through the Hash symbolizing all keys.
     def self.deep_stringify_keys(x)
       case x
       when Hash

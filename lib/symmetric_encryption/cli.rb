@@ -4,10 +4,11 @@ require 'erb'
 
 module SymmetricEncryption
   class CLI
-    attr_reader :parser, :key_path, :app_name, :encrypt, :config_file_path,
+    attr_reader :key_path, :app_name, :encrypt, :config_file_path,
                 :decrypt, :random_password, :new_keys, :generate, :environment,
                 :keystore, :re_encrypt, :version, :output_file_name, :compress,
-                :environments, :cipher_name, :rolling_deploy, :rotate_keys, :prompt, :show_version
+                :environments, :cipher_name, :rolling_deploy, :rotate_keys, :prompt, :show_version,
+                :cleanup_keys, :activate_key
 
     KEYSTORES = [:heroku, :environment, :file]
 
@@ -18,7 +19,7 @@ module SymmetricEncryption
     def initialize(argv)
       @version          = current_version
       @environment      = ENV['RACK_ENV'] || ENV['RAILS_ENV'] || 'development'
-      @config_file_path = 'config/symmetric-encryption.yml'
+      @config_file_path = File.expand_path(ENV['SYMMETRIC_ENCRYPTION_CONFIG'] || 'config/symmetric-encryption.yml')
       @app_name         = 'symmetric-encryption'
       @key_path         = '/etc/symmetric-encryption'
       @cipher_name      = 'aes-256-cbc'
@@ -27,64 +28,56 @@ module SymmetricEncryption
       @show_version     = false
       @keystore         = :file
 
-      parse_args(argv)
+      if argv.empty?
+        puts parser
+        exit -10
+      end
+      parser.parse!(argv)
     end
 
     def run!
-      Config.load!(file_name: config_file_path, env: environment) unless generate || rotate_keys || show_version
+      raise(ArgumentError, 'Cannot cleanup keys and rotate keys at the same time') if cleanup_keys && rotate_keys
 
       if show_version
         puts "Symmetric Encryption v#{VERSION}"
         puts "OpenSSL v#{OpenSSL::VERSION}"
         puts "Environment: #{environment}"
       elsif encrypt
+        load_config
         prompt ? encrypt_string : encrypt_file(encrypt)
       elsif decrypt
+        load_config
         prompt ? decrypt_string : decrypt_file(decrypt)
       elsif random_password
+        load_config
         gen_random_password(random_password)
-      elsif generate
-        config_file_does_not_exist!
-        environments ||= %i(development test release production)
-        cfg          =
-          if keystore == :file
-            SymmetricEncryption::Keystore::File.new_config(
-              key_path:     key_path,
-              app_name:     app_name,
-              environments: environments,
-              cipher_name:  cipher_name
-            )
-          elsif [:heroku, :environment].include?(keystore)
-            SymmetricEncryption::Keystore::Environment.new_config(
-              app_name:     app_name,
-              environments: environments,
-              cipher_name:  cipher_name
-            )
-          else
-            puts "Invalid keystore option: #{keystore}, must be one of #{KEYSTORES.join(', ')}"
-            exit -3
-          end
-        save_config(cfg)
-        puts "New configuration file created at: #{config_file_path}"
-      elsif rotate_keys
-        config = YAML.load(ERB.new(File.new(config_file_path).read).result)
-        config = SymmetricEncryption::Config.send(:deep_symbolize_keys, config)
-
-        SymmetricEncryption::Keystore.rotate_keys!(config, environments: environments || [], app_name: app_name, rolling_deploy: rolling_deploy)
-        save_config(config)
-        puts "Existing configuration file updated with new keys: #{config_file_path}"
       elsif re_encrypt
+        load_config
         SymmetricEncryption::Utils::ReEncrypt.new(version: version).process_directory(re_encrypt)
+      elsif rotate_keys
+        run_rotate_keys
+      elsif cleanup_keys
+        run_cleanup_keys
+      elsif generate
+        generate_new_config
       else
         puts parser
       end
     end
 
-    private
+    def parser
+      @parser ||= OptionParser.new do |opts|
+        opts.banner = <<BANNER
+Symmetric Encryption v#{VERSION}
 
-    def parse_args(argv)
-      @parser = OptionParser.new do |opts|
-        opts.banner = "Symmetric Encryption v#{VERSION}\n\n  For more information, see: https://rocketjob.github.io/symmetric-encryption/\n\nsymmetric-encryption [options]\n"
+  For more information, see: https://rocketjob.github.io/symmetric-encryption/
+
+  Note: 
+    It is recommended to backup the current configuration file, or place it in version control before running
+    the configuration manipulation commands below.
+
+symmetric-encryption [options]
+BANNER
 
         opts.on '-e', '--encrypt [FILE_NAME]', 'Encrypt a file, or read from stdin if no file name is supplied.' do |file_name|
           @encrypt = file_name || STDIN
@@ -110,7 +103,7 @@ module SymmetricEncryption
           @environment = environment
         end
 
-        opts.on '-c', '--config CONFIG_FILE_PATH', 'File name & path to the Symmetric Encryption configuration file. Default: config/symmetric-encryption.yml' do |path|
+        opts.on '-c', '--config CONFIG_FILE_PATH', 'File name & path to the Symmetric Encryption configuration file. Default: config/symmetric-encryption.yml or Env var: `SYMMETRIC_ENCRYPTION_CONFIG`' do |path|
           @config_file_path = path
         end
 
@@ -146,7 +139,7 @@ module SymmetricEncryption
           @cipher_name = name
         end
 
-        opts.on '-R', '--rotate-keys', 'Generates a new encryption key version, encryption key files, and updates symmetric-encryption.yml.' do
+        opts.on '-R', '--rotate-keys', 'Generates a new encryption key version, encryption key files, and updates the configuration file.' do
           @rotate_keys = true
         end
 
@@ -154,8 +147,16 @@ module SymmetricEncryption
           @rolling_deploy = true
         end
 
+        opts.on '-A', '--activate-key', 'Activates the key by moving the key with the highest version to the top.' do
+          @activate_key = true
+        end
+
+        opts.on '-X', '--cleanup-keys', 'Removes all encryption keys, except the one with the highest version from the configuration file.' do
+          @cleanup_keys = true
+        end
+
         opts.on '-V', '--key-version NUMBER', "Encryption key version to use when encrypting or re-encrypting. Default: (Current global version)." do |number|
-          @version = number
+          @version = number.to_i
         end
 
         opts.on '-L', '--ciphers', 'List available OpenSSL ciphers.' do
@@ -174,7 +175,74 @@ module SymmetricEncryption
         end
 
       end
-      parser.parse!(argv)
+    end
+
+    private
+
+    def load_config
+      Config.load!(file_name: config_file_path, env: environment)
+    end
+
+    def generate_new_config
+      config_file_does_not_exist!
+      environments ||= %i(development test release production)
+      cfg          =
+        if keystore == :file
+          SymmetricEncryption::Keystore::File.new_config(
+            key_path:     key_path,
+            app_name:     app_name,
+            environments: environments,
+            cipher_name:  cipher_name
+          )
+        elsif [:heroku, :environment].include?(keystore)
+          SymmetricEncryption::Keystore::Environment.new_config(
+            app_name:     app_name,
+            environments: environments,
+            cipher_name:  cipher_name
+          )
+        else
+          puts "Invalid keystore option: #{keystore}, must be one of #{KEYSTORES.join(', ')}"
+          exit -3
+        end
+      save_config(cfg)
+      puts "New configuration file created at: #{config_file_path}"
+    end
+
+    def run_rotate_keys
+      config = read_config
+      SymmetricEncryption::Keystore.rotate_keys!(config, environments: environments || [], app_name: app_name, rolling_deploy: rolling_deploy)
+      save_config(config)
+      puts "Existing configuration file updated with new keys: #{config_file_path}"
+    end
+
+    def run_cleanup_keys
+      config = read_config
+      config.each_pair do |env, cfg|
+        next if environments && !environments.include?(env.to_sym)
+        if ciphers = cfg[:ciphers]
+          highest = ciphers.max_by{|i| i[:version]}
+          ciphers.clear
+          ciphers << highest
+        end
+      end
+
+      save_config(config)
+      puts "Removed all but the key with the highest version in: #{config_file_path}"
+    end
+
+    def run_activate_key
+      config = read_config
+      config.each_pair do |env, cfg|
+        next if environments && !environments.include?(env.to_sym)
+        if ciphers = cfg[:ciphers]
+          highest = ciphers.max_by{|i| i[:version]}
+          ciphers.delete(highest)
+          ciphers.unshift(highest)
+        end
+      end
+
+      save_config(config)
+      puts "Activated the keys with the highest versions in: #{config_file_path}"
     end
 
     def encrypt_file(input_file_name)
@@ -196,7 +264,7 @@ module SymmetricEncryption
       encrypted = HighLine.new.ask('Enter the value to decrypt:')
       text      = SymmetricEncryption.cipher(version).decrypt(encrypted)
 
-      puts("\nEncrypted: #{encrypted}")
+      puts("\n\nEncrypted: #{encrypted}")
       output_file_name ? File.open(output_file_name, 'wb') { |f| f << text } : puts("Decrypted: #{text}\n\n")
     end
 
@@ -219,8 +287,8 @@ module SymmetricEncryption
         end
       end
 
-      encrypted = SymmetricEncryption.cipher(version).encrypt(value1)
-      output_file_name ? File.open(output_file_name, 'wb') { |f| f << encrypted } : puts("\nEncrypted: #{encrypted}\n\n")
+      encrypted = SymmetricEncryption.cipher(version).encrypt(value1, compress: compress)
+      output_file_name ? File.open(output_file_name, 'wb') { |f| f << encrypted } : puts("\n\nEncrypted: #{encrypted}\n\n")
     end
 
     def gen_random_password(size)
@@ -242,6 +310,12 @@ module SymmetricEncryption
       return unless File.exist?(config_file_path)
       puts "\nConfiguration file already exists, please move or rename: #{config_file_path}\n\n"
       exit -1
+    end
+
+    def read_config
+      config = YAML.load(ERB.new(File.new(config_file_path).read).result)
+      SymmetricEncryption::Config.send(:deep_symbolize_keys, config)
+      config
     end
 
     def save_config(config)

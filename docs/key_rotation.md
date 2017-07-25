@@ -37,12 +37,12 @@ To avoid this race-condition add the new key as the second key in the configurat
 file. That way it will continue decrypting using the current key, but can also
 decrypt with the new key during the rolling deploy.
 
-For example, with Symmetric Encryption v4, use the command line interface to update `config/symmetric-encryption.yml` 
+For example, with Symmetric Encryption v4, use the command line interface to update the config file 
 and generate the new keys:
 
-    symmetric-encryption --key-rotation --deploy
+    symmetric-encryption --rotate-keys --rolling-deploy  --app_name my_app
 
-The `--deploy` option stores the new key as the second key so that it will not be activated yet.
+The `--rolling-deploy` option stores the new key as the second key so that it will not be activated yet.
 
 ### 2. Re-encrypt all passwords in the source repository
 
@@ -67,19 +67,46 @@ servers for decryption purposes.
 
 Once the new key has been deployed as a secondary key, the next deploy can move
 the new key to the top of the list so that it will be the active key for encrypting new data.
-Keep the previous key as the second key in the list so that it can continue to
-decrypt old data using the previous keys.
+The previous key should be kept as the second key in the list so that it can continue to
+decrypt old data using the previous key(s).
 
-Edit `config/symmetric-encryption.yml` and move the new encryption key generated in step 1 to the top of the list.
-This will make the system use the new key to encrypt all data going forward.
+Move the new key ( the key with the highest version ) to the top of the list so that all 
+new data is encrypted with this key.
+
+    symmetric-encryption --activate
 
 ### 5. Re-encrypting existing data
 
 For PCI Compliance it is necessary to re-encrypt old data with the new key and
 then to destroy the old key so that it cannot be used again.
 
-The sister project [RocketJob](http://rocketjob.io) is an excellent solution for
-running large batch jobs that need to process millions of records.
+The sister project [RocketJob](http://rocketjob.io) comes with a batch job to re-encrypt
+all the data in a relational database for you. Uses multiple workers concurrently to spread the load, 
+and is capable of re-encrypting terabytes of data. With built-in throttling mechanisms to allow
+re-encryption to continue while live traffic is being processed.
+
+To kick off the re-encryption job, run this from the console or via a migration:
+
+~~~ruby
+RocketJob::Jobs::ReEncrypt::RelationalJob.start
+~~~
+    
+A job is created for every database table that contains a column starting with `encrypted_`.
+The job is throttled in 2 ways:
+* Only one job instance is permitted to run at a time.
+* For each job at most 100 workers will work on that table at a time.
+
+Both of the above throttle are configurable and can be tuned for your environment,
+by modifying the values below:
+
+~~~ruby
+RocketJob::Jobs::ReEncrypt::RelationalJob.throttle_running_jobs   = 1
+RocketJob::Jobs::ReEncrypt::RelationalJob.throttle_running_slices = 100
+~~~
+
+Custom throttles can be added to the jobs, for example to throttle based on database slave delay, etc.
+
+Note: This job is included in the Rocket Job Pro version.
 
 ### 6. Re-encrypting Files
 

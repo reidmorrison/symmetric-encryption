@@ -59,6 +59,14 @@ module SymmetricEncryption
       end
     end
 
+    # Write the contents of a string in memory to an encrypted file / stream.
+    #
+    # Notes:
+    # * Do not use this method for writing large files.
+    def self.write(file_name_or_stream, data, **args)
+      open(file_name_or_stream, **args) { |f| f.write(data) }
+    end
+
     # Encrypt an entire file.
     #
     # Returns [Integer] the number of encrypted bytes written to the target file.

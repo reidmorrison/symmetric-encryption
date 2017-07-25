@@ -27,7 +27,7 @@ Encrypt a file:
 
     symmetric-encryption --encrypt large_file.csv --output large_file.csv.enc
 
-Encrypt and compress a file:
+Encrypt and compress a file (RECOMMENDED):
 
     symmetric-encryption --encrypt large_file.csv --output large_file.csv.enc --compress
 
@@ -51,7 +51,7 @@ Display the last few lines in an encrypted file, without creating an unencrypted
 
     symmetric-encryption --decrypt large_file.csv.enc | tail
 
-Generate a random password and display its encrypted form:
+Generate a random password and display its encrypted form for use in config files, etc.:
 
     symmetric-encryption --new-password
 
@@ -65,11 +65,25 @@ Prompt to enter an encrypted string and then decrypt it:
     
 #### Notes
 
+##### Highline
+
 For the `--prompt` option above to work, the `highline` gem must be added to `Gemfile` first and
 then installed by running `bundle.
 
 ~~~ruby
 gem install 'highline'
+~~~
+
+##### Specify configuration file location
+
+If the Symmetric Encryption configuration file has a different name or is stored in a directory other than
+the standard `config/symmetric-encryption.yml`, then it can be set using the environment variable 
+`SYMMETRIC_ENCRYPTION_CONFIG`.
+
+For example set the location of the Symmetric Encryption config file:
+~~~shell
+# Specify Symmetric Encryption config file so that it does not need to be specified at the command line every time.
+export SYMMETRIC_ENCRYPTION_CONFIG="~/application/common/config/symmetric-encryption.yml"
 ~~~
 
 ### Next => [Key Rotation](key_rotation.html)
