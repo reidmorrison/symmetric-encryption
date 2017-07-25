@@ -40,10 +40,23 @@ decrypt with the new key during the rolling deploy.
 For example, with Symmetric Encryption v4, use the command line interface to update the config file 
 and generate the new keys:
 
-    symmetric-encryption --rotate-keys --rolling-deploy  --app_name my_app
+    symmetric-encryption --rotate-keys --rolling-deploy  --app-name my_app
 
 The `--rolling-deploy` option stores the new key as the second key so that it will not be activated yet.
 
+Replace `my_app` with the name of the application that is going to use this key. Recommend using lower case.
+
+By default a new key is generated for every environment, to limit it to just production:
+
+    symmetric-encryption --rotate-keys --rolling-deploy  --app-name my_app --environments production
+    
+Copy the key file to every server in that particular environment that runs the application or uses Symmetric Encryption.
+
+If the keys for multiple environments are generated above, then move the relevant key files to the servers for that environment.
+
+By default the key files are located in `/etc/symmetric-encryption`.
+
+    
 ### 2. Re-encrypt all passwords in the source repository
 
 Passwords, such as those for the database, need to be re-encrypted using the new key.
@@ -73,7 +86,9 @@ decrypt old data using the previous key(s).
 Move the new key ( the key with the highest version ) to the top of the list so that all 
 new data is encrypted with this key.
 
-    symmetric-encryption --activate
+    symmetric-encryption --activate-key
+
+Restart the application so that it will encrypt using the new encryption key.
 
 ### 5. Re-encrypting existing data
 
@@ -115,13 +130,20 @@ if they need to be kept after the old encryption key has been destroyed.
 
 For example, with Symmetric Encryption v4, re-encrypt files:
 
-    symmetric-encryption --re-encrypt
+    symmetric-encryption --re-encrypt "/export/**/*"
+    
+Replace `"/export/**/*"` above as needed to point to where the encrypted files are that
+should be re-encrypted using the new key.
     
 ### 7. Remove old key from configuration file
 
 Once all data and files have been re-encrypted using the new key, remove the
-old key from the configuration file. If you get cipher errors, you can restore
-the old key in the configuration file and then re-encrypt that data too.
+old key from the configuration file. 
+
+    symmetric-encryption --cleanup-keys
+
+If you get cipher errors, you can restore the old key in the configuration file and 
+then re-encrypt that data too.
 
 ### 8. Destroying old key
 

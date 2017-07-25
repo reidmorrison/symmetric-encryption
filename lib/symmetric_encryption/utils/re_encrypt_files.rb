@@ -18,21 +18,22 @@ module SymmetricEncryption
     # ReEncrypt files
     #
     #   If a file is encrypted, it is re-encrypted with the cipher that has the highest version number.
-    #   A file is already encrypted with the highest version is not re-encrypted.
+    #   A file that is already encrypted with the specified key version is not re-encrypted.
+    #   If an encrypted value cannot be decypted in the current environment it is left unmodified.
     #
     #   If a file is not encrypted, the file is searched for any encrypted values, and those values are re-encrypted.
     #
     #   symmetric_encryption --reencrypt "**/*.yml"
     class ReEncryptFiles
-      attr_accessor :cipher, :path
+      attr_accessor :cipher, :version
 
       # Parameters:
       #   version: [Integer]
       #     Version of the encryption key to use when re-encrypting the value.
       #     Default: Default cipher ( first in the list of configured ciphers )
-      def initialize(version: SymmetricEncryption.cipher.version, path: '**/*.yml')
-        @cipher = SymmetricEncryption.cipher(version)
-        @path   = path
+      def initialize(version: SymmetricEncryption.cipher.version)
+        @version = version || SymmetricEncryption.cipher.version
+        @cipher  = SymmetricEncryption.cipher(@version)
         raise(ArgumentError, "Undefined encryption key version: #{version}") if @cipher.nil?
       end
 
@@ -47,19 +48,22 @@ module SymmetricEncryption
 
       # Process a single file.
       #
-      # Returns [true|false] whether the file was modified
+      # Returns [Integer] number of encrypted values re-encrypted.
       def re_encrypt_contents(file_name)
-        match        = false
+        return 0 if File.size(file_name) > 256 * 1024
+
+        hits         = 0
         lines        = File.read(file_name)
         output_lines = ''
         r            = regexp
         lines.each_line do |line|
+          line.force_encoding(SymmetricEncryption::UTF8_ENCODING)
           output_lines <<
-            if result = line.match(r)
+            if line.valid_encoding? && (result = line.match(r))
               encrypted = result[0]
               new_value = re_encrypt(encrypted)
               if new_value != encrypted
-                match = true
+                hits += 1
                 line.gsub(encrypted, new_value)
               else
                 line
@@ -68,20 +72,25 @@ module SymmetricEncryption
               line
             end
         end
-        if match
+        if hits
           File.open(file_name, 'wb') { |file| file.write(output_lines) }
         end
-        match
+        hits
+      rescue
+        puts "Failed re-encrypting the file contents of: #{file_name}"
+        raise
       end
 
       # Re Encrypt an entire file
       def re_encrypt_file(file_name)
-        temp_file_name = "#{file_name}_re_encrypting"
+        temp_file_name = "__re_encrypting_#{file_name}"
         SymmetricEncryption::Reader.open(file_name) do |source|
-          SymmetricEncryption::Writer.encrypt(source: source, target: temp_file_name, compress: true)
+          SymmetricEncryption::Writer.encrypt(source: source, target: temp_file_name, compress: true, version: version)
         end
+        File.delete(file_name)
+        File.rename(temp_file_name, file_name)
       rescue
-        File.delete(temp_file_name) if File.exist?(temp_file_name)
+        File.delete(temp_file_name) if temp_file_name && File.exist?(temp_file_name)
         raise
       end
 
@@ -93,17 +102,37 @@ module SymmetricEncryption
       #     Example: '../../**/*.yml'
       def process_directory(path)
         Dir[path].each do |file_name|
-          if SymmetricEncryption::Reader.header_present?(file_name)
-            re_encrypt_file(file_name)
-          else
-            re_encrypt_contents(file_name)
-          end
+          next if File.directory?(file_name)
 
+          if v = encrypted_file_version(file_name)
+            if v == version
+              puts "Skipping already re-encrypted file: #{file_name}"
+            else
+              puts "Re-encrypting entire file: #{file_name}"
+              re_encrypt_file(file_name)
+            end
+          else
+            count = re_encrypt_contents(file_name)
+            puts "Re-encrypted #{count} encrypted value(s) in: #{file_name}" if count > 0
+          end
         end
       end
 
+      private
+
       def regexp
-        @regexp ||= /#{SymmetricEncryption.cipher.encoded_magic_header}(?:[A-Za-z0-9+\/]{4})*(?:[A-Za-z0-9+\/]{2}==|[A-Za-z0-9+\/]{3}=)/
+        @regexp ||= /#{SymmetricEncryption.cipher.encoded_magic_header}([A-Za-z0-9+\/]+=+[\\n]*)/
+      end
+
+      # Returns [Integer] encrypted file key version.
+      # Returns [nil] if the file is not encrypted or does not have a header.
+      def encrypted_file_version(file_name)
+        ::File.open(file_name, 'rb') do |file|
+          reader = SymmetricEncryption::Reader.new(file)
+          reader.version if reader.header_present?
+        end
+      rescue OpenSSL::Cipher::CipherError
+        nil
       end
 
     end

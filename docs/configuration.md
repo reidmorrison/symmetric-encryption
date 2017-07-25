@@ -87,7 +87,7 @@ chown rails /etc/rails/keys/*
 Generate file keystore, using an application name of `my_app`. Create keystores for each of the environments 
 `development`, `test`, `preprod`, `acceptance`, and `production`.
 
-    symmetric-encryption --generate --app_name my_app --envs "development,test,preprod,acceptance,production"
+    symmetric-encryption --generate --app-name my_app --envs "development,test,preprod,acceptance,production"
     
 Output
 
@@ -125,6 +125,6 @@ sudo chmod -R 0400 /etc/symmetric-encryption
 
 Specify Heroku as the keystore so that the encrypted encryption keys can be stored in Heroku instead of in files.
 
-    symmetric-encryption --generate --keystore heroku --app_name my_app --envs "development,test,production"
+    symmetric-encryption --generate --keystore heroku --app-name my_app --envs "development,test,production"
 
 ### Next => [Command Line](cli.html)

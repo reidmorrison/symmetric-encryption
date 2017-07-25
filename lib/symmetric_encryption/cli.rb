@@ -53,7 +53,9 @@ module SymmetricEncryption
         gen_random_password(random_password)
       elsif re_encrypt
         load_config
-        SymmetricEncryption::Utils::ReEncrypt.new(version: version).process_directory(re_encrypt)
+        SymmetricEncryption::Utils::ReEncryptFiles.new(version: version).process_directory(re_encrypt)
+      elsif activate_key
+        run_activate_key
       elsif rotate_keys
         run_rotate_keys
       elsif cleanup_keys
@@ -107,8 +109,8 @@ BANNER
           @config_file_path = path
         end
 
-        opts.on '-r', '--re-encrypt PATTERN', 'ReEncrypt all files matching the pattern. Default: "**/*.yml"' do |pattern|
-          @re_encrypt = pattern || '**/*.yml'
+        opts.on '-r', '--re-encrypt [PATTERN]', 'ReEncrypt all files matching the pattern. Default:  "**/*.{yml,rb}"' do |pattern|
+          @re_encrypt = pattern ||  "**/*.{yml,rb}"
         end
 
         opts.on '-n', '--new-password [SIZE]', 'Generate a new random password using only characters that are URL-safe base64. Default size is 22.' do |size|
@@ -315,7 +317,6 @@ BANNER
     def read_config
       config = YAML.load(ERB.new(File.new(config_file_path).read).result)
       SymmetricEncryption::Config.send(:deep_symbolize_keys, config)
-      config
     end
 
     def save_config(config)
