@@ -13,9 +13,6 @@ rvm:
   - 2.4.1
   - jruby-9.1.7.0
 
-#jdk:
-#  - oraclejdk8
-
 matrix:
   exclude:
     - rvm: 2.1.10

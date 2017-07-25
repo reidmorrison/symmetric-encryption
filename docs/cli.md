@@ -27,7 +27,7 @@ Encrypt a file:
 
     symmetric-encryption --encrypt large_file.csv --output large_file.csv.enc
 
-Encrypt and compress a file (RECOMMENDED):
+Encrypt and compress a file (_Recommended_):
 
     symmetric-encryption --encrypt large_file.csv --output large_file.csv.enc --compress
 

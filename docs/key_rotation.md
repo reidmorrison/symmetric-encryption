@@ -69,7 +69,11 @@ For example, with Symmetric Encryption v4, re-encrypt yaml files:
 
     symmetric-encryption --re-encrypt --key-version 5
     
-Where key-version `5` above must be the version of the new key generated above. 
+Where key-version `5` above must be the version of the new key generated above.
+
+Note:
+* Since the keys for each environment are different, the above step must be run in each
+  environment and then the modified files committed back into version control. 
     
 ### 3. Deploy
 
