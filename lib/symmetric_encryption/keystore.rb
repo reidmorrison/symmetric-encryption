@@ -31,40 +31,33 @@ module SymmetricEncryption
     #     * `iv` does not need to be encrypted and is included in the clear.
     def self.rotate_keys!(config, environments: [], app_name:, rolling_deploy: false)
       config.each_pair do |environment, cfg|
-        private_rsa_key = cfg[:private_rsa_key]
-        next unless private_rsa_key
-
         # Only rotate keys for specified environments. Default, all
         next if !environments.empty? && !environments.include?(environment.to_sym)
-
-        key_encryption_key = KeyEncryptionKey.new(private_rsa_key)
-
-        # Migrate old format
-        cfg                = {ciphers: [cfg]} unless cfg.has_key?(:ciphers)
 
         # Find the highest version number
         version = cfg[:ciphers].collect { |c| c[:version] || 0 }.max
 
         cipher_cfg = cfg[:ciphers].first
 
-        # Check for a prior env var in encrypted key
-        # Example:
-        #   encrypted_key: <%= ENV['VAR'] %>
-        if cipher_cfg.has_key?(:encrypted_key) && cipher_cfg[:encrypted_key].nil?
-          cipher_cfg[:key_env_var] = :placeholder
-          puts "WARNING: The encrypted_key for #{environment} resolved to nil. Please see the generated config file for the new environment var name."
-        end
+        # Only generate new keys for keystore's that have a key encrypting key
+        next unless cipher_cfg[:key_encrypting_key]
+
+        # Generate a new random Key Encrypting Key
+        rsa_key            = KeyEncryptingKey.generate_rsa_key
+        key_encrypting_key = KeyEncryptingKey.new(rsa_key)
 
         cipher_name    = cipher_cfg[:cipher_name] || 'aes-256-cbc'
         new_cipher_cfg =
           if cipher_cfg.has_key?(:key_filename)
             key_path = ::File.dirname(cipher_cfg[:key_filename])
-            Keystore::File.new_cipher(key_path: key_path, cipher_name: cipher_name, key_encryption_key: key_encryption_key, app_name: app_name, version: version, environment: environment)
+            Keystore::File.new_cipher(key_path: key_path, cipher_name: cipher_name, key_encrypting_key: key_encrypting_key, app_name: app_name, version: version, environment: environment)
           elsif cipher_cfg.has_key?(:key_env_var)
-            Keystore::Environment.new_cipher(cipher_name: cipher_name, key_encryption_key: key_encryption_key, app_name: app_name, version: version, environment: environment)
+            Keystore::Environment.new_cipher(cipher_name: cipher_name, key_encrypting_key: key_encrypting_key, app_name: app_name, version: version, environment: environment)
           elsif cipher_cfg.has_key?(:encrypted_key)
-            Keystore::Memory.new_cipher(cipher_name: cipher_name, key_encryption_key: key_encryption_key, app_name: app_name, version: version, environment: environment)
+            Keystore::Memory.new_cipher(cipher_name: cipher_name, key_encrypting_key: key_encrypting_key, app_name: app_name, version: version, environment: environment)
           end
+
+        new_cipher_cfg[:key_encrypting_key] = rsa_key
 
         # Add as second key so that key can be published now and only used in a later deploy.
         if rolling_deploy

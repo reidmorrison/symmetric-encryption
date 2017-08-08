@@ -12,17 +12,17 @@ module SymmetricEncryption
 
         configs = {}
         environments.each do |environment|
-          environment = environment.to_sym
+          environment          = environment.to_sym
           configs[environment] =
             if %i(development test).include?(environment)
               Memory.dev_config
             else
-              rsa_key            = SymmetricEncryption::KeyEncryptionKey.generate
-              key_encryption_key = SymmetricEncryption::KeyEncryptionKey.new(rsa_key)
-              cfg                = new_cipher(cipher_name: cipher_name, key_encryption_key: key_encryption_key, app_name: app_name, environment: environment)
+              rsa_key                  = SymmetricEncryption::KeyEncryptingKey.generate_rsa_key
+              key_encrypting_key       = SymmetricEncryption::KeyEncryptingKey.new(rsa_key)
+              cfg                      = new_cipher(cipher_name: cipher_name, key_encrypting_key: key_encrypting_key, app_name: app_name, environment: environment)
+              cfg[:key_encrypting_key] = rsa_key
               {
-                private_rsa_key: rsa_key,
-                ciphers:         [cfg]
+                ciphers: [cfg]
               }
             end
         end
@@ -32,15 +32,15 @@ module SymmetricEncryption
       # Returns [Hash] a new cipher, and writes its encrypted key file.
       #
       # Increments the supplied version number by 1.
-      def self.new_cipher(cipher_name:, key_encryption_key:, app_name:, environment:, version: 0)
+      def self.new_cipher(cipher_name:, key_encrypting_key:, app_name:, environment:, version: 0)
         version >= 255 ? (version = 1) : (version += 1)
 
-        cipher        = Cipher.new(cipher_name: cipher_name, key_encryption_key: key_encryption_key)
+        cipher        = Cipher.new(cipher_name: cipher_name, key_encrypting_key: key_encrypting_key)
         encrypted_key = cipher.encrypted_key
         iv            = cipher.iv
 
         key_env_var = "#{app_name}_#{environment}_v#{version}".upcase.gsub('-', '_')
-        new(key_env_var: key_env_var, key_encryption_key: key_encryption_key).write_encrypted(encrypted_key)
+        new(key_env_var: key_env_var, key_encrypting_key: key_encrypting_key).write_encrypted(encrypted_key)
         {
           key_env_var: key_env_var,
           iv:          iv,
@@ -51,9 +51,9 @@ module SymmetricEncryption
 
       # Stores the Encryption key in an environment var.
       # Secures the Encryption key by encrypting it with a key encryption key.
-      def initialize(key_encryption_key:, key_env_var:, encoding: :base64strict)
+      def initialize(key_encrypting_key:, key_env_var:, encoding: :base64strict)
         @key_env_var        = key_env_var
-        @key_encryption_key = key_encryption_key
+        @key_encrypting_key = key_encrypting_key
         @encoding           = encoding
       end
 
@@ -62,12 +62,12 @@ module SymmetricEncryption
         encrypted = ENV[key_env_var]
         raise "The Environment Variable #{key_env_var} must be set with the encrypted encryption key." unless encrypted
         binary = encoder.decode(encrypted)
-        key_encryption_key.decrypt(binary)
+        key_encrypting_key.decrypt(binary)
       end
 
       # Write the encrypted Encryption key to `encrypted_key` attribute.
       def write(key)
-        write_encrypted(key_encryption_key.encrypt(key))
+        write_encrypted(key_encrypting_key.encrypt(key))
       end
 
       # Store an already encrypted key.

@@ -1,7 +1,7 @@
 module SymmetricEncryption
   module Keystore
     class Memory
-      attr_accessor :key_encryption_key, :encoding
+      attr_accessor :key_encrypting_key, :encoding
       attr_reader :encrypted_key
 
       # Returns [Hash] a new cipher, and writes its encrypted key file.
@@ -11,13 +11,13 @@ module SymmetricEncryption
       # Notes:
       # * For development and testing purposes only!!
       # * Never store the encrypted encryption key in the source code / config file.
-      def self.new_cipher(cipher_name:, key_encryption_key:, app_name:, environment:, version: 0)
+      def self.new_cipher(cipher_name:, key_encrypting_key:, app_name:, environment:, version: 0)
         version >= 255 ? (version = 1) : (version += 1)
 
-        cipher        = Cipher.new(cipher_name: cipher_name, key_encryption_key: key_encryption_key)
+        cipher        = Cipher.new(cipher_name: cipher_name, key_encrypting_key: key_encrypting_key)
         encrypted_key = cipher.encrypted_key
         iv            = cipher.iv
-        store         = new(key_encryption_key: key_encryption_key).write_encrypted(encrypted_key)
+        store         = new(key_encrypting_key: key_encrypting_key).write_encrypted(encrypted_key)
         {
           encrypted_key: store.read,
           iv:            iv,
@@ -43,21 +43,21 @@ module SymmetricEncryption
 
       # Stores the Encryption key in a string.
       # Secures the Encryption key by encrypting it with a key encryption key.
-      def initialize(key_encryption_key:, encrypted_key: nil, encoding: :base64strict)
+      def initialize(key_encrypting_key:, encrypted_key: nil, encoding: :base64strict)
         @encrypted_key      = encrypted_key
-        @key_encryption_key = key_encryption_key
+        @key_encrypting_key = key_encrypting_key
         @encoding           = encoding
       end
 
       # Returns the Encryption key in the clear.
       def read
         binary = encoder.decode(encrypted_key)
-        key_encryption_key.decrypt(binary)
+        key_encrypting_key.decrypt(binary)
       end
 
       # Write the encrypted Encryption key to `encrypted_key` attribute.
       def write(key)
-        binary             = key_encryption_key.encrypt(key)
+        binary             = key_encrypting_key.encrypt(key)
         self.encrypted_key = encoder.encode(binary)
       end
 

@@ -8,7 +8,7 @@ module SymmetricEncryption
   class Cipher
     # Cipher to use for encryption and decryption
     attr_accessor :cipher_name, :version, :iv, :always_add_header
-    attr_reader :encoding, :key_filename, :iv_filename, :key_encryption_key, :key_env_var
+    attr_reader :encoding, :key_filename, :iv_filename, :key_encrypting_key, :key_env_var
     attr_writer :key
 
     # Create a Symmetric::Cipher for encryption and decryption purposes
@@ -71,20 +71,16 @@ module SymmetricEncryption
     #     migration to a new key trivial
     #     Default: true
     #
-    #   private_rsa_key [String]
-    #     Key encryption key.
-    #     To generate a new one: SymmetricEncryption::KeyEncryptionKey.generate
-    #     Required if :key_filename, :encrypted_key, :iv_filename, or :encrypted_iv is supplied
-    #
-    #   key_encryption_key [SymmetricEncryption::KeyEncryptionKey]
-    #     Key encryption key to encrypt/decrypt the key and/or iv with.
-    #     Note:
-    #     - `private_rsa_key` is not used if `key_encryption_key` is supplied.
+    #   key_encrypting_key [String|SymmetricEncryption::KeyEncryptingKey]
+    #     SymmetricEncryption::KeyEncryptingKey:
+    #       Key encrypting key to encrypt/decrypt the key and/or iv with.
+    #     String:
+    #       The private RSA key in string format.
     def initialize(cipher_name: 'aes-256-cbc',
                    encoding: :base64strict,
                    version: 0,
                    always_add_header: true,
-                   private_rsa_key: nil, key_encryption_key: nil,
+                   key_encrypting_key: nil,
                    key_filename: nil, encrypted_key: nil, key: :random, key_env_var: nil,
                    iv_filename: nil, encrypted_iv: nil, iv: :random)
 
@@ -96,28 +92,28 @@ module SymmetricEncryption
       @iv_filename       = iv_filename
       @key_env_var       = key_env_var
 
-      @key_encryption_key =
-        if key_encryption_key
-          key_encryption_key
-        elsif private_rsa_key
-          KeyEncryptionKey.new(private_rsa_key)
+      @key_encrypting_key =
+        if key_encrypting_key.is_a?(SymmetricEncryption::KeyEncryptingKey)
+          key_encrypting_key
+        elsif key_encrypting_key
+          KeyEncryptingKey.new(key_encrypting_key)
         end
 
       raise(ArgumentError, "Cipher version has a valid range of 0 to 255. #{@version} is too high, or negative") if (@version > 255) || (@version < 0)
 
       if key_filename || encrypted_key || iv_filename || encrypted_iv
-        raise(SymmetricEncryption::ConfigError, 'Missing required :private_rsa_key, or :key_encryption_key') unless @key_encryption_key
+        raise(SymmetricEncryption::ConfigError, 'Missing required :key_encrypting_key') unless @key_encrypting_key
       end
 
       @key =
         if key != :random && key != nil
           key
         elsif key_filename
-          Keystore::File.new(file_name: key_filename, key_encryption_key: @key_encryption_key).read
+          Keystore::File.new(file_name: key_filename, key_encrypting_key: @key_encrypting_key).read
         elsif encrypted_key
-          Keystore::Memory.new(encrypted_key: encrypted_key, key_encryption_key: @key_encryption_key).read
+          Keystore::Memory.new(encrypted_key: encrypted_key, key_encrypting_key: @key_encrypting_key).read
         elsif key_env_var
-          Keystore::Environment.new(key_env_var: key_env_var, key_encryption_key: @key_encryption_key).read
+          Keystore::Environment.new(key_env_var: key_env_var, key_encrypting_key: @key_encrypting_key).read
         elsif key == :random
           random_key
         else
@@ -128,9 +124,9 @@ module SymmetricEncryption
         if iv != :random && iv != nil
           iv
         elsif iv_filename
-          Keystore::File.new(file_name: iv_filename, key_encryption_key: @key_encryption_key).read
+          Keystore::File.new(file_name: iv_filename, key_encrypting_key: @key_encrypting_key).read
         elsif encrypted_iv
-          Keystore::Memory.new(encrypted_key: encrypted_iv, key_encryption_key: @key_encryption_key).read
+          Keystore::Memory.new(encrypted_key: encrypted_iv, key_encrypting_key: @key_encrypting_key).read
         elsif iv == :random
           random_iv
         end
@@ -163,7 +159,7 @@ module SymmetricEncryption
 
     # Returns the key encrypted with the key encryption key.
     def encrypted_key
-      key_encryption_key.encrypt(key)
+      key_encrypting_key.encrypt(key)
     end
 
     # Change the encoding
@@ -406,7 +402,7 @@ module SymmetricEncryption
 
     # Returns [String] object represented as a string, filtering out the key
     def inspect
-      "#<#{self.class}:0x#{self.__id__.to_s(16)} @key=\"[FILTERED]\" @iv=#{iv.inspect} @cipher_name=#{cipher_name.inspect}, @version=#{version.inspect}, @encoding=#{encoding.inspect}, @always_add_header=#{always_add_header.inspect}, @key_filename=#{key_filename.inspect}, @iv_filename=#{iv_filename.inspect}, key_encryption_key=#{key_encryption_key.inspect}>"
+      "#<#{self.class}:0x#{self.__id__.to_s(16)} @key=\"[FILTERED]\" @iv=#{iv.inspect} @cipher_name=#{cipher_name.inspect}, @version=#{version.inspect}, @encoding=#{encoding.inspect}, @always_add_header=#{always_add_header.inspect}, @key_filename=#{key_filename.inspect}, @iv_filename=#{iv_filename.inspect}, key_encrypting_key=#{key_encrypting_key.inspect}>"
     end
 
     # DEPRECATED
@@ -441,16 +437,16 @@ module SymmetricEncryption
     # DEPRECATED
     def self.generate_random_keys(cipher_name: 'aes-256-cbc',
       encoding: :base64strict,
-      private_rsa_key: nil,
+      key_encrypting_key: nil,
       key_filename: nil, encrypted_key: nil,
       iv_filename: nil, encrypted_iv: nil)
 
       Cipher.new(
-        cipher_name:     cipher_name,
-        encoding:        encoding,
-        private_rsa_key: private_rsa_key,
-        key_filename:    key_filename,
-        iv_filename:     iv_filename
+        cipher_name:        cipher_name,
+        encoding:           encoding,
+        key_encrypting_key: key_encrypting_key,
+        key_filename:       key_filename,
+        iv_filename:        iv_filename
       ).to_h
     end
 

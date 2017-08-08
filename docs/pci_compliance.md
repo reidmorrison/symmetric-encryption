@@ -141,11 +141,11 @@ the required fields, or that the entire file is unreadable (not plain text)
 3.5.1
 
 Review the `production` environment setting in the file `symmetric-encryption.yml`:
-* `private_rsa_key` is the `key-encrypting key`.
-  * Usually a 2048 bit RSA private key.
 * `ciphers` is the list of encryption keys active in that environment.
   * The first item in the list is the key being used to encrypt data.
   * Subsequent items, each with their own version number, are used to decrypt older data.
+  * `key_encrypting_key` is the `key-encrypting key`.
+    * Usually a 2048 bit RSA private key.
 * `key_filename` is the file name of the `data-encrypting key`.
   * This file was encrypted using the RSA public key contained in the `key-encrypting key` above. 
 * `cipher_name` is the encryption algorithm and block cipher in use.

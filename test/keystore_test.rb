@@ -3,13 +3,13 @@ require_relative 'test_helper'
 module SymmetricEncryption
   class KeystoreTest < Minitest::Test
     describe SymmetricEncryption::Keystore do
-      let :key_encryption_key do
-        rsa_key = SymmetricEncryption::KeyEncryptionKey.generate
-        SymmetricEncryption::KeyEncryptionKey.new(rsa_key)
+      let :key_encrypting_key do
+        rsa_key = SymmetricEncryption::KeyEncryptingKey.generate_rsa_key
+        SymmetricEncryption::KeyEncryptingKey.new(rsa_key)
       end
 
       let :keystore do
-        SymmetricEncryption::Keystore::File.new(file_name: 'tmp/tester.key', key_encryption_key: key_encryption_key)
+        SymmetricEncryption::Keystore::File.new(file_name: 'tmp/tester.key', key_encrypting_key: key_encrypting_key)
       end
 
       after do

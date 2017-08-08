@@ -15,7 +15,7 @@ module SymmetricEncryption
   autoload :Encoder,                'symmetric_encryption/encoder'
   autoload :Generator,              'symmetric_encryption/generator'
   autoload :Header,                 'symmetric_encryption/header'
-  autoload :KeyEncryptionKey,       'symmetric_encryption/key_encryption_key'
+  autoload :KeyEncryptingKey,       'symmetric_encryption/key_encrypting_key'
   autoload :Reader,                 'symmetric_encryption/reader'
   autoload :Writer,                 'symmetric_encryption/writer'
   autoload :CLI,                    'symmetric_encryption/cli'

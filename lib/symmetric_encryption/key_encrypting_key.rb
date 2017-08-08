@@ -5,9 +5,9 @@ module SymmetricEncryption
   #
   # Note:
   #   No encoding or decoding is performed.
-  class KeyEncryptionKey
+  class KeyEncryptingKey
     # Returns [String] a new key encryption key.
-    def self.generate(size: 2048)
+    def self.generate_rsa_key(size: 2048)
       OpenSSL::PKey::RSA.generate(size).to_s
     end
 

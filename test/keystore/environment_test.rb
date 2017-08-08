@@ -4,13 +4,13 @@ require 'stringio'
 module SymmetricEncryption
   class FileTest < Minitest::Test
     describe SymmetricEncryption::Keystore::Environment do
-      let :key_encryption_key do
-        rsa_key = SymmetricEncryption::KeyEncryptionKey.generate
-        SymmetricEncryption::KeyEncryptionKey.new(rsa_key)
+      let :key_encrypting_key do
+        rsa_key = SymmetricEncryption::KeyEncryptingKey.generate_rsa_key
+        SymmetricEncryption::KeyEncryptingKey.new(rsa_key)
       end
 
       let :keystore do
-        SymmetricEncryption::Keystore::Environment.new(key_env_var: 'TESTER_ENV_VAR', key_encryption_key: key_encryption_key)
+        SymmetricEncryption::Keystore::Environment.new(key_env_var: 'TESTER_ENV_VAR', key_encrypting_key: key_encrypting_key)
       end
 
       after do
@@ -26,7 +26,7 @@ module SymmetricEncryption
         let :keystore do
           SymmetricEncryption::Keystore::Environment.new_cipher(
             cipher_name:        'aes-256-cbc',
-            key_encryption_key: key_encryption_key,
+            key_encrypting_key: key_encrypting_key,
             app_name:           'tester',
             environment:        'test',
             version:            version
@@ -90,7 +90,7 @@ module SymmetricEncryption
 
         it 'each non test environment has a key encryption key' do
           (environments - %i(development test)).each do |env|
-            assert config[env][:private_rsa_key].include?('BEGIN RSA PRIVATE KEY'), "Environment #{env} is missing the key encryption key"
+            assert config[env][:ciphers].first[:key_encrypting_key].include?('BEGIN RSA PRIVATE KEY'), "Environment #{env} is missing the key encryption key"
           end
         end
 
@@ -111,7 +111,7 @@ module SymmetricEncryption
 
       describe '#read' do
         it 'reads the key' do
-          ENV["TESTER_ENV_VAR"] = keystore.encoder.encode(key_encryption_key.encrypt('TEST'))
+          ENV["TESTER_ENV_VAR"] = keystore.encoder.encode(key_encrypting_key.encrypt('TEST'))
           assert_equal 'TEST', keystore.read
         end
       end
