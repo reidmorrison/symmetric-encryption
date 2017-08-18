@@ -29,8 +29,8 @@ module SymmetricEncryption
     # Notes:
     # * iv_filename is no longer supported and is removed when creating a new random cipher.
     #     * `iv` does not need to be encrypted and is included in the clear.
-    def self.rotate_keys!(config, environments: [], app_name:, rolling_deploy: false)
-      config.each_pair do |environment, cfg|
+    def self.rotate_keys!(full_config, environments: [], app_name:, rolling_deploy: false)
+      full_config.each_pair do |environment, cfg|
         # Only rotate keys for specified environments. Default, all
         next if !environments.empty? && !environments.include?(environment.to_sym)
 
@@ -60,14 +60,14 @@ module SymmetricEncryption
           cfg[:ciphers].unshift(new_key_config)
         end
       end
-      config
+      full_config
     end
 
     # Rotates just the key encrypting keys for the current cipher version.
     # The existing data encryption key is not changed, it is secured using the
     # new key encrypting keys.
-    def self.rotate_key_encrypting_keys!(config, environments: [], app_name:)
-      config.each_pair do |environment, cfg|
+    def self.rotate_key_encrypting_keys!(full_config, environments: [], app_name:)
+      full_config.each_pair do |environment, cfg|
         # Only rotate keys for specified environments. Default, all
         next if !environments.empty? && !environments.include?(environment.to_sym)
 
@@ -102,7 +102,7 @@ module SymmetricEncryption
         cfg[:ciphers].shift
         cfg[:ciphers].unshift(new_key_config)
       end
-      config
+      full_config
     end
 
     # The default development config.

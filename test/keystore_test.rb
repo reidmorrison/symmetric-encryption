@@ -41,6 +41,9 @@ module SymmetricEncryption
 
         it 'creates an encrypted key file for all non-test environments' do
           (environments - %i(development test)).each do |env|
+            assert key_rotation
+            assert key_rotation[env.to_sym], key_rotation
+            assert key_rotation[env.to_sym][:ciphers]
             assert ciphers = key_rotation[env.to_sym][:ciphers], "Environment #{env} is missing ciphers: #{key_rotation[env.to_sym].inspect}"
             assert_equal 2, ciphers.size, "Environment #{env}: #{ciphers.inspect}"
             assert new_config = ciphers.first
