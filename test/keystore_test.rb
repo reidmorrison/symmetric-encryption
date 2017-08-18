@@ -3,13 +3,8 @@ require_relative 'test_helper'
 module SymmetricEncryption
   class KeystoreTest < Minitest::Test
     describe SymmetricEncryption::Keystore do
-      let :key_encrypting_key do
-        rsa_key = SymmetricEncryption::KeyEncryptingKey.generate_rsa_key
-        SymmetricEncryption::KeyEncryptingKey.new(rsa_key)
-      end
-
       let :keystore do
-        SymmetricEncryption::Keystore::File.new(file_name: 'tmp/tester.key', key_encrypting_key: key_encrypting_key)
+        SymmetricEncryption::Keystore::File.new(file_name: 'tmp/tester.key', key_encrypting_key: SymmetricEncryption::Key.new)
       end
 
       after do
@@ -48,10 +43,10 @@ module SymmetricEncryption
           (environments - %i(development test)).each do |env|
             assert ciphers = key_rotation[env.to_sym][:ciphers], "Environment #{env} is missing ciphers: #{key_rotation[env.to_sym].inspect}"
             assert_equal 2, ciphers.size, "Environment #{env}: #{ciphers.inspect}"
-            assert new_cipher = ciphers.first
-            assert file_name = new_cipher[:key_filename], "Environment #{env} is missing key_filename: #{ciphers.inspect}"
+            assert new_config = ciphers.first
+            assert file_name = new_config[:key_filename], "Environment #{env} is missing key_filename: #{ciphers.inspect}"
             assert File.exist?(file_name)
-            assert_equal 2, new_cipher[:version]
+            assert_equal 2, new_config[:version]
           end
         end
       end

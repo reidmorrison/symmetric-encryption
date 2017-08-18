@@ -83,7 +83,7 @@ module SymmetricEncryption
 
     # Returns [Array(SymmetricEncrytion::Cipher)] ciphers specified in the configuration file.
     def ciphers
-      @ciphers ||= config[:ciphers].collect { |cipher_config| Cipher.new(cipher_config) }
+      @ciphers ||= config[:ciphers].collect { |cipher_config| Cipher.from_config(cipher_config) }
     end
 
     private
@@ -127,24 +127,26 @@ module SymmetricEncryption
       # Inline single cipher before :ciphers
       unless config.has_key?(:ciphers)
         cipher = {}
-        if key_encrypting_key = config.delete(:private_rsa_key)
-          cipher[:key_encrypting_key] = key_encrypting_key
-        end
-
         config.keys.each { |key| cipher[key] = config.delete(key) }
         config[:ciphers] = [cipher]
       end
 
-      # Old :private_rsa_key
+      # Copy Old :private_rsa_key into each ciphers config
+      # Cipher.from_config replaces it with the RSA Kek
       if config[:private_rsa_key]
-        key_encrypting_key = config.delete(:private_rsa_key)
-        config[:ciphers].each { |cipher| cipher[:key_encrypting_key] = key_encrypting_key }
+        private_rsa_key = config.delete(:private_rsa_key)
+        config[:ciphers].each { |cipher| cipher[:private_rsa_key] = private_rsa_key }
       end
 
       # Old :cipher_name
       config[:ciphers].each do |cipher|
         if old_key_name_cipher = cipher.delete(:cipher)
           cipher[:cipher_name] = old_key_name_cipher
+        end
+
+        # Only temporarily used during v4 Beta process
+        if cipher[:key_encrypting_key].is_a?(String)
+          cipher[:private_rsa_key] = cipher.delete(:key_encrypting_key)
         end
 
         # Check for a prior env var in encrypted key
@@ -154,6 +156,7 @@ module SymmetricEncryption
           cipher[:key_env_var] = :placeholder
           puts "WARNING: :encrypted_key resolved to nil. Please see the migrated config file for the new option :key_env_var."
         end
+
       end
       config
     end

@@ -2,7 +2,7 @@ module SymmetricEncryption
   module Keystore
     # Store the encrypted encryption key in an environment variable
     class Environment < Memory
-      attr_accessor :key_env_var
+      attr_accessor :key_env_var, :encoding
 
       # Returns [Hash] initial configuration for heroku.
       # Displays the keys that need to be added to the heroku environment.
@@ -15,12 +15,9 @@ module SymmetricEncryption
           environment          = environment.to_sym
           configs[environment] =
             if %i(development test).include?(environment)
-              Memory.dev_config
+              Keystore.dev_config
             else
-              rsa_key                  = SymmetricEncryption::KeyEncryptingKey.generate_rsa_key
-              key_encrypting_key       = SymmetricEncryption::KeyEncryptingKey.new(rsa_key)
-              cfg                      = new_cipher(cipher_name: cipher_name, key_encrypting_key: key_encrypting_key, app_name: app_name, environment: environment)
-              cfg[:key_encrypting_key] = rsa_key
+              cfg = new_key_config(cipher_name: cipher_name, app_name: app_name, environment: environment)
               {
                 ciphers: [cfg]
               }
@@ -32,20 +29,24 @@ module SymmetricEncryption
       # Returns [Hash] a new cipher, and writes its encrypted key file.
       #
       # Increments the supplied version number by 1.
-      def self.new_cipher(cipher_name:, key_encrypting_key:, app_name:, environment:, version: 0)
+      def self.new_key_config(cipher_name:, app_name:, environment:, version: 0)
         version >= 255 ? (version = 1) : (version += 1)
 
-        cipher        = Cipher.new(cipher_name: cipher_name, key_encrypting_key: key_encrypting_key)
-        encrypted_key = cipher.encrypted_key
-        iv            = cipher.iv
+        kek = SymmetricEncryption::Key.new(cipher_name: cipher_name)
+        dek = SymmetricEncryption::Key.new(cipher_name: cipher_name)
 
         key_env_var = "#{app_name}_#{environment}_v#{version}".upcase.gsub('-', '_')
-        new(key_env_var: key_env_var, key_encrypting_key: key_encrypting_key).write_encrypted(encrypted_key)
+        new(key_env_var: key_env_var, key_encrypting_key: kek).write(dek.key)
+
         {
-          key_env_var: key_env_var,
-          iv:          iv,
-          cipher_name: cipher_name,
-          version:     version
+          cipher_name:        dek.cipher_name,
+          version:            version,
+          key_env_var:        key_env_var,
+          iv:                 dek.iv,
+          key_encrypting_key: {
+            key: kek.key,
+            iv:  kek.iv,
+          }
         }
       end
 
@@ -67,11 +68,7 @@ module SymmetricEncryption
 
       # Write the encrypted Encryption key to `encrypted_key` attribute.
       def write(key)
-        write_encrypted(key_encrypting_key.encrypt(key))
-      end
-
-      # Store an already encrypted key.
-      def write_encrypted(encrypted_key)
+        encrypted_key = key_encrypting_key.encrypt(key)
         puts "\n\n********************************************************************************"
         puts "Add the environment key to Heroku:\n\n"
         puts "  heroku config:add #{key_env_var}=#{encoder.encode(encrypted_key)}"
@@ -79,6 +76,13 @@ module SymmetricEncryption
         puts "Or, if using environment variables on another system set the environment variable as follows:\n\n"
         puts "  export #{key_env_var}=\"#{encoder.encode(encrypted_key)}\"\n\n"
         puts "********************************************************************************"
+      end
+
+      private
+
+      # Returns [SymmetricEncryption::Encoder] the encoder to use for the current encoding.
+      def encoder
+        @encoder ||= SymmetricEncryption::Encoder[encoding]
       end
 
     end

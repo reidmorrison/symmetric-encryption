@@ -15,12 +15,9 @@ module SymmetricEncryption
           environment          = environment.to_sym
           configs[environment] =
             if %i(development test).include?(environment)
-              Memory.dev_config
+              Keystore.dev_config
             else
-              rsa_key                  = SymmetricEncryption::KeyEncryptingKey.generate_rsa_key
-              key_encrypting_key       = SymmetricEncryption::KeyEncryptingKey.new(rsa_key)
-              cfg                      = new_cipher(key_path: key_path, cipher_name: cipher_name, key_encrypting_key: key_encrypting_key, app_name: app_name, environment: environment)
-              cfg[:key_encrypting_key] = rsa_key
+              cfg = new_key_config(key_path: key_path, cipher_name: cipher_name, app_name: app_name, environment: environment)
               {
                 ciphers: [cfg]
               }
@@ -32,27 +29,38 @@ module SymmetricEncryption
       # Returns [Hash] a new cipher, and writes its encrypted key file.
       #
       # Increments the supplied version number by 1.
-      def self.new_cipher(key_path:, cipher_name:, key_encrypting_key:, app_name:, environment:, version: 0)
+      def self.new_key_config(key_path:, cipher_name:, app_name:, environment:, version: 0)
         version >= 255 ? (version = 1) : (version += 1)
 
-        cipher        = Cipher.new(cipher_name: cipher_name, key_encrypting_key: key_encrypting_key)
-        encrypted_key = cipher.encrypted_key
-        iv            = cipher.iv
+        dek   = SymmetricEncryption::Key.new(cipher_name: cipher_name)
+        kek   = SymmetricEncryption::Key.new(cipher_name: cipher_name)
+        kekek = SymmetricEncryption::Key.new(cipher_name: cipher_name)
 
-        file_name = ::File.join(key_path, "#{app_name}_#{environment}_v#{version}.key")
-        new(file_name: file_name, key_encrypting_key: key_encrypting_key).write_encrypted(encrypted_key)
+        dek_file_name = ::File.join(key_path, "#{app_name}_#{environment}_v#{version}.encrypted_key")
+        new(file_name: dek_file_name, key_encrypting_key: kek).write(dek.key)
+
+        kekek_file_name = ::File.join(key_path, "#{app_name}_#{environment}_v#{version}.kekek")
+        new(file_name: kekek_file_name).write(kekek.key)
 
         {
-          key_filename: file_name,
-          iv:           iv,
-          cipher_name:  cipher_name,
-          version:      version
+          cipher_name:        dek.cipher_name,
+          version:            version,
+          key_filename:       dek_file_name,
+          iv:                 dek.iv,
+          key_encrypting_key: {
+            encrypted_key:      kekek.encrypt(kek.key),
+            iv:                 kek.iv,
+            key_encrypting_key: {
+              key_filename: kekek_file_name,
+              iv:           kekek.iv
+            }
+          }
         }
       end
 
       # Stores the Encryption key in a file.
       # Secures the Encryption key by encrypting it with a key encryption key.
-      def initialize(file_name:, key_encrypting_key:)
+      def initialize(file_name:, key_encrypting_key: nil)
         @file_name          = file_name
         @key_encrypting_key = key_encrypting_key
       end
@@ -62,17 +70,14 @@ module SymmetricEncryption
         # TODO: Validate that file is not globally readable.
         raise(SymmetricEncryption::ConfigError, "Symmetric Encryption key file: '#{file_name}' not found") unless ::File.exist?(file_name)
 
-        key_encrypting_key.decrypt(read_from_file)
+        data = read_from_file
+        key_encrypting_key ? key_encrypting_key.decrypt(data) : data
       end
 
       # Encrypt and write the key to file.
       def write(key)
-        write_to_file(key_encrypting_key.encrypt(key))
-      end
-
-      # Write an already encrypted key to file.
-      def write_encrypted(encrypted_key)
-        write_to_file(encrypted_key)
+        data = key_encrypting_key ? key_encrypting_key.encrypt(key) : key
+        write_to_file(data)
       end
 
       private

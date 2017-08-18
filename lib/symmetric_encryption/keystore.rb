@@ -42,31 +42,41 @@ module SymmetricEncryption
         # Only generate new keys for keystore's that have a key encrypting key
         next unless cipher_cfg[:key_encrypting_key]
 
-        # Generate a new random Key Encrypting Key
-        rsa_key            = KeyEncryptingKey.generate_rsa_key
-        key_encrypting_key = KeyEncryptingKey.new(rsa_key)
-
         cipher_name    = cipher_cfg[:cipher_name] || 'aes-256-cbc'
-        new_cipher_cfg =
+        new_key_config =
           if cipher_cfg.has_key?(:key_filename)
             key_path = ::File.dirname(cipher_cfg[:key_filename])
-            Keystore::File.new_cipher(key_path: key_path, cipher_name: cipher_name, key_encrypting_key: key_encrypting_key, app_name: app_name, version: version, environment: environment)
+            Keystore::File.new_key_config(key_path: key_path, cipher_name: cipher_name, app_name: app_name, version: version, environment: environment)
           elsif cipher_cfg.has_key?(:key_env_var)
-            Keystore::Environment.new_cipher(cipher_name: cipher_name, key_encrypting_key: key_encrypting_key, app_name: app_name, version: version, environment: environment)
+            Keystore::Environment.new_key_config(key_env_var: key_env_var, cipher_name: cipher_name, app_name: app_name, version: version, environment: environment)
           elsif cipher_cfg.has_key?(:encrypted_key)
-            Keystore::Memory.new_cipher(cipher_name: cipher_name, key_encrypting_key: key_encrypting_key, app_name: app_name, version: version, environment: environment)
+            Keystore::Memory.new_key_config(encrypted_key: encrypted_key, cipher_name: cipher_name, app_name: app_name, version: version, environment: environment)
           end
-
-        new_cipher_cfg[:key_encrypting_key] = rsa_key
 
         # Add as second key so that key can be published now and only used in a later deploy.
         if rolling_deploy
-          cfg[:ciphers].insert(1, new_cipher_cfg)
+          cfg[:ciphers].insert(1, new_key_config)
         else
-          cfg[:ciphers].unshift(new_cipher_cfg)
+          cfg[:ciphers].unshift(new_key_config)
         end
       end
       config
     end
+
+    # The default development config.
+    def self.dev_config
+      {
+        ciphers:
+          [
+            {
+              key:         '1234567890ABCDEF',
+              iv:          '1234567890ABCDEF',
+              cipher_name: 'aes-128-cbc',
+              version:     1
+            }
+          ]
+      }
+    end
+
   end
 end

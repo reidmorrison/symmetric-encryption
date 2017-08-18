@@ -172,12 +172,12 @@ class CipherTest < Minitest::Test
           end
 
           it 'build and parse header' do
-            assert random_key_pair = SymmetricEncryption::Cipher.random_key_pair('aes-128-cbc')
-            assert binary_header = SymmetricEncryption::Cipher.build_header(SymmetricEncryption.cipher.version, true, random_key_pair[:iv], random_key_pair[:key], random_key_pair[:cipher_name])
+            key = SymmetricEncryption::Key.new(cipher_name: 'aes-128-cbc')
+            assert binary_header = SymmetricEncryption::Cipher.build_header(SymmetricEncryption.cipher.version, true, key.iv, key.key, key.cipher_name)
             header = SymmetricEncryption::Header.new
             header.parse(binary_header)
             assert_equal true, header.compressed?
-            assert random_cipher = SymmetricEncryption::Cipher.new(random_key_pair)
+            assert random_cipher = SymmetricEncryption::Cipher.new(iv: key.iv, key: key.key, cipher_name: key.cipher_name)
             assert_equal random_cipher.cipher_name, header.cipher_name, 'Ciphers differ'
             assert_equal random_cipher.send(:key), header.key, 'Keys differ'
             assert_equal random_cipher.send(:iv), header.iv, 'IVs differ'
