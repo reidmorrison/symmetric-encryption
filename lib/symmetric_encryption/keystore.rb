@@ -37,20 +37,20 @@ module SymmetricEncryption
         # Find the highest version number
         version = cfg[:ciphers].collect { |c| c[:version] || 0 }.max
 
-        cipher_cfg = cfg[:ciphers].first
+        config = cfg[:ciphers].first
 
         # Only generate new keys for keystore's that have a key encrypting key
-        next unless cipher_cfg[:key_encrypting_key]
+        next unless config[:key_encrypting_key] || config[:private_rsa_key]
 
-        cipher_name    = cipher_cfg[:cipher_name] || 'aes-256-cbc'
+        cipher_name    = config[:cipher_name] || 'aes-256-cbc'
         new_key_config =
-          if cipher_cfg.has_key?(:key_filename)
-            key_path = ::File.dirname(cipher_cfg[:key_filename])
+          if config.has_key?(:key_filename)
+            key_path = ::File.dirname(config[:key_filename])
             Keystore::File.new_key_config(key_path: key_path, cipher_name: cipher_name, app_name: app_name, version: version, environment: environment)
-          elsif cipher_cfg.has_key?(:key_env_var)
-            Keystore::Environment.new_key_config(key_env_var: key_env_var, cipher_name: cipher_name, app_name: app_name, version: version, environment: environment)
-          elsif cipher_cfg.has_key?(:encrypted_key)
-            Keystore::Memory.new_key_config(encrypted_key: encrypted_key, cipher_name: cipher_name, app_name: app_name, version: version, environment: environment)
+          elsif config.has_key?(:key_env_var)
+            Keystore::Environment.new_key_config(cipher_name: cipher_name, app_name: app_name, version: version, environment: environment)
+          elsif config.has_key?(:encrypted_key)
+            Keystore::Memory.new_key_config(cipher_name: cipher_name, app_name: app_name, version: version, environment: environment)
           end
 
         # Add as second key so that key can be published now and only used in a later deploy.
@@ -59,6 +59,48 @@ module SymmetricEncryption
         else
           cfg[:ciphers].unshift(new_key_config)
         end
+      end
+      config
+    end
+
+    # Rotates just the key encrypting keys for the current cipher version.
+    # The existing data encryption key is not changed, it is secured using the
+    # new key encrypting keys.
+    def self.rotate_key_encrypting_keys!(config, environments: [], app_name:)
+      config.each_pair do |environment, cfg|
+        # Only rotate keys for specified environments. Default, all
+        next if !environments.empty? && !environments.include?(environment.to_sym)
+
+        config = cfg[:ciphers].first
+
+        version = config.delete(:version) || 1
+        version -= 1
+        config.delete(:always_add_header)
+        config.delete(:encoding)
+
+        Key.migrate_config!(config)
+
+        # Only generate new keys for keystore's that have a key encrypting key
+        next unless config[:key_encrypting_key]
+
+        # The current data encrypting key without any of the key encrypting keys.
+        key            = Key.from_config(config)
+        cipher_name    = key.cipher_name
+        new_key_config =
+          if config.has_key?(:key_filename)
+            key_path = ::File.dirname(config[:key_filename])
+            Keystore::File.new_key_config(key_path: key_path, cipher_name: cipher_name, app_name: app_name, version: version, environment: environment, dek: key)
+          elsif config.has_key?(:key_env_var)
+            Keystore::Environment.new_key_config(cipher_name: cipher_name, app_name: app_name, version: version, environment: environment, dek: key)
+          elsif config.has_key?(:encrypted_key)
+            Keystore::Memory.new_key_config(cipher_name: cipher_name, app_name: app_name, version: version, environment: environment, dek: key)
+          end
+
+        new_key_config
+
+        # Replace existing config entry
+        cfg[:ciphers].shift
+        cfg[:ciphers].unshift(new_key_config)
       end
       config
     end

@@ -5,7 +5,7 @@ module SymmetricEncryption
     attr_reader :key_path, :app_name, :encrypt, :config_file_path,
                 :decrypt, :random_password, :new_keys, :generate, :environment,
                 :keystore, :re_encrypt, :version, :output_file_name, :compress,
-                :environments, :cipher_name, :rolling_deploy, :rotate_keys, :prompt, :show_version,
+                :environments, :cipher_name, :rolling_deploy, :rotate_keys, :rotate_kek, :prompt, :show_version,
                 :cleanup_keys, :activate_key, :migrate
 
     KEYSTORES = [:heroku, :environment, :file]
@@ -56,6 +56,8 @@ module SymmetricEncryption
         SymmetricEncryption::Utils::ReEncryptFiles.new(version: version).process_directory(re_encrypt)
       elsif activate_key
         run_activate_key
+      elsif rotate_kek
+        run_rotate_kek
       elsif rotate_keys
         run_rotate_keys
       elsif cleanup_keys
@@ -149,6 +151,10 @@ BANNER
           @rotate_keys = true
         end
 
+        opts.on '-U', '--rotate-kek', 'Replace the existing key encrypting keys only, the data encryption key is not changed, and updates the configuration file.' do
+          @rotate_kek = true
+        end
+
         opts.on '-D', '--rolling-deploy', 'During key rotation, support a rolling deploy by placing the new key second in the list so that it is not activated yet.' do
           @rolling_deploy = true
         end
@@ -184,6 +190,8 @@ BANNER
     end
 
     private
+
+    attr_writer :environments
 
     def load_config
       Config.load!(file_name: config_file_path, env: environment)
@@ -225,6 +233,13 @@ BANNER
       SymmetricEncryption::Keystore.rotate_keys!(config, environments: environments || [], app_name: app_name, rolling_deploy: rolling_deploy)
       Config.write_file(config_file_path, config)
       puts "Existing configuration file updated with new keys: #{config_file_path}"
+    end
+
+    def run_rotate_kek
+      config = Config.read_file(config_file_path)
+      SymmetricEncryption::Keystore.rotate_key_encrypting_keys!(config, environments: environments || [], app_name: app_name)
+      Config.write_file(config_file_path, config)
+      puts "Existing configuration file updated with new key encrypting keys: #{config_file_path}"
     end
 
     def run_cleanup_keys

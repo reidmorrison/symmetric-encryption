@@ -11,11 +11,11 @@ module SymmetricEncryption
       # Notes:
       # * For development and testing purposes only!!
       # * Never store the encrypted encryption key in the source code / config file.
-      def self.new_key_config(cipher_name:, app_name:, environment:, version: 0)
+      def self.new_key_config(cipher_name:, app_name:, environment:, version: 0, dek: nil)
         version >= 255 ? (version = 1) : (version += 1)
 
         kek = SymmetricEncryption::Key.new(cipher_name: cipher_name)
-        dek = SymmetricEncryption::Key.new(cipher_name: cipher_name)
+        dek ||= SymmetricEncryption::Key.new(cipher_name: cipher_name)
 
         encrypted_key = new(key_encrypting_key: kek).write(dek.key)
 

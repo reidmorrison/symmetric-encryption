@@ -12,38 +12,23 @@ module SymmetricEncryption
     attr_writer :key
 
     # Returns [Cipher] from a cipher config instance.
-    def self.from_config(config)
-      config                         = config.dup
-      cipher_cfg                     = {}
-      cipher_cfg[:version]           = config.delete(:version) if config.has_key?(:version)
-      cipher_cfg[:always_add_header] = config.delete(:always_add_header) if config.has_key?(:always_add_header)
-      cipher_cfg[:encoding]          = config.delete(:encoding) if config.has_key?(:encoding)
+    def self.from_config(cipher_name: 'aes-256-cbc',
+      version: 0,
+      always_add_header: true,
+      encoding: :base64strict,
+      **config)
 
-      # Backward compatibility - Deprecated
-      private_rsa_key = config.delete(:private_rsa_key)
+      Key.migrate_config!(config)
+      key = Key.from_config(cipher_name: cipher_name, **config)
 
-      # Migrate old encrypted_iv
-      if encrypted_iv = config.delete(:encrypted_iv)
-        config[:iv] = RSAKey.new(private_rsa_key).decrypt(encrypted_iv)
-      end
-
-      # Migrate old iv_filename
-      if file_name = config.delete(:iv_filename)
-        encrypted_iv = File.read(file_name)
-        config[:iv]  = RSAKey.new(private_rsa_key).decrypt(encrypted_iv)
-      end
-
-      # Backward compatibility - Deprecated
-      config[:key_encrypting_key] = RSAKey.new(private_rsa_key) if private_rsa_key
-
-      # Migrate old encrypted_key to new binary format
-      if (encrypted_key = config[:encrypted_key]) && private_rsa_key
-        config[:encrypted_key] = ::Base64.decode64(encrypted_key)
-      end
-
-      dek                      = Key.from_config(config)
-      cipher_cfg[:cipher_name] = dek.cipher_name
-      Cipher.new(key: dek.key, iv: dek.iv, **cipher_cfg)
+      Cipher.new(
+        key:               key.key,
+        iv:                key.iv,
+        cipher_name:       cipher_name,
+        version:           version,
+        always_add_header: always_add_header,
+        encoding:          encoding
+      )
     end
 
     # Returns [SymmetricEncryption::Cipher] for encryption and decryption purposes.

@@ -33,6 +33,38 @@ module SymmetricEncryption
       new(key: key, iv: iv, cipher_name: cipher_name)
     end
 
+    # Migrate a prior config.
+    #
+    # Note:
+    # * The config cannot be saved back to the config file once
+    #   migrated, without generating new Key Encrypting Keys.
+    # * Only run this migration in the target environment so that the
+    #   current key encrypting files are present.
+    def self.migrate_config!(config)
+      # Backward compatibility - Deprecated
+      private_rsa_key = config.delete(:private_rsa_key)
+
+      # Migrate old encrypted_iv
+      if (encrypted_iv = config.delete(:encrypted_iv)) && private_rsa_key
+        encrypted_iv = RSAKey.new(private_rsa_key).decrypt(encrypted_iv)
+        config[:iv]  = ::Base64.decode64(encrypted_iv)
+      end
+
+      # Migrate old iv_filename
+      if (file_name = config.delete(:iv_filename)) && private_rsa_key
+        encrypted_iv = File.read(file_name)
+        config[:iv]  = RSAKey.new(private_rsa_key).decrypt(encrypted_iv)
+      end
+
+      # Backward compatibility - Deprecated
+      config[:key_encrypting_key] = RSAKey.new(private_rsa_key) if private_rsa_key
+
+      # Migrate old encrypted_key to new binary format
+      if (encrypted_key = config[:encrypted_key]) && private_rsa_key
+        config[:encrypted_key] = ::Base64.decode64(encrypted_key)
+      end
+    end
+
     def initialize(key: :random, iv: :random, cipher_name: 'aes-256-cbc')
       @key         = key == :random ? ::OpenSSL::Cipher.new(cipher_name).random_key : key
       @iv          = iv == :random ? ::OpenSSL::Cipher.new(cipher_name).random_iv : iv

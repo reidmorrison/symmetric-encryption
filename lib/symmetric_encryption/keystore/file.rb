@@ -29,10 +29,10 @@ module SymmetricEncryption
       # Returns [Hash] a new cipher, and writes its encrypted key file.
       #
       # Increments the supplied version number by 1.
-      def self.new_key_config(key_path:, cipher_name:, app_name:, environment:, version: 0)
+      def self.new_key_config(key_path:, cipher_name:, app_name:, environment:, version: 0, dek: nil)
         version >= 255 ? (version = 1) : (version += 1)
 
-        dek   = SymmetricEncryption::Key.new(cipher_name: cipher_name)
+        dek   ||= SymmetricEncryption::Key.new(cipher_name: cipher_name)
         kek   = SymmetricEncryption::Key.new(cipher_name: cipher_name)
         kekek = SymmetricEncryption::Key.new(cipher_name: cipher_name)
 
