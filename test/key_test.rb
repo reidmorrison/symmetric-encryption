@@ -2,6 +2,11 @@ require_relative 'test_helper'
 
 class KeyTest < Minitest::Test
   describe SymmetricEncryption::Key do
+    after do
+      # Cleanup generated encryption key files.
+      `rm tmp/dek_tester* 2> /dev/null`
+    end
+
     let :random_key do
       SymmetricEncryption::Key.new
     end
@@ -112,7 +117,7 @@ class KeyTest < Minitest::Test
       end
 
       let :dek_file_name do
-        'tmp/tester_dek.encrypted_key'
+        'tmp/dek_tester_dek.encrypted_key'
       end
 
       describe 'key' do

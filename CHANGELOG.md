@@ -1,12 +1,16 @@
 # Change Log
 
-## [Unreleased](https://github.com/rocketjob/symmetric-encryption/tree/HEAD)
-
-[Full Changelog](https://github.com/rocketjob/symmetric-encryption/compare/v3.9.1...HEAD)
+## [v4.0.0.beta3](https://github.com/rocketjob/symmetric-encryption/tree/v4.0.0.beta3) (2017-08-18)
+[Full Changelog](https://github.com/rocketjob/symmetric-encryption/compare/v3.9.1...v4.0.0.beta3)
 
 **Closed issues:**
 
+- CLI not respecting --envs \(or --environments option\) [\#81](https://github.com/rocketjob/symmetric-encryption/issues/81)
+- Error generating keys [\#79](https://github.com/rocketjob/symmetric-encryption/issues/79)
 - Setting attribute to empty string changes it to null [\#77](https://github.com/rocketjob/symmetric-encryption/issues/77)
+- Better standalone support [\#75](https://github.com/rocketjob/symmetric-encryption/issues/75)
+- Confusing configuration messaging [\#66](https://github.com/rocketjob/symmetric-encryption/issues/66)
+- Heroku support for non-rails apps [\#56](https://github.com/rocketjob/symmetric-encryption/issues/56)
 
 ## [v3.9.1](https://github.com/rocketjob/symmetric-encryption/tree/v3.9.1) (2017-05-26)
 [Full Changelog](https://github.com/rocketjob/symmetric-encryption/compare/v3.9.0...v3.9.1)
