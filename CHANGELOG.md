@@ -1,5 +1,8 @@
 # Change Log
 
+## [v4.0.0](https://github.com/rocketjob/symmetric-encryption/tree/v4.0.0) (2017-08-30)
+[Full Changelog](https://github.com/rocketjob/symmetric-encryption/compare/v4.0.0.beta3...v4.0.0)
+
 ## [v4.0.0.beta3](https://github.com/rocketjob/symmetric-encryption/tree/v4.0.0.beta3) (2017-08-18)
 [Full Changelog](https://github.com/rocketjob/symmetric-encryption/compare/v3.9.1...v4.0.0.beta3)
 
