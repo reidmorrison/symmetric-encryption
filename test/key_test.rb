@@ -2,6 +2,10 @@ require_relative 'test_helper'
 
 class KeyTest < Minitest::Test
   describe SymmetricEncryption::Key do
+    before do
+      Dir.mkdir('tmp') unless Dir.exist?('tmp')
+    end
+
     after do
       # Cleanup generated encryption key files.
       `rm tmp/dek_tester* 2> /dev/null`
