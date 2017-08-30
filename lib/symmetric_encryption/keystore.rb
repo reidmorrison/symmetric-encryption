@@ -73,15 +73,16 @@ module SymmetricEncryption
 
         config = cfg[:ciphers].first
 
-        version = config.delete(:version) || 1
-        version -= 1
-        config.delete(:always_add_header)
-        config.delete(:encoding)
-
-        Key.migrate_config!(config)
-
         # Only generate new keys for keystore's that have a key encrypting key
         next unless config[:key_encrypting_key]
+
+        version = config.delete(:version) || 1
+        version -= 1
+
+        always_add_header = config.delete(:always_add_header)
+        encoding          = config.delete(:encoding)
+
+        Key.migrate_config!(config)
 
         # The current data encrypting key without any of the key encrypting keys.
         key            = Key.from_config(config)
@@ -96,7 +97,8 @@ module SymmetricEncryption
             Keystore::Memory.new_key_config(cipher_name: cipher_name, app_name: app_name, version: version, environment: environment, dek: key)
           end
 
-        new_key_config
+        new_key_config[:always_add_header] = always_add_header
+        new_key_config[:encoding]          = encoding
 
         # Replace existing config entry
         cfg[:ciphers].shift

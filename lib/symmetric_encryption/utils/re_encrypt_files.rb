@@ -6,7 +6,7 @@
 #   * The search looks for the header and then replaces the encrypted value.
 #
 # Example:
-#   re_encrypt = SymmetricEncryption::Utils::ReEncryptConfigFiles.new(version: 4)
+#   re_encrypt = SymmetricEncryption::Utils::ReEncryptFiles.new(version: 4)
 #   re_encrypt.process_directory('../../**/*.yml')
 #
 # Notes:
@@ -72,13 +72,10 @@ module SymmetricEncryption
               line
             end
         end
-        if hits
+        if hits > 0
           File.open(file_name, 'wb') { |file| file.write(output_lines) }
         end
         hits
-      rescue
-        puts "Failed re-encrypting the file contents of: #{file_name}"
-        raise
       end
 
       # Re Encrypt an entire file
@@ -112,8 +109,12 @@ module SymmetricEncryption
               re_encrypt_file(file_name)
             end
           else
-            count = re_encrypt_contents(file_name)
-            puts "Re-encrypted #{count} encrypted value(s) in: #{file_name}" if count > 0
+            begin
+              count = re_encrypt_contents(file_name)
+              puts "Re-encrypted #{count} encrypted value(s) in: #{file_name}" if count > 0
+            rescue StandardError => exc
+              puts "Failed re-encrypting the file contents of: #{file_name}. #{exc.class.name}: #{exc.message}"
+            end
           end
         end
       end
@@ -121,7 +122,7 @@ module SymmetricEncryption
       private
 
       def regexp
-        @regexp ||= /#{SymmetricEncryption.cipher.encoded_magic_header}([A-Za-z0-9+\/]+=+[\\n]*)/
+        @regexp ||= /#{SymmetricEncryption.cipher.encoded_magic_header}([A-Za-z0-9+\/]+[=\\n]*)/
       end
 
       # Returns [Integer] encrypted file key version.
