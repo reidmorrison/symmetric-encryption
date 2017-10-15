@@ -129,4 +129,4 @@ m.valid?
 #  => true
 ~~~
 
-### Next => [Configuration](v3_configuration.html)
+### Next => [Configuration](configuration.html)
