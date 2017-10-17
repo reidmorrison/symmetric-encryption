@@ -24,35 +24,35 @@ Install using bundler:
 
 Generate the configuration file and encryption keys for every environment:
 
-    symmetric-encryption --generate 
-    
+    symmetric-encryption --generate
+
 Options:
 * `--key-path OUTPUT_PATH`
     * The path where the encrypted key files should be written to.
       For example `/etc/symmetric-encryption`.
-    * This path should be outside of the application and definitely under a 
+    * This path should be outside of the application and definitely under a
       path that would _not_ be included in the source control system.
     * Secure the path and generated files so that only the user under which the
       application runs can access them.
     * Move the environment specific key files to their relevant environments
       and then destroy them from development machines.
     * Only used by the file keystore, when using `--heroku` or `--environment` then `--key-path` is not used.
-    * If the directory does not exist it will attempt to create it. However, the default of `/etc/symmetric-encryption` 
+    * If the directory does not exist it will attempt to create it. However, the default of `/etc/symmetric-encryption`
       is seldom writable by regular user accounts.
     * Default: `/etc/symmetric-encryption`
 * `--app-name NAME`
-    * Set an application name. 
+    * Set an application name.
     * If running rails, recommended to set this to the rails application name.
     * The file keystore uses the app name as part of the file name.
     * The environment keystore uses the app name as part of the environment variable name.
     * Recommed using a lowercase application name.
     * Default: `symmetric-encryption`
 * `--envs ENVIRONMENTS`
-    * Comma separated list of environments for which to generate the config file. 
+    * Comma separated list of environments for which to generate the config file.
     * Default: development,test,release,production
 * `--cipher-name NAME`
-    * Name of the cipher to use when generating a new config file, or when rotating keys. 
-    * Default: `aes-256-cbc` 
+    * Name of the cipher to use when generating a new config file, or when rotating keys.
+    * Default: `aes-256-cbc`
 * `--config CONFIG_FILE`
     * Path and filename of the generated configuration file.
     * Default: `config/symmetric-encryption.yml`.
@@ -68,7 +68,7 @@ Options:
               instead of using the default file store.
             * Follow the instructions displayed to set the encrypted encryption key in each environment.
         * `file`
-            * Stores the encrypted encryption key as files on disk. 
+            * Stores the encrypted encryption key as files on disk.
             * See `--key-path` to change the location of the file keystore.
     * Default: `file`
 
@@ -84,11 +84,11 @@ sudo chown rails /etc/symmetric-encryption
 chown rails /etc/rails/keys/*
 ~~~
 
-Generate file keystore, using an application name of `my_app`. Create keystores for each of the environments 
+Generate file keystore, using an application name of `my_app`. Create keystores for each of the environments
 `development`, `test`, `preprod`, `acceptance`, and `production`.
 
-    symmetric-encryption --generate --app-name my_app --envs "development,test,preprod,acceptance,production"
-    
+    symmetric-encryption --generate --app-name my_app --environments "development,test,preprod,acceptance,production"
+
 Output
 
     New configuration file created at: config/symmetric-encryption.yml
@@ -106,7 +106,7 @@ config/symmetric-encryption.yml
 Move the file for each environment to all of the servers for that environment that will be running Symmetric Encryption.
 Do not copy all files to every environment since each environment should only be able decrypt data from its own environment.
 
-When running multiple Rails servers in a particular environment copy the same key files to every server in that environment. 
+When running multiple Rails servers in a particular environment copy the same key files to every server in that environment.
 I.e. All Rails servers in each environment must run the same encryption keys.
 
 The file `config/symmetric-encryption.yml` should be stored in the source control system along with the other source code.
@@ -120,7 +120,7 @@ It is recommended to lock down the key files to prevent any other user from bein
 ~~~
 sudo chmod -R 0400 /etc/symmetric-encryption
 ~~~
-  
+
 ##### Heroku Example
 
 Specify Heroku as the keystore so that the encrypted encryption keys can be stored in Heroku instead of in files.
