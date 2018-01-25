@@ -39,12 +39,12 @@ module SymmetricEncryption #:nodoc:
           rescue ArgumentError => exc
             puts "\nSymmetric Encryption not able to read keys."
             puts "#{exc.class.name} #{exc.message}"
-            puts "To generate a new config file and key files: symmetric-encryption --generate --key-path /etc/#{app_name} --app_name #{app_name}\n\n"
+            puts "To generate a new config file and key files: symmetric-encryption --generate --key-path /etc/#{app_name} --app-name #{app_name}\n\n"
             raise(exc)
           end
         else
           puts "\nSymmetric Encryption config not found."
-          puts "To generate a new config file and key files: symmetric-encryption --generate --key-path /etc/#{app_name} --app_name #{app_name}\n\n"
+          puts "To generate a new config file and key files: symmetric-encryption --generate --key-path /etc/#{app_name} --app-name #{app_name}\n\n"
         end
       end
     end
