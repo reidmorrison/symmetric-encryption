@@ -200,7 +200,7 @@ BANNER
     def generate_new_config
       config_file_does_not_exist!
       self.environments ||= %i(development test release production)
-      cfg          =
+      cfg               =
         if keystore == :file
           SymmetricEncryption::Keystore::File.new_config(
             key_path:     key_path,

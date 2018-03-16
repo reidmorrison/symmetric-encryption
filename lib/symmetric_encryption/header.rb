@@ -78,7 +78,7 @@ module SymmetricEncryption
                    auth_tag: nil)
 
       @version     = version
-      @compress  = compress
+      @compress    = compress
       @iv          = iv
       @key         = key
       @cipher_name = cipher_name

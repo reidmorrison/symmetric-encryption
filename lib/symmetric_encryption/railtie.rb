@@ -31,7 +31,7 @@ module SymmetricEncryption #:nodoc:
     config.before_configuration do
       # Check if already configured
       unless ::SymmetricEncryption.cipher?
-        app_name = Rails::Application.subclasses.first.parent.to_s.underscore
+        app_name    = Rails::Application.subclasses.first.parent.to_s.underscore
         config_file = Rails.root.join('config', 'symmetric-encryption.yml')
         if config_file.file?
           begin

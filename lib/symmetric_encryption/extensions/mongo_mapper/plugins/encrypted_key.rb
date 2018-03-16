@@ -19,7 +19,7 @@ module MongoMapper
       }
 
       module ClassMethods
-        def encrypted_key(key_name, type, full_options={})
+        def encrypted_key(key_name, type, full_options = {})
           full_options = full_options.is_a?(Hash) ? full_options.dup : {}
           options      = full_options.delete(:encrypted) || {}
           # Support overriding the name of the decrypted attribute

@@ -76,7 +76,7 @@ class ReaderTest < Minitest::Test
               if size == 0
                 assert_equal '', buf
               else
-                assert_equal @data_str[index..index+size-1], buf
+                assert_equal @data_str[index..index + size - 1], buf
               end
               index += size
             end
@@ -140,7 +140,7 @@ class ReaderTest < Minitest::Test
           end
 
           it '.empty?' do
-            assert_equal (@data_size==0), SymmetricEncryption::Reader.empty?(@file_name)
+            assert_equal (@data_size == 0), SymmetricEncryption::Reader.empty?(@file_name)
             assert_raises Errno::ENOENT do
               SymmetricEncryption::Reader.empty?('missing_file')
             end

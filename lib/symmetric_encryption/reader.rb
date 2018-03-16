@@ -198,7 +198,7 @@ module SymmetricEncryption
     #
     # At end of file, it returns nil if no more data is available, or the last
     # remaining bytes
-    def read(length=nil)
+    def read(length = nil)
       data = nil
       if length
         return '' if length == 0
@@ -210,7 +210,7 @@ module SymmetricEncryption
         if @read_buffer.length == 0
           data = nil
         elsif @read_buffer.length > length
-          data = @read_buffer.slice!(0..length-1)
+          data = @read_buffer.slice!(0..length - 1)
         else
           data         = @read_buffer
           @read_buffer = ''
@@ -242,7 +242,7 @@ module SymmetricEncryption
     # A sep_string of nil reads the entire contents of the file
     # Returns nil on eof
     # The stream must be opened for reading or an IOError will be raised.
-    def gets(sep_string, length=nil)
+    def gets(sep_string, length = nil)
       return read(length) if sep_string.nil?
 
       # Read more data until we get the sep_string
@@ -299,7 +299,7 @@ module SymmetricEncryption
     #          then re-read upto the point specified
     # WARNING: IO::SEEK_END will read the entire file and then again
     #          upto the point specified
-    def seek(amount, whence=IO::SEEK_SET)
+    def seek(amount, whence = IO::SEEK_SET)
       offset = 0
       case whence
       when IO::SEEK_SET

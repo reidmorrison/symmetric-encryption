@@ -16,10 +16,10 @@ module SymmetricEncryption
 
         let :keystore_config do
           SymmetricEncryption::Keystore::Environment.new_key_config(
-            cipher_name:        'aes-256-cbc',
-            app_name:           'tester',
-            environment:        'test',
-            version:            version
+            cipher_name: 'aes-256-cbc',
+            app_name:    'tester',
+            environment: 'test',
+            version:     version
           )
         end
 
