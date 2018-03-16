@@ -255,6 +255,5 @@ module SymmetricEncryption
       out    = buffer.byteslice(offset, len)
       [out, offset + len]
     end
-
   end
 end

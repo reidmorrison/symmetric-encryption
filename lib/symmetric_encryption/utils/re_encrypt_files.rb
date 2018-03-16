@@ -72,9 +72,7 @@ module SymmetricEncryption
               line
             end
         end
-        if hits > 0
-          File.open(file_name, 'wb') { |file| file.write(output_lines) }
-        end
+        File.open(file_name, 'wb') { |file| file.write(output_lines) } if hits > 0
         hits
       end
 
@@ -86,7 +84,7 @@ module SymmetricEncryption
         end
         File.delete(file_name)
         File.rename(temp_file_name, file_name)
-      rescue
+      rescue StandardError
         File.delete(temp_file_name) if temp_file_name && File.exist?(temp_file_name)
         raise
       end
@@ -135,7 +133,6 @@ module SymmetricEncryption
       rescue OpenSSL::Cipher::CipherError
         nil
       end
-
     end
   end
 end

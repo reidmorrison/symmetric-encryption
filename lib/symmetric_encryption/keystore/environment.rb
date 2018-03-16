@@ -7,14 +7,14 @@ module SymmetricEncryption
       # Returns [Hash] initial configuration for heroku.
       # Displays the keys that need to be added to the heroku environment.
       def self.new_config(app_name: 'symmetric-encryption',
-        environments: %i(development test release production),
+        environments: %i[development test release production],
         cipher_name: 'aes-256-cbc')
 
         configs = {}
         environments.each do |environment|
           environment          = environment.to_sym
           configs[environment] =
-            if %i(development test).include?(environment)
+            if %i[development test].include?(environment)
               Keystore.dev_config
             else
               cfg = new_key_config(cipher_name: cipher_name, app_name: app_name, environment: environment)
@@ -35,7 +35,7 @@ module SymmetricEncryption
         kek = SymmetricEncryption::Key.new(cipher_name: cipher_name)
         dek ||= SymmetricEncryption::Key.new(cipher_name: cipher_name)
 
-        key_env_var = "#{app_name}_#{environment}_v#{version}".upcase.gsub('-', '_')
+        key_env_var = "#{app_name}_#{environment}_v#{version}".upcase.tr('-', '_')
         new(key_env_var: key_env_var, key_encrypting_key: kek).write(dek.key)
 
         {
@@ -45,7 +45,7 @@ module SymmetricEncryption
           iv:                 dek.iv,
           key_encrypting_key: {
             key: kek.key,
-            iv:  kek.iv,
+            iv:  kek.iv
           }
         }
       end
@@ -75,7 +75,7 @@ module SymmetricEncryption
         puts
         puts "Or, if using environment variables on another system set the environment variable as follows:\n\n"
         puts "  export #{key_env_var}=\"#{encoder.encode(encrypted_key)}\"\n\n"
-        puts "********************************************************************************"
+        puts '********************************************************************************'
       end
 
       private
@@ -84,7 +84,6 @@ module SymmetricEncryption
       def encoder
         @encoder ||= SymmetricEncryption::Encoder[encoding]
       end
-
     end
   end
 end

@@ -1,11 +1,10 @@
-# encoding: utf-8
 require_relative 'test_helper'
 
 # Unit Test for SymmetricEncryption
 #
 class EncoderTest < Minitest::Test
   describe SymmetricEncryption::Encoder do
-    [:none, :base64, :base64strict, :base16].each do |encoding|
+    %i[none base64 base64strict base16].each do |encoding|
       describe "encoding: #{encoding}" do
         before do
           @data         = '987654321'
@@ -57,5 +56,4 @@ class EncoderTest < Minitest::Test
       end
     end
   end
-
 end

@@ -105,5 +105,3 @@ Mongoid::Fields.option :encrypted do |model, field, options|
     SymmetricEncryption::Generator.generate_decrypted_accessors(model, decrypted_field_name, encrypted_field_name, options)
   end
 end
-
-

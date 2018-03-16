@@ -36,7 +36,11 @@ module ActiveRecord #:nodoc:
     def self.attr_encrypted(*params)
       # Ensure ActiveRecord has created all its methods first
       # Ignore failures since the table may not yet actually exist
-      define_attribute_methods rescue nil
+      begin
+        define_attribute_methods
+      rescue StandardError
+        nil
+      end
 
       options = params.last.is_a?(Hash) ? params.pop.dup : {}
 
@@ -102,6 +106,5 @@ module ActiveRecord #:nodoc:
     def self.encrypted_column?(attribute)
       encrypted_columns.include?(attribute)
     end
-
   end
 end

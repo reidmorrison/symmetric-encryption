@@ -26,7 +26,7 @@ module SymmetricEncryption
           iv:                 iv,
           key_encrypting_key: {
             key: kek.key,
-            iv:  kek.iv,
+            iv:  kek.iv
           }
         }
       end
@@ -47,7 +47,6 @@ module SymmetricEncryption
       def write(key)
         self.encrypted_key = key_encrypting_key.encrypt(key)
       end
-
     end
   end
 end

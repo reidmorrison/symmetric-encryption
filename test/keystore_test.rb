@@ -14,7 +14,7 @@ module SymmetricEncryption
 
       describe '.rotate_keys' do
         let :environments do
-          %i(development test acceptance preprod production)
+          %i[development test acceptance preprod production]
         end
 
         let :config do
@@ -40,7 +40,7 @@ module SymmetricEncryption
         end
 
         it 'creates an encrypted key file for all non-test environments' do
-          (environments - %i(development test)).each do |env|
+          (environments - %i[development test]).each do |env|
             assert key_rotation
             assert key_rotation[env.to_sym], key_rotation
             assert key_rotation[env.to_sym][:ciphers]
@@ -53,7 +53,6 @@ module SymmetricEncryption
           end
         end
       end
-
     end
   end
 end

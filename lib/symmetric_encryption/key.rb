@@ -21,12 +21,12 @@ module SymmetricEncryption
 
       key ||=
         if encrypted_key
-          raise(ArgumentError, "Missing mandatory :key_encrypting_key when config includes :encrypted_key") unless key_encrypting_key
+          raise(ArgumentError, 'Missing mandatory :key_encrypting_key when config includes :encrypted_key') unless key_encrypting_key
           Keystore::Memory.new(encrypted_key: encrypted_key, key_encrypting_key: key_encrypting_key).read
         elsif key_filename
           Keystore::File.new(file_name: key_filename, key_encrypting_key: key_encrypting_key).read
         elsif key_env_var
-          raise(ArgumentError, "Missing mandatory :key_encrypting_key when config includes :key_env_var") unless key_encrypting_key
+          raise(ArgumentError, 'Missing mandatory :key_encrypting_key when config includes :key_env_var') unless key_encrypting_key
           Keystore::Environment.new(key_env_var: key_env_var, key_encrypting_key: key_encrypting_key).read
         end
 
@@ -101,6 +101,5 @@ module SymmetricEncryption
       result = openssl_cipher.update(encrypted_string)
       result << openssl_cipher.final
     end
-
   end
 end

@@ -92,7 +92,6 @@ class CipherTest < Minitest::Test
           assert header.compressed?
         end
       end
-
     end
 
     describe '#to_s' do
@@ -138,7 +137,6 @@ class CipherTest < Minitest::Test
             assert header.compressed?
           end
         end
-
       end
     end
 
@@ -212,7 +210,5 @@ class CipherTest < Minitest::Test
         end
       end
     end
-
   end
 end
-

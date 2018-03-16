@@ -233,8 +233,6 @@ class KeyTest < Minitest::Test
           assert_equal 'aes-256-cbc', config_key.cipher_name
         end
       end
-
     end
-
   end
 end

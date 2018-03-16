@@ -66,7 +66,7 @@ module SymmetricEncryption
 
       describe '.new_config' do
         let :environments do
-          %i(development test acceptance preprod production)
+          %i[development test acceptance preprod production]
         end
 
         let :config do
@@ -88,7 +88,7 @@ module SymmetricEncryption
         end
 
         it 'each non test environment has a key encryption key' do
-          (environments - %i(development test)).each do |env|
+          (environments - %i[development test]).each do |env|
             assert config[env][:ciphers].first[:key_encrypting_key], "Environment #{env} is missing the key encryption key"
           end
         end
@@ -101,7 +101,7 @@ module SymmetricEncryption
         end
 
         it 'creates an encrypted key file for all non-test environments' do
-          (environments - %i(development test)).each do |env|
+          (environments - %i[development test]).each do |env|
             assert ciphers = config[env][:ciphers], "Environment #{env} is missing ciphers: #{config[env].inspect}"
             assert file_name = ciphers.first[:key_filename], "Environment #{env} is missing key_filename: #{ciphers.inspect}"
             assert File.exist?(file_name)
@@ -119,7 +119,6 @@ module SymmetricEncryption
           assert_equal 'TEST', keystore.read
         end
       end
-
     end
   end
 end

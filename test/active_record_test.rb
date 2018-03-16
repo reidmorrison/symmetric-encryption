@@ -1,9 +1,9 @@
 require_relative 'test_helper'
 
-ActiveRecord::Base.configurations = YAML::load(ERB.new(IO.read('test/config/database.yml')).result)
+ActiveRecord::Base.configurations = YAML.load(ERB.new(IO.read('test/config/database.yml')).result)
 ActiveRecord::Base.establish_connection(:test)
 
-#@formatter:off
+# @formatter:off
 ActiveRecord::Schema.define version: 0 do
   create_table :users, force: true do |t|
     t.string :encrypted_bank_account_number
@@ -59,7 +59,7 @@ class User < ActiveRecord::Base
   attr_encrypted :text,           type: :string
   attr_encrypted :number,         type: :integer
 
-  validates      :text, format: { with: /\A[a-zA-Z ]+\z/, message: 'only allows letters' }, presence: true
+  validates      :text, format: {with: /\A[a-zA-Z ]+\z/, message: 'only allows letters'}, presence: true
   validates      :number, presence: true
 end
 
@@ -71,11 +71,11 @@ class UniqueUser < ActiveRecord::Base
   validates_uniqueness_of :encrypted_username, allow_blank: true, if: :encrypted_username_changed?
 
   validates :username,
-    length:      {in: 3..20},
-    format:      {with: /\A[\w\-]+\z/},
-    allow_blank: true
+            length:      {in: 3..20},
+            format:      {with: /\A[\w\-]+\z/},
+            allow_blank: true
 end
-#@formatter:on
+# @formatter:on
 
 #
 # Unit Test for attr_encrypted extensions in ActiveRecord
@@ -84,10 +84,10 @@ class ActiveRecordTest < Minitest::Test
   describe 'ActiveRecord' do
     INTEGER_VALUE       = 12
     FLOAT_VALUE         = 88.12345
-    DECIMAL_VALUE       = BigDecimal.new('22.51')
-    DATETIME_VALUE      = DateTime.new(2001, 11, 26, 20, 55, 54, "-5")
-    TIME_VALUE          = Time.new(2013, 01, 01, 22, 30, 00, "-04:00")
-    DATE_VALUE          = Date.new(1927, 04, 02)
+    DECIMAL_VALUE       = BigDecimal('22.51')
+    DATETIME_VALUE      = DateTime.new(2001, 11, 26, 20, 55, 54, '-5')
+    TIME_VALUE          = Time.new(2013, 1, 1, 22, 30, 0, '-04:00')
+    DATE_VALUE          = Date.new(1927, 4, 2)
     STRING_VALUE        = 'A string containing some data to be encrypted with a random initialization vector'
     LONG_STRING_VALUE   = 'A string containing some data to be encrypted with a random initialization vector and compressed since it takes up so much space in plain text form'
     BINARY_STRING_VALUE = "Non-UTF8 Binary \x92 string".force_encoding('BINARY')
@@ -261,13 +261,13 @@ class ActiveRecordTest < Minitest::Test
       it 'returns encrypted attributes for the class' do
         expect = {social_security_number: :encrypted_social_security_number, bank_account_number: :encrypted_bank_account_number}
         result = User.encrypted_attributes
-        expect.each_pair { |k, v| assert_equal expect[k], result[k] }
+        expect.each_pair { |k, _v| assert_equal expect[k], result[k] }
       end
     end
 
     describe '.encrypted_keys' do
       it 'return encrypted keys for the class' do
-        expect = [:social_security_number, :bank_account_number]
+        expect = %i[social_security_number bank_account_number]
         result = User.encrypted_keys
         expect.each { |val| assert result.include?(val) }
 
@@ -278,7 +278,7 @@ class ActiveRecordTest < Minitest::Test
 
     describe '.encrypted_columns' do
       it 'return encrypted columns for the class' do
-        expect = [:encrypted_social_security_number, :encrypted_bank_account_number]
+        expect = %i[encrypted_social_security_number encrypted_bank_account_number]
         result = User.encrypted_columns
         expect.each { |val| assert result.include?(val) }
 
@@ -336,27 +336,27 @@ class ActiveRecordTest < Minitest::Test
       end
 
       after do
-        @user.destroy if @user
+        @user&.destroy
       end
 
       it 'return correct data type before save' do
         u = User.new(integer_value: '5')
         assert_equal 5, u.integer_value
-        assert u.integer_value.kind_of?(Integer)
+        assert u.integer_value.is_a?(Integer)
       end
 
       it 'handle gsub! for non-encrypted_field' do
-        @user.name.gsub!('a', 'v')
-        new_name = @name.gsub('a', 'v')
+        @user.name.tr!('a', 'v')
+        new_name = @name.tr('a', 'v')
         assert_equal new_name, @user.name
         @user.reload
         assert_equal new_name, @user.name
       end
 
-      it "prevent gsub! on non-encrypted value of encrypted_field" do
+      it 'prevent gsub! on non-encrypted value of encrypted_field' do
         # can't modify frozen String
         assert_raises RuntimeError do
-          @user.bank_account_number.gsub!('5', '4')
+          @user.bank_account_number.tr!('5', '4')
         end
       end
 
@@ -392,19 +392,19 @@ class ActiveRecordTest < Minitest::Test
         end
 
         [
-          #@formatter:off
+          # @formatter:off
           {attribute: :integer_value,       klass: Integer,    value: INTEGER_VALUE,       new_value: 98},
           {attribute: :float_value,         klass: Float,      value: FLOAT_VALUE,         new_value: 45.4321},
-          {attribute: :decimal_value,       klass: BigDecimal, value: DECIMAL_VALUE,       new_value: BigDecimal.new('99.95'), coercible: '22.51'},
+          {attribute: :decimal_value,       klass: BigDecimal, value: DECIMAL_VALUE,       new_value: BigDecimal('99.95'), coercible: '22.51'},
           {attribute: :datetime_value,      klass: DateTime,   value: DATETIME_VALUE,      new_value: DateTime.new(1998, 10, 21, 8, 33, 28, '+5'), coercible: DATETIME_VALUE.to_time},
-          {attribute: :time_value,          klass: Time,       value: TIME_VALUE,          new_value: Time.new(2000, 01, 01, 22, 30, 00, "-04:00")},
-          {attribute: :date_value,          klass: Date,       value: DATE_VALUE,          new_value: Date.new(2027, 04, 02), coercible: DATE_VALUE.to_time},
+          {attribute: :time_value,          klass: Time,       value: TIME_VALUE,          new_value: Time.new(2000, 1, 1, 22, 30, 0, '-04:00')},
+          {attribute: :date_value,          klass: Date,       value: DATE_VALUE,          new_value: Date.new(2027, 4, 2), coercible: DATE_VALUE.to_time},
           {attribute: :true_value,          klass: TrueClass,  value: true,                new_value: false},
           {attribute: :false_value,         klass: FalseClass, value: false,               new_value: true},
           {attribute: :string_value,        klass: String,     value: STRING_VALUE,        new_value: 'Hello World'},
           {attribute: :long_string_value,   klass: String,     value: LONG_STRING_VALUE,   new_value: 'A Really long Hello World'},
           {attribute: :binary_string_value, klass: String,     value: BINARY_STRING_VALUE, new_value: "A new Non-UTF8 Binary \x92 string".force_encoding('BINARY')},
-          #@formatter:on
+          # @formatter:on
         ].each do |value_test|
           describe "#{value_test[:klass]} values" do
             before do
@@ -420,13 +420,13 @@ class ActiveRecordTest < Minitest::Test
               # Need to dup since minitest attempts to modify the decrypted value which is frozen
               val = val.dup if val.duplicable?
               assert_equal @value, val, @user_clone.attributes.ai
-              assert @user.send(@attribute).kind_of?(@klass)
+              assert @user.send(@attribute).is_a?(@klass)
             end
 
             it 'coerce data type before save' do
               u = User.new(@attribute => @value)
               assert_equal @value, u.send(@attribute)
-              assert u.send(@attribute).kind_of?(@klass), "Value supposed to be coerced into #{@klass}, but is #{u.send(@attribute).class.name}"
+              assert u.send(@attribute).is_a?(@klass), "Value supposed to be coerced into #{@klass}, but is #{u.send(@attribute).class.name}"
             end
 
             it 'permit replacing value with nil' do
@@ -472,13 +472,13 @@ class ActiveRecordTest < Minitest::Test
 
           it 'return correct data type' do
             assert_equal @h, @user_clone.data_json
-            assert @user.clone.data_json.kind_of?(Hash)
+            assert @user.clone.data_json.is_a?(Hash)
           end
 
           it 'not coerce data type (leaves as hash) before save' do
             u = User.new(data_json: @h)
             assert_equal @h, u.data_json
-            assert u.data_json.kind_of?(Hash)
+            assert u.data_json.is_a?(Hash)
           end
 
           it 'permit replacing value with nil' do
@@ -504,13 +504,13 @@ class ActiveRecordTest < Minitest::Test
         describe 'YAML Serialization' do
           it 'return correct data type' do
             assert_equal @h, @user_clone.data_yaml
-            assert @user.clone.data_yaml.kind_of?(Hash)
+            assert @user.clone.data_yaml.is_a?(Hash)
           end
 
           it 'not coerce data type (leaves as hash) before save' do
             u = User.new(data_yaml: @h)
             assert_equal @h, u.data_yaml
-            assert u.data_yaml.kind_of?(Hash)
+            assert u.data_yaml.is_a?(Hash)
           end
 
           it 'permit replacing value with nil' do
@@ -563,6 +563,5 @@ class ActiveRecordTest < Minitest::Test
         assert_equal 'has already been taken', duplicate.errors.messages[:encrypted_email].first
       end
     end
-
   end
 end

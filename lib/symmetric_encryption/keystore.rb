@@ -1,10 +1,10 @@
 module SymmetricEncryption
   module Keystore
-    #@formatter:off
+    # @formatter:off
     autoload :Environment, 'symmetric_encryption/keystore/environment'
     autoload :File,        'symmetric_encryption/keystore/file'
     autoload :Memory,      'symmetric_encryption/keystore/memory'
-    #@formatter:on
+    # @formatter:on
 
     # Returns [Hash] a new configuration file after performing key rotation.
     #
@@ -44,12 +44,12 @@ module SymmetricEncryption
 
         cipher_name    = config[:cipher_name] || 'aes-256-cbc'
         new_key_config =
-          if config.has_key?(:key_filename)
+          if config.key?(:key_filename)
             key_path = ::File.dirname(config[:key_filename])
             Keystore::File.new_key_config(key_path: key_path, cipher_name: cipher_name, app_name: app_name, version: version, environment: environment)
-          elsif config.has_key?(:key_env_var)
+          elsif config.key?(:key_env_var)
             Keystore::Environment.new_key_config(cipher_name: cipher_name, app_name: app_name, version: version, environment: environment)
-          elsif config.has_key?(:encrypted_key)
+          elsif config.key?(:encrypted_key)
             Keystore::Memory.new_key_config(cipher_name: cipher_name, app_name: app_name, version: version, environment: environment)
           end
 
@@ -88,12 +88,12 @@ module SymmetricEncryption
         key            = Key.from_config(config)
         cipher_name    = key.cipher_name
         new_key_config =
-          if config.has_key?(:key_filename)
+          if config.key?(:key_filename)
             key_path = ::File.dirname(config[:key_filename])
             Keystore::File.new_key_config(key_path: key_path, cipher_name: cipher_name, app_name: app_name, version: version, environment: environment, dek: key)
-          elsif config.has_key?(:key_env_var)
+          elsif config.key?(:key_env_var)
             Keystore::Environment.new_key_config(cipher_name: cipher_name, app_name: app_name, version: version, environment: environment, dek: key)
-          elsif config.has_key?(:encrypted_key)
+          elsif config.key?(:encrypted_key)
             Keystore::Memory.new_key_config(cipher_name: cipher_name, app_name: app_name, version: version, environment: environment, dek: key)
           end
 
@@ -121,6 +121,5 @@ module SymmetricEncryption
           ]
       }
     end
-
   end
 end

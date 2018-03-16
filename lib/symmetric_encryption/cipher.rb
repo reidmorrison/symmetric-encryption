@@ -136,7 +136,7 @@ module SymmetricEncryption
       str = str.to_s
       return str if str.empty?
       encrypted = binary_encrypt(str, random_iv: random_iv, compress: compress, header: header)
-      self.encode(encrypted)
+      encode(encrypted)
     end
 
     # Decode and Decrypt string
@@ -157,7 +157,7 @@ module SymmetricEncryption
     # is thread-safe and can be called concurrently by multiple threads with
     # the same instance of Cipher
     def decrypt(str)
-      decoded = self.decode(str)
+      decoded = decode(str)
       return unless decoded
 
       return decoded if decoded.empty?
@@ -249,7 +249,7 @@ module SymmetricEncryption
       return string if string.empty?
 
       # Header required when adding a random_iv or compressing
-      header = Header.new(version: version, compress: compress) if (header == true) || random_iv || compress
+      header = Header.new(version: version, compress: compress) if header || random_iv || compress
 
       # Creates a new OpenSSL::Cipher with every call so that this call is thread-safe.
       openssl_cipher = ::OpenSSL::Cipher.new(cipher_name)
@@ -260,8 +260,8 @@ module SymmetricEncryption
         if header
           if random_iv
             openssl_cipher.iv = header.iv = openssl_cipher.random_iv
-          elsif self.iv
-            openssl_cipher.iv = self.iv
+          elsif iv
+            openssl_cipher.iv = iv
           end
           header.to_s + openssl_cipher.update(compress ? Zlib::Deflate.deflate(string) : string)
         else
@@ -312,7 +312,7 @@ module SymmetricEncryption
       openssl_cipher = ::OpenSSL::Cipher.new(header.cipher_name || cipher_name)
       openssl_cipher.decrypt
       openssl_cipher.key = header.key || @key
-      if iv = (header.iv || @iv)
+      if (iv = header.iv || @iv)
         openssl_cipher.iv = iv
       end
       result = openssl_cipher.update(data)
@@ -322,12 +322,12 @@ module SymmetricEncryption
 
     # Returns the magic header after applying the encoding in this cipher
     def encoded_magic_header
-      @encoded_magic_header ||= encoder.encode(SymmetricEncryption::Header::MAGIC_HEADER).gsub('=', '').strip
+      @encoded_magic_header ||= encoder.encode(SymmetricEncryption::Header::MAGIC_HEADER).delete('=').strip
     end
 
     # Returns [String] object represented as a string, filtering out the key
     def inspect
-      "#<#{self.class}:0x#{self.__id__.to_s(16)} @key=\"[FILTERED]\" @iv=#{iv.inspect} @cipher_name=#{cipher_name.inspect}, @version=#{version.inspect}, @encoding=#{encoding.inspect}, @always_add_header=#{always_add_header.inspect}>"
+      "#<#{self.class}:0x#{__id__.to_s(16)} @key=\"[FILTERED]\" @iv=#{iv.inspect} @cipher_name=#{cipher_name.inspect}, @version=#{version.inspect}, @encoding=#{encoding.inspect}, @always_add_header=#{always_add_header.inspect}>"
     end
 
     # DEPRECATED
@@ -350,6 +350,5 @@ module SymmetricEncryption
     private
 
     attr_reader :key
-
   end
 end

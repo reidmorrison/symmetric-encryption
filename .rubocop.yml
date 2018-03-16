@@ -1,0 +1,53 @@
+AllCops:
+  TargetRubyVersion: 2.3
+  Exclude:
+    - '*.gemspec'
+    - 'gemfiles/*'
+    - '.git/**/*'
+    - 'docs/**/*'
+
+Layout/SpaceInsideHashLiteralBraces:
+  EnforcedStyle: no_space
+  EnforcedStyleForEmptyBraces: no_space
+
+Metrics/LineLength:
+  Max: 128
+  Exclude:
+    - cli.rb
+    - 'test/**/*'
+
+Metrics/ClassLength:
+  Exclude:
+    - 'test/**/*'
+
+# Rubocop Bug, cannot tell `=` is aligned across lines
+Layout/ExtraSpacing:
+  Enabled: false
+  AllowForAlignment: true
+  ForceEqualSignAlignment: true
+  AutoCorrect: true
+
+# Rubocop Bug, cannot tell `=` is aligned across lines
+Layout/SpaceAroundOperators:
+  Enabled: false
+  AllowForAlignment: true
+  AutoCorrect: true
+
+# Support long block lengths for tests
+Metrics/BlockLength:
+  ExcludedMethods:
+    - describe
+    - it
+    - before
+    - after
+
+# Needed for testing DateTime
+Style/DateTime:
+  Exclude: ['test/**/*']
+
+# Make selection:
+Layout/IndentHeredoc:
+  EnforcedStyle: squiggly
+
+Style/FrozenStringLiteralComment:
+  Enabled: false

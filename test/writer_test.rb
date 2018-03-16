@@ -73,6 +73,5 @@ class WriterTest < Minitest::Test
         assert_equal @data_str, SymmetricEncryption::Reader.read(@file_name)
       end
     end
-
   end
 end

@@ -76,4 +76,3 @@ module SymmetricEncryption
     end
   end
 end
-

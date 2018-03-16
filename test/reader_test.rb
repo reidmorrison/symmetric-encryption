@@ -37,14 +37,14 @@ class ReaderTest < Minitest::Test
           @data_encrypted = header ? @data_encrypted_with_header : @data_encrypted_without_header
         end
 
-        it "#read()" do
+        it '#read()' do
           stream = StringIO.new(@data_encrypted)
           # Version 0 supplied if the file/stream does not have a header
-          decrypted = SymmetricEncryption::Reader.open(stream, version: 0) { |file| file.read }
+          decrypted = SymmetricEncryption::Reader.open(stream, version: 0, &:read)
           assert_equal @data_str, decrypted
         end
 
-        it "#read(size) followed by #read()" do
+        it '#read(size) followed by #read()' do
           stream = StringIO.new(@data_encrypted)
           # Version 0 supplied if the file/stream does not have a header
           decrypted = SymmetricEncryption::Reader.open(stream, version: 0) do |file|
@@ -54,7 +54,7 @@ class ReaderTest < Minitest::Test
           assert_equal @data_str[10..-1], decrypted
         end
 
-        it "#each_line" do
+        it '#each_line' do
           stream = StringIO.new(@data_encrypted)
           i      = 0
           # Version 0 supplied if the file/stream does not have a header
@@ -66,7 +66,7 @@ class ReaderTest < Minitest::Test
           end
         end
 
-        it "#read(size)" do
+        it '#read(size)' do
           stream = StringIO.new(@data_encrypted)
           # Version 0 supplied if the file/stream does not have a header
           SymmetricEncryption::Reader.open(stream, version: 0) do |file|
@@ -99,11 +99,10 @@ class ReaderTest < Minitest::Test
       # Random iv only
       {random_key: false, random_iv: true},
       # Random iv only with compression
-      {random_iv: true, compress: true},
+      {random_iv: true, compress: true}
     ].each do |options|
 
-      [:data, :empty, :blank].each do |usecase|
-
+      %i[data empty blank].each do |usecase|
         describe "read from #{usecase} file with options: #{options.inspect}" do
           before do
             case usecase
@@ -155,7 +154,7 @@ class ReaderTest < Minitest::Test
 
           it '.open return Zlib::GzipReader when compressed' do
             file = SymmetricEncryption::Reader.open(@file_name)
-            #assert_equal (@header && (options[:compress]||false)), file.is_a?(Zlib::GzipReader)
+            # assert_equal (@header && (options[:compress]||false)), file.is_a?(Zlib::GzipReader)
             file.close
           end
 
@@ -183,7 +182,6 @@ class ReaderTest < Minitest::Test
             else
               assert_nil data
             end
-
           end
 
           it '#each_line' do
@@ -239,13 +237,10 @@ class ReaderTest < Minitest::Test
           it '#gets(delim,size)' do
             SymmetricEncryption::Reader.open(@file_name) do |file|
               i = 0
-              while file.gets("\n", 128)
-                i += 1
-              end
+              i += 1 while file.gets("\n", 128)
               assert_equal (@data_size > 0 ? 3 : 0), i
             end
           end
-
         end
       end
     end
@@ -264,7 +259,7 @@ class ReaderTest < Minitest::Test
       end
 
       it 'decrypt from file in a single read' do
-        decrypted = SymmetricEncryption::Reader.open(@file_name) { |file| file.read }
+        decrypted = SymmetricEncryption::Reader.open(@file_name, &:read)
         assert_equal @data_str, decrypted
       end
 
@@ -306,7 +301,7 @@ class ReaderTest < Minitest::Test
       end
 
       it 'decrypt from file in a single read' do
-        decrypted = SymmetricEncryption::Reader.open(@file_name, version: 0) { |file| file.read }
+        decrypted = SymmetricEncryption::Reader.open(@file_name, version: 0, &:read)
         assert_equal @data_str, decrypted
       end
 
@@ -317,6 +312,5 @@ class ReaderTest < Minitest::Test
         end
       end
     end
-
   end
 end

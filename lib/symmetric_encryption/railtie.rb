@@ -1,7 +1,5 @@
-# encoding: utf-8
 module SymmetricEncryption #:nodoc:
   class Railtie < Rails::Railtie #:nodoc:
-
     # Exposes Symmetric Encryption's configuration to the Rails application configuration.
     #
     # @example Set up configuration in the Rails app.
@@ -48,6 +46,5 @@ module SymmetricEncryption #:nodoc:
         end
       end
     end
-
   end
 end

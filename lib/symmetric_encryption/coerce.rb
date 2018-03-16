@@ -9,7 +9,7 @@ module SymmetricEncryption
       datetime: DateTime,
       time:     Time,
       date:     Date
-    }
+    }.freeze
 
     # Coerce given value into given type
     # Does not coerce json or yaml values
@@ -42,7 +42,7 @@ module SymmetricEncryption
       when :yaml
         YAML.load(value)
       else
-        self.coerce(value, type, String)
+        coerce(value, type, String)
       end
     end
 
@@ -60,7 +60,7 @@ module SymmetricEncryption
       when :yaml
         value.to_yaml
       else
-        self.coerce(value, :string, coercion_type(type, value))
+        coerce(value, :string, coercion_type(type, value))
       end
     end
 
@@ -72,6 +72,5 @@ module SymmetricEncryption
         TYPE_MAP[symbol]
       end
     end
-
   end
 end

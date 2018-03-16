@@ -8,7 +8,7 @@ module SymmetricEncryption
                 :environments, :cipher_name, :rolling_deploy, :rotate_keys, :rotate_kek, :prompt, :show_version,
                 :cleanup_keys, :activate_key, :migrate
 
-    KEYSTORES = [:heroku, :environment, :file]
+    KEYSTORES = %i[heroku environment file].freeze
 
     def self.run!(argv)
       new(argv).run!
@@ -71,17 +71,17 @@ module SymmetricEncryption
 
     def parser
       @parser ||= OptionParser.new do |opts|
-        opts.banner = <<BANNER
-Symmetric Encryption v#{VERSION}
+        opts.banner = <<~BANNER
+          Symmetric Encryption v#{VERSION}
 
-  For more information, see: https://rocketjob.github.io/symmetric-encryption/
+            For more information, see: https://rocketjob.github.io/symmetric-encryption/
 
-  Note: 
-    It is recommended to backup the current configuration file, or place it in version control before running
-    the configuration manipulation commands below.
+            Note:
+              It is recommended to backup the current configuration file, or place it in version control before running
+              the configuration manipulation commands below.
 
-symmetric-encryption [options]
-BANNER
+          symmetric-encryption [options]
+        BANNER
 
         opts.on '-e', '--encrypt [FILE_NAME]', 'Encrypt a file, or read from stdin if no file name is supplied.' do |file_name|
           @encrypt = file_name || STDIN
@@ -116,7 +116,7 @@ BANNER
         end
 
         opts.on '-r', '--re-encrypt [PATTERN]', 'ReEncrypt all files matching the pattern. Default:  "**/*.{yml,rb}"' do |pattern|
-          @re_encrypt = pattern || "**/*.{yml,rb}"
+          @re_encrypt = pattern || '**/*.{yml,rb}'
         end
 
         opts.on '-n', '--new-password [SIZE]', 'Generate a new random password using only characters that are URL-safe base64. Default size is 22.' do |size|
@@ -139,11 +139,11 @@ BANNER
           @app_name = name
         end
 
-        opts.on '-S', '--environments ENVIRONMENTS', "Comma separated list of environments for which to generate the config file. Default: development,test,release,production" do |environments|
+        opts.on '-S', '--environments ENVIRONMENTS', 'Comma separated list of environments for which to generate the config file. Default: development,test,release,production' do |environments|
           @environments = environments.split(',').collect(&:strip).collect(&:to_sym)
         end
 
-        opts.on '-C', '--cipher-name NAME', "Name of the cipher to use when generating a new config file, or when rotating keys. Default: aes-256-cbc" do |name|
+        opts.on '-C', '--cipher-name NAME', 'Name of the cipher to use when generating a new config file, or when rotating keys. Default: aes-256-cbc' do |name|
           @cipher_name = name
         end
 
@@ -167,7 +167,7 @@ BANNER
           @cleanup_keys = true
         end
 
-        opts.on '-V', '--key-version NUMBER', "Encryption key version to use when encrypting or re-encrypting. Default: (Current global version)." do |number|
+        opts.on '-V', '--key-version NUMBER', 'Encryption key version to use when encrypting or re-encrypting. Default: (Current global version).' do |number|
           @version = number.to_i
         end
 
@@ -185,7 +185,6 @@ BANNER
           puts opts
           exit
         end
-
       end
     end
 
@@ -199,7 +198,7 @@ BANNER
 
     def generate_new_config
       config_file_does_not_exist!
-      self.environments ||= %i(development test release production)
+      self.environments ||= %i[development test release production]
       cfg               =
         if keystore == :file
           SymmetricEncryption::Keystore::File.new_config(
@@ -208,7 +207,7 @@ BANNER
             environments: environments,
             cipher_name:  cipher_name
           )
-        elsif [:heroku, :environment].include?(keystore)
+        elsif %i[heroku environment].include?(keystore)
           SymmetricEncryption::Keystore::Environment.new_config(
             app_name:     app_name,
             environments: environments,
@@ -246,11 +245,10 @@ BANNER
       config = Config.read_file(config_file_path)
       config.each_pair do |env, cfg|
         next if environments && !environments.include?(env.to_sym)
-        if ciphers = cfg[:ciphers]
-          highest = ciphers.max_by { |i| i[:version] }
-          ciphers.clear
-          ciphers << highest
-        end
+        next unless ciphers = cfg[:ciphers]
+        highest = ciphers.max_by { |i| i[:version] }
+        ciphers.clear
+        ciphers << highest
       end
 
       Config.write_file(config_file_path, config)
@@ -261,11 +259,10 @@ BANNER
       config = Config.read_file(config_file_path)
       config.each_pair do |env, cfg|
         next if environments && !environments.include?(env.to_sym)
-        if ciphers = cfg[:ciphers]
-          highest = ciphers.max_by { |i| i[:version] }
-          ciphers.delete(highest)
-          ciphers.unshift(highest)
-        end
+        next unless ciphers = cfg[:ciphers]
+        highest = ciphers.max_by { |i| i[:version] }
+        ciphers.delete(highest)
+        ciphers.unshift(highest)
       end
 
       Config.write_file(config_file_path, config)
@@ -309,9 +306,7 @@ BANNER
         value1 = HighLine.new.ask('Enter the value to encrypt:') { |q| q.echo = '*' }
         value2 = HighLine.new.ask('Re-enter the value to encrypt:') { |q| q.echo = '*' }
 
-        if value1 != value2
-          puts('Values do not match, please try again')
-        end
+        puts('Values do not match, please try again') if value1 != value2
       end
 
       encrypted = SymmetricEncryption.cipher(version).encrypt(value1, compress: compress)
@@ -338,6 +333,5 @@ BANNER
       puts "\nConfiguration file already exists, please move or rename: #{config_file_path}\n\n"
       exit -1
     end
-
   end
 end

@@ -7,14 +7,14 @@ module SymmetricEncryption
       # Generates the encrypted key file for every environment except development and test.
       def self.new_config(key_path: '/etc/symmetric-encryption',
         app_name: 'symmetric-encryption',
-        environments: %i(development test release production),
+        environments: %i[development test release production],
         cipher_name: 'aes-256-cbc')
 
         configs = {}
         environments.each do |environment|
           environment          = environment.to_sym
           configs[environment] =
-            if %i(development test).include?(environment)
+            if %i[development test].include?(environment)
               Keystore.dev_config
             else
               cfg = new_key_config(key_path: key_path, cipher_name: cipher_name, app_name: app_name, environment: environment)
@@ -84,7 +84,7 @@ module SymmetricEncryption
 
       # Read from the file, raising an exception if it is not found
       def read_from_file
-        ::File.open(file_name, 'rb') { |f| f.read }
+        ::File.open(file_name, 'rb', &:read)
       rescue Errno::ENOENT
         raise(SymmetricEncryption::ConfigError, "Symmetric Encryption key file: '#{file_name}' not found or readable")
       end
@@ -96,7 +96,6 @@ module SymmetricEncryption
         ::File.rename(file_name, "#{file_name}.#{Time.now.to_i}") if ::File.exist?(file_name)
         ::File.open(file_name, 'wb') { |file| file.write(data) }
       end
-
     end
   end
 end

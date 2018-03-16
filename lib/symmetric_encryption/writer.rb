@@ -51,7 +51,7 @@ module SymmetricEncryption
       ios = file_name_or_stream.is_a?(String) ? ::File.open(file_name_or_stream, 'wb') : file_name_or_stream
 
       begin
-        file = self.new(ios, compress: compress, **args)
+        file = new(ios, compress: compress, **args)
         file = Zlib::GzipWriter.new(file) if compress
         block_given? ? yield(file) : file
       ensure
@@ -89,17 +89,15 @@ module SymmetricEncryption
     #
     # Notes:
     # * The file contents are streamed so that the entire file is _not_ loaded into memory.
-    def self.encrypt(source:, target:, block_size: 65535, **args)
+    def self.encrypt(source:, target:, block_size: 65_535, **args)
       source_ios    = source.is_a?(String) ? ::File.open(source, 'rb') : source
       bytes_written = 0
       open(target, **args) do |output_file|
-        while !source_ios.eof?
-          bytes_written += output_file.write(source_ios.read(block_size))
-        end
+        bytes_written += output_file.write(source_ios.read(block_size)) until source_ios.eof?
       end
       bytes_written
     ensure
-      source_ios.close if source_ios && source_ios.respond_to?(:closed?) && !source_ios.closed?
+      source_ios.close if source_ios&.respond_to?(:closed?) && !source_ios.closed?
     end
 
     # Encrypt data before writing to the supplied stream
@@ -155,7 +153,7 @@ module SymmetricEncryption
       return if closed?
       if size > 0
         final = @stream_cipher.final
-        @ios.write(final) if final.length > 0
+        @ios.write(final) unless final.empty?
       end
       @ios.close if close_child_stream
       @closed = true
@@ -170,7 +168,7 @@ module SymmetricEncryption
       bytes   = data.to_s
       @size   += bytes.size
       partial = @stream_cipher.update(bytes)
-      @ios.write(partial) if partial.length > 0
+      @ios.write(partial) unless partial.empty?
       data.length
     end
 
@@ -201,6 +199,5 @@ module SymmetricEncryption
     # Returns [Integer] the number of unencrypted and uncompressed bytes
     # written to the file so far.
     attr_reader :size
-
   end
 end

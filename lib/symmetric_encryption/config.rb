@@ -29,7 +29,7 @@ module SymmetricEncryption
     def self.read_file(file_name)
       config = YAML.load(ERB.new(File.new(file_name).read).result)
       config = deep_symbolize_keys(config)
-      config.each_pair { |env, cfg| SymmetricEncryption::Config.send(:migrate_old_formats!, cfg) }
+      config.each_pair { |_env, cfg| SymmetricEncryption::Config.send(:migrate_old_formats!, cfg) }
       config
     end
 
@@ -50,9 +50,7 @@ module SymmetricEncryption
     #
     # See: `.load!` for parameters.
     def initialize(file_name: nil, env: nil)
-      unless env
-        env = defined?(Rails) ? Rails.env : ENV['RACK_ENV'] || ENV['RAILS_ENV'] || 'development'
-      end
+      env ||= defined?(Rails) ? Rails.env : ENV['RACK_ENV'] || ENV['RAILS_ENV'] || 'development'
 
       unless file_name
         root      = defined?(Rails) ? Rails.root : '.'
@@ -125,7 +123,7 @@ module SymmetricEncryption
     # Migrate old configuration format for this environment
     def self.migrate_old_formats!(config)
       # Inline single cipher before :ciphers
-      unless config.has_key?(:ciphers)
+      unless config.key?(:ciphers)
         cipher = {}
         config.keys.each { |key| cipher[key] = config.delete(key) }
         config[:ciphers] = [cipher]
@@ -145,21 +143,17 @@ module SymmetricEncryption
         end
 
         # Only temporarily used during v4 Beta process
-        if cipher[:key_encrypting_key].is_a?(String)
-          cipher[:private_rsa_key] = cipher.delete(:key_encrypting_key)
-        end
+        cipher[:private_rsa_key] = cipher.delete(:key_encrypting_key) if cipher[:key_encrypting_key].is_a?(String)
 
         # Check for a prior env var in encrypted key
         # Example:
         #   encrypted_key: <%= ENV['VAR'] %>
-        if cipher.has_key?(:encrypted_key) && cipher[:encrypted_key].nil?
+        if cipher.key?(:encrypted_key) && cipher[:encrypted_key].nil?
           cipher[:key_env_var] = :placeholder
-          puts "WARNING: :encrypted_key resolved to nil. Please see the migrated config file for the new option :key_env_var."
+          puts 'WARNING: :encrypted_key resolved to nil. Please see the migrated config file for the new option :key_env_var.'
         end
-
       end
       config
     end
-
   end
 end

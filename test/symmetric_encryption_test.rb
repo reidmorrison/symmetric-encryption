@@ -4,7 +4,6 @@ require_relative 'test_helper'
 #
 class SymmetricEncryptionTest < Minitest::Test
   describe 'SymmetricEncryption' do
-
     describe 'configuration' do
       before do
         config   = SymmetricEncryption::Config.new(
@@ -45,11 +44,11 @@ class SymmetricEncryptionTest < Minitest::Test
       end
     end
 
-    [:none, :base64, :base64strict, :base16].each do |encoding|
+    %i[none base64 base64strict base16].each do |encoding|
       describe "encoding: #{encoding}" do
         before do
-          @social_security_number                            = '987654321'
-          @social_security_number_encrypted                  =
+          @social_security_number             = '987654321'
+          @social_security_number_encrypted   =
             case encoding
             when :base64
               "QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA==\n"
@@ -62,10 +61,9 @@ class SymmetricEncryptionTest < Minitest::Test
             else
               raise "Add test for encoding: #{encoding}"
             end
-          @social_security_number_encrypted_with_secondary_1 = "D1UCu38pqJ3jc0GvwJHiow==\n"
-          @non_utf8                                          = "\xc2".force_encoding('binary')
-          @encoding                                          = SymmetricEncryption.cipher.encoding
-          SymmetricEncryption.cipher.encoding                = encoding
+          @non_utf8                           = "\xc2".force_encoding('binary')
+          @encoding                           = SymmetricEncryption.cipher.encoding
+          SymmetricEncryption.cipher.encoding = encoding
         end
 
         after do
@@ -109,7 +107,7 @@ class SymmetricEncryptionTest < Minitest::Test
         end
 
         it 'determine if string is encrypted' do
-          if encoding == :base64strict || encoding == :base64
+          if %i[base64strict base64].include?(encoding)
             assert SymmetricEncryption.encrypted?(@social_security_number_encrypted)
             refute SymmetricEncryption.encrypted?(@social_security_number)
 
@@ -124,9 +122,10 @@ class SymmetricEncryptionTest < Minitest::Test
       before do
         @social_security_number = '987654321'
         # Encrypt data without a header and encode with base64 which has a trailing '\n'
-        @encrypted_0_ssn = SymmetricEncryption.cipher(0).encode(SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number, header: false))
+        no_header        = SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number, header: false)
+        @encrypted_0_ssn = SymmetricEncryption.cipher(0).encode(no_header)
 
-        SymmetricEncryption.select_cipher do |encoded_str, decoded_str|
+        SymmetricEncryption.select_cipher do |encoded_str, _decoded_str|
           # Use cipher version 0 if the encoded string ends with "\n" otherwise
           # use the current default cipher
           encoded_str.end_with?("\n") ? SymmetricEncryption.cipher(0) : SymmetricEncryption.cipher
@@ -147,7 +146,8 @@ class SymmetricEncryptionTest < Minitest::Test
       before do
         @social_security_number = '987654321'
         # Encrypt data without a header and encode with base64 which has a trailing '\n'
-        assert @encrypted_0_ssn = SymmetricEncryption.cipher(0).encode(SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number, header: false))
+        no_header = SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number, header: false)
+        assert @encrypted_0_ssn = SymmetricEncryption.cipher(0).encode(no_header)
       end
 
       it 'decrypt string without a header using an old cipher' do
@@ -207,12 +207,12 @@ class SymmetricEncryptionTest < Minitest::Test
       {
         integer:  21,
         float:    2.5,
-        decimal:  BigDecimal.new('12.58'),
-        datetime: DateTime.new(2001, 11, 26, 20, 55, 54, "-5"),
-        time:     Time.new(2013, 01, 01, 22, 30, 00, "-04:00"),
-        date:     Date.new(1927, 04, 01),
+        decimal:  BigDecimal('12.58'),
+        datetime: DateTime.new(2001, 11, 26, 20, 55, 54, '-5'),
+        time:     Time.new(2013, 1, 1, 22, 30, 0, '-04:00'),
+        date:     Date.new(1927, 4, 1),
         boolean:  true,
-        yaml:     {:a => :b},
+        yaml:     {a: :b},
         json:     {'a' => 'b'}
       }.each_pair do |type, value|
         describe type.to_s do
@@ -234,7 +234,6 @@ class SymmetricEncryptionTest < Minitest::Test
           assert_equal false, SymmetricEncryption.decrypt(encrypted, type: :boolean)
         end
       end
-
     end
   end
 end

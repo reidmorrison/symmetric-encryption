@@ -8,7 +8,7 @@ require 'symmetric_encryption/cipher'
 require 'symmetric_encryption/symmetric_encryption'
 require 'symmetric_encryption/exception'
 
-#@formatter:off
+# @formatter:off
 module SymmetricEncryption
   autoload :Coerce,                 'symmetric_encryption/coerce'
   autoload :Config,                 'symmetric_encryption/config'
@@ -26,7 +26,7 @@ module SymmetricEncryption
     autoload :ReEncryptFiles,       'symmetric_encryption/utils/re_encrypt_files'
   end
 end
-#@formatter:on
+# @formatter:on
 
 # Add support for other libraries only if they have already been loaded
 require 'symmetric_encryption/railtie' if defined?(Rails)

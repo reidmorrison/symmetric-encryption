@@ -8,7 +8,6 @@ require 'erb'
 # The symmetric key is protected using the private key below and must
 # be distributed separately from the application
 module SymmetricEncryption
-
   # Defaults
   @@cipher            = nil
   @@secondary_ciphers = []
@@ -26,7 +25,7 @@ module SymmetricEncryption
   #   :date      => Date
   #   :json      => Uses JSON serialization, useful for hashes and arrays
   #   :yaml      => Uses YAML serialization, useful for hashes and arrays
-  COERCION_TYPES = [:string, :integer, :float, :decimal, :datetime, :time, :date, :boolean, :json, :yaml]
+  COERCION_TYPES = %i[string integer float decimal datetime time date boolean json yaml].freeze
 
   # Set the Primary Symmetric Cipher to be used
   #

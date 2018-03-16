@@ -48,7 +48,7 @@ module SymmetricEncryption
         end
 
         it 'retains the env var name' do
-          assert_equal "TESTER_TEST_V11", keystore_config[:key_env_var]
+          assert_equal 'TESTER_TEST_V11', keystore_config[:key_env_var]
         end
 
         it 'retains cipher_name' do
@@ -58,7 +58,7 @@ module SymmetricEncryption
 
       describe '.new_config' do
         let :environments do
-          %i(development test acceptance preprod production)
+          %i[development test acceptance preprod production]
         end
 
         let :config do
@@ -79,7 +79,7 @@ module SymmetricEncryption
         end
 
         it 'each non test environment has a key encryption key' do
-          (environments - %i(development test)).each do |env|
+          (environments - %i[development test]).each do |env|
             assert config[env][:ciphers].first[:key_encrypting_key], "Environment #{env} is missing the key encryption key"
           end
         end
@@ -92,9 +92,9 @@ module SymmetricEncryption
         end
 
         it 'creates an encrypted key file for all non-test environments' do
-          (environments - %i(development test)).each do |env|
+          (environments - %i[development test]).each do |env|
             assert ciphers = config[env][:ciphers], "Environment #{env} is missing ciphers: #{config[env].inspect}"
-            assert file_name = ciphers.first[:key_env_var], "Environment #{env} is missing key_env_var: #{ciphers.inspect}"
+            assert ciphers.first[:key_env_var], "Environment #{env} is missing key_env_var: #{ciphers.inspect}"
           end
         end
       end
@@ -109,11 +109,10 @@ module SymmetricEncryption
         end
 
         it 'reads the key' do
-          ENV["TESTER_ENV_VAR"] = Base64.strict_encode64(key.encrypt('TEST'))
+          ENV['TESTER_ENV_VAR'] = Base64.strict_encode64(key.encrypt('TEST'))
           assert_equal 'TEST', keystore.read
         end
       end
-
     end
   end
 end

@@ -3,7 +3,7 @@ require_relative 'test_helper'
 # Tests for SymmetricEncryption::Cipher
 class CipherTest < Minitest::Test
   ['aes-128-cbc'].each do |cipher_name|
-    #['aes-128-cbc', 'aes-128-gcm'].each do |cipher_name|
+    # ['aes-128-cbc', 'aes-128-gcm'].each do |cipher_name|
     describe "Cipher: #{cipher_name}" do
       describe 'standalone' do
         it 'allows setting the cipher_name' do
@@ -41,7 +41,7 @@ class CipherTest < Minitest::Test
       end
 
       [false, true].each do |always_add_header|
-        [:none, :base64, :base64strict, :base16].each do |encoding|
+        %i[none base64 base64strict base16].each do |encoding|
           describe "encoding: #{encoding} with#{'out' unless always_add_header} header" do
             before do
               @social_security_number = '987654321'
@@ -62,7 +62,7 @@ class CipherTest < Minitest::Test
                   none:         {
                     header:    "@EnC\x00\x00\xC97\x8B\x8E\xC1\xD3k\xCC\xA4\xA0\xEFy+B\x90\x9A",
                     no_header: "\xC97\x8B\x8E\xC1\xD3k\xCC\xA4\xA0\xEFy+B\x90\x9A"
-                  },
+                  }
                 },
                 # 'aes-128-gcm' => {
                 #   base64:       {
@@ -173,8 +173,15 @@ class CipherTest < Minitest::Test
 
           it 'build and parse header' do
             key = SymmetricEncryption::Key.new(cipher_name: 'aes-128-cbc')
-            assert binary_header = SymmetricEncryption::Cipher.build_header(SymmetricEncryption.cipher.version, true, key.iv, key.key, key.cipher_name)
-            header = SymmetricEncryption::Header.new
+            # Test Deprecated method
+            binary_header = SymmetricEncryption::Cipher.build_header(
+              SymmetricEncryption.cipher.version,
+              true,
+              key.iv,
+              key.key,
+              key.cipher_name
+            )
+            header        = SymmetricEncryption::Header.new
             header.parse(binary_header)
             assert_equal true, header.compressed?
             assert random_cipher = SymmetricEncryption::Cipher.new(iv: key.iv, key: key.key, cipher_name: key.cipher_name)
@@ -204,7 +211,6 @@ class CipherTest < Minitest::Test
           end
         end
       end
-
     end
   end
 end
