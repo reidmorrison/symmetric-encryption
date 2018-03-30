@@ -1,4 +1,5 @@
 module SymmetricEncryption
+  # Encryption keys are secured in Keystores
   module Keystore
     # @formatter:off
     autoload :Environment, 'symmetric_encryption/keystore/environment'

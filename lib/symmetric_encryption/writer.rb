@@ -64,7 +64,7 @@ module SymmetricEncryption
     # Notes:
     # * Do not use this method for writing large files.
     def self.write(file_name_or_stream, data, **args)
-      open(file_name_or_stream, **args) { |f| f.write(data) }
+      self.open(file_name_or_stream, **args) { |f| f.write(data) }
     end
 
     # Encrypt an entire file.
@@ -92,7 +92,7 @@ module SymmetricEncryption
     def self.encrypt(source:, target:, block_size: 65_535, **args)
       source_ios    = source.is_a?(String) ? ::File.open(source, 'rb') : source
       bytes_written = 0
-      open(target, **args) do |output_file|
+      self.open(target, **args) do |output_file|
         bytes_written += output_file.write(source_ios.read(block_size)) until source_ios.eof?
       end
       bytes_written
@@ -112,9 +112,7 @@ module SymmetricEncryption
       raise(SymmetricEncryption::CipherError, "Cipher with version:#{version} not found in any of the configured SymmetricEncryption ciphers") unless cipher
 
       # Force header if compressed or using random iv, key
-      if (header == true) || compress || random_key || random_iv
-        header = Header.new(version: cipher.version, compress: compress, cipher_name: cipher_name)
-      end
+      header = Header.new(version: cipher.version, compress: compress, cipher_name: cipher_name) if (header == true) || compress || random_key || random_iv
 
       @stream_cipher = ::OpenSSL::Cipher.new(cipher_name || cipher.cipher_name)
       @stream_cipher.encrypt
@@ -127,8 +125,8 @@ module SymmetricEncryption
 
       if random_iv
         header.iv = @stream_cipher.iv = @stream_cipher.random_iv
-      else
-        @stream_cipher.iv = cipher.iv if cipher.iv
+      elsif cipher.iv
+        @stream_cipher.iv = cipher.iv
       end
 
       @ios.write(header.to_s) if header
@@ -151,7 +149,7 @@ module SymmetricEncryption
     # ensure that the encrypted stream is closed before the stream itself is closed.
     def close(close_child_stream = true)
       return if closed?
-      if size > 0
+      if size.positive?
         final = @stream_cipher.final
         @ios.write(final) unless final.empty?
       end

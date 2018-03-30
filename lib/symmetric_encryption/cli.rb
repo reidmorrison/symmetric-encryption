@@ -28,7 +28,7 @@ module SymmetricEncryption
 
       if argv.empty?
         puts parser
-        exit -10
+        exit(-10)
       end
       parser.parse!(argv)
     end
@@ -215,7 +215,7 @@ module SymmetricEncryption
           )
         else
           puts "Invalid keystore option: #{keystore}, must be one of #{KEYSTORES.join(', ')}"
-          exit -3
+          exit(-3)
         end
       Config.write_file(config_file_path, cfg)
       puts "New configuration file created at: #{config_file_path}"
@@ -331,7 +331,7 @@ module SymmetricEncryption
     def config_file_does_not_exist!
       return unless File.exist?(config_file_path)
       puts "\nConfiguration file already exists, please move or rename: #{config_file_path}\n\n"
-      exit -1
+      exit(-1)
     end
   end
 end

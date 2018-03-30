@@ -13,10 +13,10 @@ module SymmetricEncryption
 
     # Returns [Cipher] from a cipher config instance.
     def self.from_config(cipher_name: 'aes-256-cbc',
-      version: 0,
-      always_add_header: true,
-      encoding: :base64strict,
-      **config)
+                         version: 0,
+                         always_add_header: true,
+                         encoding: :base64strict,
+                         **config)
 
       Key.migrate_config!(config)
       key = Key.from_config(cipher_name: cipher_name, **config)
@@ -84,7 +84,7 @@ module SymmetricEncryption
       @version           = version.to_i
       @always_add_header = always_add_header
 
-      raise(ArgumentError, "Cipher version has a valid range of 0 to 255. #{@version} is too high, or negative") if (@version > 255) || (@version < 0)
+      raise(ArgumentError, "Cipher version has a valid range of 0 to 255. #{@version} is too high, or negative") if (@version > 255) || @version.negative?
     end
 
     # Change the encoding
@@ -164,9 +164,7 @@ module SymmetricEncryption
       decrypted = binary_decrypt(decoded)
 
       # Try to force result to UTF-8 encoding, but if it is not valid, force it back to Binary
-      unless decrypted.force_encoding(SymmetricEncryption::UTF8_ENCODING).valid_encoding?
-        decrypted.force_encoding(SymmetricEncryption::BINARY_ENCODING)
-      end
+      decrypted.force_encoding(SymmetricEncryption::BINARY_ENCODING) unless decrypted.force_encoding(SymmetricEncryption::UTF8_ENCODING).valid_encoding?
 
       decrypted
     end
@@ -307,7 +305,7 @@ module SymmetricEncryption
       return str if str.empty?
 
       offset = header.parse(str)
-      data   = offset > 0 ? str[offset..-1] : str
+      data   = offset.positive? ? str[offset..-1] : str
 
       openssl_cipher = ::OpenSSL::Cipher.new(header.cipher_name || cipher_name)
       openssl_cipher.decrypt

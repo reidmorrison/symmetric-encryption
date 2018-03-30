@@ -39,7 +39,7 @@ module SymmetricEncryption
 
       # Re-encrypt the supplied encrypted value with the new cipher
       def re_encrypt(encrypted)
-        if unencrypted = SymmetricEncryption.try_decrypt(encrypted)
+        if (unencrypted = SymmetricEncryption.try_decrypt(encrypted))
           cipher.encrypt(unencrypted)
         else
           encrypted
@@ -72,7 +72,7 @@ module SymmetricEncryption
               line
             end
         end
-        File.open(file_name, 'wb') { |file| file.write(output_lines) } if hits > 0
+        File.open(file_name, 'wb') { |file| file.write(output_lines) } if hits.positive?
         hits
       end
 
@@ -99,7 +99,7 @@ module SymmetricEncryption
         Dir[path].each do |file_name|
           next if File.directory?(file_name)
 
-          if v = encrypted_file_version(file_name)
+          if (v = encrypted_file_version(file_name))
             if v == version
               puts "Skipping already re-encrypted file: #{file_name}"
             else
@@ -109,7 +109,7 @@ module SymmetricEncryption
           else
             begin
               count = re_encrypt_contents(file_name)
-              puts "Re-encrypted #{count} encrypted value(s) in: #{file_name}" if count > 0
+              puts "Re-encrypted #{count} encrypted value(s) in: #{file_name}" if count.positive?
             rescue StandardError => exc
               puts "Failed re-encrypting the file contents of: #{file_name}. #{exc.class.name}: #{exc.message}"
             end

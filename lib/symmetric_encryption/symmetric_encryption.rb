@@ -47,10 +47,15 @@ module SymmetricEncryption
   #   Returns the primary cipher if no match was found and version == 0
   #   Returns nil if no match was found and version != 0
   def self.cipher(version = nil)
-    raise(SymmetricEncryption::ConfigError, 'Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data') unless cipher?
+    unless cipher?
+      raise(
+        SymmetricEncryption::ConfigError,
+        'Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data'
+      )
+    end
 
     return @@cipher if version.nil? || (@@cipher.version == version)
-    secondary_ciphers.find { |c| c.version == version } || (@@cipher if version == 0)
+    secondary_ciphers.find { |c| c.version == version } || (@@cipher if version.zero?)
   end
 
   # Returns whether a primary cipher has been set
@@ -138,9 +143,7 @@ module SymmetricEncryption
       end
 
     # Try to force result to UTF-8 encoding, but if it is not valid, force it back to Binary
-    unless decrypted.force_encoding(SymmetricEncryption::UTF8_ENCODING).valid_encoding?
-      decrypted.force_encoding(SymmetricEncryption::BINARY_ENCODING)
-    end
+    decrypted.force_encoding(SymmetricEncryption::BINARY_ENCODING) unless decrypted.force_encoding(SymmetricEncryption::UTF8_ENCODING).valid_encoding?
     Coerce.coerce_from_string(decrypted, type)
   end
 
@@ -154,7 +157,7 @@ module SymmetricEncryption
     return if decoded.nil? || decoded.empty?
 
     h = Header.new
-    h.parse(decoded) == 0 ? nil : h
+    h.parse(decoded).zero? ? nil : h
   end
 
   # AES Symmetric Encryption of supplied string

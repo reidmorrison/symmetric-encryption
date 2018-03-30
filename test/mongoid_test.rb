@@ -189,7 +189,7 @@ begin
         assert_equal @bank_account_number, user.social_security_number
         assert_equal @bank_account_number_encrypted, user.encrypted_social_security_number
 
-        assert_nil (user.social_security_number = nil)
+        user.social_security_number = nil
         assert_nil user.social_security_number
         assert_nil user.encrypted_social_security_number
       end

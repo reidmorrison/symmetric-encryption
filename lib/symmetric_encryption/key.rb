@@ -12,7 +12,7 @@ module SymmetricEncryption
     # * encrypted_key
     # * key_filename
     def self.from_config(key: nil, key_filename: nil, encrypted_key: nil, key_env_var: nil,
-      iv:, key_encrypting_key: nil, cipher_name: 'aes-256-cbc')
+                         iv:, key_encrypting_key: nil, cipher_name: 'aes-256-cbc')
 
       if key_encrypting_key.is_a?(Hash)
         # Recurse up the chain returning the parent key_encrypting_key

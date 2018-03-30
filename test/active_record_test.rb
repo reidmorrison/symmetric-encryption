@@ -1,6 +1,6 @@
 require_relative 'test_helper'
 
-ActiveRecord::Base.configurations = YAML.load(ERB.new(IO.read('test/config/database.yml')).result)
+ActiveRecord::Base.configurations = YAML.safe_load(ERB.new(IO.read('test/config/database.yml')).result)
 ActiveRecord::Base.establish_connection(:test)
 
 # @formatter:off
@@ -88,8 +88,8 @@ class ActiveRecordTest < Minitest::Test
     DATETIME_VALUE      = DateTime.new(2001, 11, 26, 20, 55, 54, '-5')
     TIME_VALUE          = Time.new(2013, 1, 1, 22, 30, 0, '-04:00')
     DATE_VALUE          = Date.new(1927, 4, 2)
-    STRING_VALUE        = 'A string containing some data to be encrypted with a random initialization vector'
-    LONG_STRING_VALUE   = 'A string containing some data to be encrypted with a random initialization vector and compressed since it takes up so much space in plain text form'
+    STRING_VALUE        = 'A string containing some data to be encrypted with a random initialization vector'.freeze
+    LONG_STRING_VALUE   = 'A string containing some data to be encrypted with a random initialization vector and compressed since it takes up so much space in plain text form'.freeze
     BINARY_STRING_VALUE = "Non-UTF8 Binary \x92 string".force_encoding('BINARY')
 
     before do
@@ -241,7 +241,7 @@ class ActiveRecordTest < Minitest::Test
         assert_equal @bank_account_number, user.social_security_number
         assert_equal @bank_account_number_encrypted, user.encrypted_social_security_number
 
-        assert_nil (user.social_security_number = nil)
+        user.social_security_number = nil
         assert_nil user.social_security_number
         assert_nil user.encrypted_social_security_number
       end

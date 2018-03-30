@@ -55,7 +55,7 @@ module SymmetricEncryption
       unless file_name
         root      = defined?(Rails) ? Rails.root : '.'
         file_name =
-          if env_var = ENV['SYMMETRIC_ENCRYPTION_CONFIG']
+          if (env_var = ENV['SYMMETRIC_ENCRYPTION_CONFIG'])
             File.expand_path(env_var)
           else
             File.join(root, 'config', 'symmetric-encryption.yml')
@@ -71,11 +71,12 @@ module SymmetricEncryption
     def config
       @config ||= begin
         raise(ConfigError, "Cannot find config file: #{file_name}") unless File.exist?(file_name)
-        unless env_config = YAML.load(ERB.new(File.new(file_name).read).result)[env]
-          raise(ConfigError, "Cannot find environment: #{env} in config file: #{file_name}")
-        end
-        env_config = self.class.deep_symbolize_keys(env_config)
-        self.class.migrate_old_formats!(env_config)
+
+        env_config = YAML.load(ERB.new(File.new(file_name).read).result)[env]
+        raise(ConfigError, "Cannot find environment: #{env} in config file: #{file_name}") unless env_config
+
+        env_config = self.class.send(:deep_symbolize_keys, env_config)
+        self.class.send(:migrate_old_formats!, env_config)
       end
     end
 
@@ -84,49 +85,49 @@ module SymmetricEncryption
       @ciphers ||= config[:ciphers].collect { |cipher_config| Cipher.from_config(cipher_config) }
     end
 
-    private
-
     # Iterate through the Hash symbolizing all keys.
-    def self.deep_symbolize_keys(x)
-      case x
+    def self.deep_symbolize_keys(object)
+      case object
       when Hash
         result = {}
-        x.each_pair do |key, value|
+        object.each_pair do |key, value|
           key         = key.to_sym if key.is_a?(String)
           result[key] = deep_symbolize_keys(value)
         end
         result
       when Array
-        x.collect { |i| deep_symbolize_keys(i) }
+        object.collect { |i| deep_symbolize_keys(i) }
       else
-        x
+        object
       end
     end
+    private_class_method :deep_symbolize_keys
 
     # Iterate through the Hash symbolizing all keys.
-    def self.deep_stringify_keys(x)
-      case x
+    def self.deep_stringify_keys(object)
+      case object
       when Hash
         result = {}
-        x.each_pair do |key, value|
+        object.each_pair do |key, value|
           key         = key.to_s if key.is_a?(Symbol)
           result[key] = deep_stringify_keys(value)
         end
         result
       when Array
-        x.collect { |i| deep_stringify_keys(i) }
+        object.collect { |i| deep_stringify_keys(i) }
       else
-        x
+        object
       end
     end
+    private_class_method :deep_stringify_keys
 
     # Migrate old configuration format for this environment
     def self.migrate_old_formats!(config)
       # Inline single cipher before :ciphers
       unless config.key?(:ciphers)
-        cipher = {}
-        config.keys.each { |key| cipher[key] = config.delete(key) }
-        config[:ciphers] = [cipher]
+        inline_cipher = {}
+        config.keys.each { |key| inline_cipher[key] = config.delete(key) }
+        config[:ciphers] = [inline_cipher]
       end
 
       # Copy Old :private_rsa_key into each ciphers config
@@ -138,7 +139,7 @@ module SymmetricEncryption
 
       # Old :cipher_name
       config[:ciphers].each do |cipher|
-        if old_key_name_cipher = cipher.delete(:cipher)
+        if (old_key_name_cipher = cipher.delete(:cipher))
           cipher[:cipher_name] = old_key_name_cipher
         end
 
@@ -155,5 +156,6 @@ module SymmetricEncryption
       end
       config
     end
+    private_class_method :migrate_old_formats!
   end
 end

@@ -73,7 +73,7 @@ class ReaderTest < Minitest::Test
             index = 0
             [0, 10, 5, 5000].each do |size|
               buf = file.read(size)
-              if size == 0
+              if size.zero?
                 assert_equal '', buf
               else
                 assert_equal @data_str[index..index + size - 1], buf
@@ -139,7 +139,7 @@ class ReaderTest < Minitest::Test
           end
 
           it '.empty?' do
-            assert_equal (@data_size == 0), SymmetricEncryption::Reader.empty?(@file_name)
+            assert_equal @data_size.zero?, SymmetricEncryption::Reader.empty?(@file_name)
             assert_raises Errno::ENOENT do
               SymmetricEncryption::Reader.empty?('missing_file')
             end
@@ -177,7 +177,7 @@ class ReaderTest < Minitest::Test
             file.close
 
             assert_equal @eof, eof
-            if @data_size > 0
+            if @data_size.positive?
               assert_equal @data_str, data
             else
               assert_nil data
@@ -210,27 +210,24 @@ class ReaderTest < Minitest::Test
             file.close
 
             assert_equal @eof, eof
-            if @data_size > 0
+            if @data_size.positive?
               assert_equal @data_str, data
+              # On JRuby Zlib::GzipReader.new(file) returns '' instead of nil on an empty file
+            elsif defined?(JRuby) && options[:compress] && (usecase == :empty)
+              assert_equal '', data
             else
-              # On JRuby Zlib::GzipReader.new(file) returns '' instead of nil
-              # on an empty file
-              if defined?(JRuby) && options[:compress] && (usecase == :empty)
-                assert_equal '', data
-              else
-                assert_nil data
-              end
+              assert_nil data
             end
           end
 
           it '#gets(delim)' do
             SymmetricEncryption::Reader.open(@file_name) do |file|
               i = 0
-              while line = file.gets("\n")
+              while (line = file.gets("\n"))
                 assert_equal @data[i], line
                 i += 1
               end
-              assert_equal (@data_size > 0 ? 3 : 0), i
+              assert_equal (@data_size.positive? ? 3 : 0), i
             end
           end
 
@@ -238,7 +235,7 @@ class ReaderTest < Minitest::Test
             SymmetricEncryption::Reader.open(@file_name) do |file|
               i = 0
               i += 1 while file.gets("\n", 128)
-              assert_equal (@data_size > 0 ? 3 : 0), i
+              assert_equal (@data_size.positive? ? 3 : 0), i
             end
           end
         end
@@ -297,6 +294,7 @@ class ReaderTest < Minitest::Test
           File.delete(@file_name) if File.exist?(@file_name)
         rescue Errno::EACCES
           # Required for Windows
+          nil
         end
       end
 

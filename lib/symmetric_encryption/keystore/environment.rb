@@ -7,8 +7,8 @@ module SymmetricEncryption
       # Returns [Hash] initial configuration for heroku.
       # Displays the keys that need to be added to the heroku environment.
       def self.new_config(app_name: 'symmetric-encryption',
-        environments: %i[development test release production],
-        cipher_name: 'aes-256-cbc')
+                          environments: %i[development test release production],
+                          cipher_name: 'aes-256-cbc')
 
         configs = {}
         environments.each do |environment|

@@ -111,7 +111,7 @@ module SymmetricEncryption
     #     String to extract the header from
     def parse!(buffer)
       offset = parse(buffer)
-      return if offset == 0
+      return if offset.zero?
       buffer.slice!(0..offset - 1)
       buffer
     end
@@ -153,7 +153,13 @@ module SymmetricEncryption
       self.version = buffer.getbyte(offset)
       offset       += 1
 
-      raise(SymmetricEncryption::CipherError, "Cipher with version:#{version.inspect} not found in any of the configured SymmetricEncryption ciphers") unless cipher
+      unless cipher
+        raise(
+          SymmetricEncryption::CipherError,
+          "Cipher with version:#{version.inspect} not found in any of the configured SymmetricEncryption ciphers"
+        )
+      end
+
       flags  = buffer.getbyte(offset)
       offset += 1
 

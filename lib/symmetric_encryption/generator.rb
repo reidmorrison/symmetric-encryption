@@ -19,7 +19,7 @@ module SymmetricEncryption
       end
 
       # Generate getter and setter methods
-      mod.module_eval(<<-EOS, __FILE__, __LINE__ + 1)
+      mod.module_eval(<<~ACCESSORS, __FILE__, __LINE__ + 1)
         # Set the un-encrypted field
         # Also updates the encrypted field with the encrypted value
         # Freeze the decrypted field value so that it is not modified directly
@@ -45,7 +45,7 @@ module SymmetricEncryption
         def #{decrypted_name}_changed?
           #{encrypted_name}_changed?
         end
-      EOS
+      ACCESSORS
     end
   end
 end

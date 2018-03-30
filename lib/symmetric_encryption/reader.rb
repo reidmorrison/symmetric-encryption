@@ -76,7 +76,7 @@ module SymmetricEncryption
     # Notes:
     # * Do not use this method for reading large files.
     def self.read(file_name_or_stream, **args)
-      open(file_name_or_stream, **args, &:read)
+      self.open(file_name_or_stream, **args, &:read)
     end
 
     # Decrypt an entire file.
@@ -100,14 +100,12 @@ module SymmetricEncryption
     def self.decrypt(source:, target:, block_size: 65_535, **args)
       target_ios    = target.is_a?(String) ? ::File.open(target, 'wb') : target
       bytes_written = 0
-      open(source, **args) do |input_ios|
-        until input_ios.eof?
-          bytes_written += target_ios.write(input_ios.read(block_size))
-        end
+      self.open(source, **args) do |input_ios|
+        bytes_written += target_ios.write(input_ios.read(block_size)) until input_ios.eof?
       end
       bytes_written
     ensure
-      target_ios.close if target_ios && target_ios.respond_to?(:closed?) && !target_ios.closed?
+      target_ios.close if target_ios&.respond_to?(:closed?) && !target_ios.closed?
     end
 
     # Returns [true|false] whether the file or stream contains any data
@@ -199,7 +197,7 @@ module SymmetricEncryption
     def read(length = nil)
       data = nil
       if length
-        return '' if length == 0
+        return '' if length.zero?
         return nil if eof?
         # Read length bytes
         read_block while (@read_buffer.length < length) && !@ios.eof?
@@ -258,9 +256,7 @@ module SymmetricEncryption
     # Executes the block for every line in ios, where lines are separated by sep_string.
     # ios must be opened for reading or an IOError will be raised.
     def each_line(sep_string = "\n")
-      until eof?
-        yield gets(sep_string)
-      end
+      yield gets(sep_string) until eof?
       self
     end
 
@@ -268,7 +264,7 @@ module SymmetricEncryption
 
     # Returns whether the end of file has been reached for this stream
     def eof?
-      (@read_buffer.empty?) && @ios.eof?
+      @read_buffer.empty? && @ios.eof?
     end
 
     # Return the number of bytes read so far from the input stream
@@ -321,7 +317,7 @@ module SymmetricEncryption
       else
         raise(ArgumentError, "unknown whence:#{whence} supplied to seek()")
       end
-      read(offset) if offset > 0
+      read(offset) if offset.positive?
       0
     end
 

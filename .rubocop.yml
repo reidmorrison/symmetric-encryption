@@ -1,7 +1,6 @@
 AllCops:
   TargetRubyVersion: 2.3
   Exclude:
-    - '*.gemspec'
     - 'gemfiles/*'
     - '.git/**/*'
     - 'docs/**/*'
@@ -10,44 +9,100 @@ Layout/SpaceInsideHashLiteralBraces:
   EnforcedStyle: no_space
   EnforcedStyleForEmptyBraces: no_space
 
-Metrics/LineLength:
-  Max: 128
-  Exclude:
-    - cli.rb
-    - 'test/**/*'
+# Match existing layout
+Layout/DotPosition:
+  EnforcedStyle: trailing
 
-Metrics/ClassLength:
-  Exclude:
-    - 'test/**/*'
-
-# Rubocop Bug, cannot tell `=` is aligned across lines
+# Rubocop cannot yet see beyond one line above or below, when aligning =
 Layout/ExtraSpacing:
   Enabled: false
   AllowForAlignment: true
   ForceEqualSignAlignment: true
-  AutoCorrect: true
+  AutoCorrect: false
 
-# Rubocop Bug, cannot tell `=` is aligned across lines
+# Pick one
+Layout/IndentHeredoc:
+  EnforcedStyle: squiggly
+
+# Match existing layout
+Layout/MultilineMethodCallIndentation:
+  EnforcedStyle: indented
+  IndentationWidth: 2
+
+# Rubocop cannot yet see beyond one line above or below, when aligning =
 Layout/SpaceAroundOperators:
   Enabled: false
   AllowForAlignment: true
-  AutoCorrect: true
+  AutoCorrect: false
+
+# Match existing layout
+Layout/SpaceInsideHashLiteralBraces:
+  EnforcedStyle: no_space
+  EnforcedStyleForEmptyBraces: no_space
+
+# TODO: Soften Limits for phase 1 only
+Metrics/AbcSize:
+  Max: 40
 
 # Support long block lengths for tests
 Metrics/BlockLength:
-  ExcludedMethods:
-    - describe
-    - it
-    - before
-    - after
+  Exclude:
+    - 'test/**/*'
+
+# Soften limits
+Metrics/ClassLength:
+  Max: 250
+  Exclude:
+    - 'test/**/*'
+
+# TODO: Soften Limits for phase 1 only
+Metrics/CyclomaticComplexity:
+  Max: 15
+
+# TODO: Soften Limits for phase 1 only
+Metrics/LineLength:
+  Max: 128
+  Exclude:
+    - 'cli.rb'
+    - 'test/**/*'
+
+# Soften limits
+Metrics/MethodLength:
+  Max: 50
+
+# Soften limits
+Metrics/ModuleLength:
+  Max: 250
+
+Metrics/ParameterLists:
+  CountKeywordArgs: false
+
+# TODO: Soften Limits for phase 1 only
+Metrics/PerceivedComplexity:
+  Max: 21
+
+# Initialization Vector abbreviation
+Naming/UncommunicativeMethodParamName:
+  AllowedNames: ['iv', '_', 'io', 'ap']
 
 # Needed for testing DateTime
 Style/DateTime:
   Exclude: ['test/**/*']
 
-# Make selection:
-Layout/IndentHeredoc:
-  EnforcedStyle: squiggly
+# TODO: Soften Limits for phase 1 only
+Style/Documentation:
+  Enabled: false
 
+# Ruby 3 compatibility feature
 Style/FrozenStringLiteralComment:
   Enabled: false
+
+Style/NumericPredicate:
+  AutoCorrect: true
+
+Style/EmptyMethod:
+  AutoCorrect: false
+
+# Does not allow Symbols to load
+Security/YAMLLoad:
+  AutoCorrect: false

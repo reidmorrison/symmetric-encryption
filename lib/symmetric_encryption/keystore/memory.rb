@@ -1,5 +1,6 @@
 module SymmetricEncryption
   module Keystore
+    # In Memory Keystore usually used for testing purposes
     class Memory
       attr_accessor :key_encrypting_key
       attr_reader :encrypted_key

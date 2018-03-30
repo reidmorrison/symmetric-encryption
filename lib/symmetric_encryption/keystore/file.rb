@@ -6,9 +6,9 @@ module SymmetricEncryption
       # Returns [Hash] initial configuration.
       # Generates the encrypted key file for every environment except development and test.
       def self.new_config(key_path: '/etc/symmetric-encryption',
-        app_name: 'symmetric-encryption',
-        environments: %i[development test release production],
-        cipher_name: 'aes-256-cbc')
+                          app_name: 'symmetric-encryption',
+                          environments: %i[development test release production],
+                          cipher_name: 'aes-256-cbc')
 
         configs = {}
         environments.each do |environment|

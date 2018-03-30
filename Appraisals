@@ -15,6 +15,6 @@ appraise 'rails_5.1' do
 end
 
 appraise 'rails_5.2' do
-  gem 'activerecord', '5.2.0.rc1'
+  gem 'activerecord', '5.2.0.rc2'
   gem 'mongoid', '~> 6.0'
 end
