@@ -16,7 +16,7 @@ module SymmetricEncryption
 
     def initialize(argv)
       @version          = current_version
-      @environment      = ENV['RACK_ENV'] || ENV['RAILS_ENV'] || 'development'
+      @environment      = ENV['SYMMETRIC_ENCRYPTION_ENV'] || ENV['RACK_ENV'] || ENV['RAILS_ENV'] || 'development'
       @config_file_path = File.expand_path(ENV['SYMMETRIC_ENCRYPTION_CONFIG'] || 'config/symmetric-encryption.yml')
       @app_name         = 'symmetric-encryption'
       @key_path         = '/etc/symmetric-encryption'
@@ -103,7 +103,7 @@ module SymmetricEncryption
           @compress = true
         end
 
-        opts.on '-E', '--env ENVIRONMENT', "Environment to use in the config file. Default: RACK_ENV || RAILS_ENV || 'development'" do |environment|
+        opts.on '-E', '--env ENVIRONMENT', "Environment to use in the config file. Default: SYMMETRIC_ENCRYPTION_ENV || RACK_ENV || RAILS_ENV || 'development'" do |environment|
           @environment = environment
         end
 

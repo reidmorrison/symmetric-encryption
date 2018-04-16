@@ -33,7 +33,7 @@ module SymmetricEncryption #:nodoc:
         config_file = Rails.root.join('config', 'symmetric-encryption.yml')
         if config_file.file?
           begin
-            ::SymmetricEncryption::Config.load!(file_name: config_file, env: Rails.env)
+            ::SymmetricEncryption::Config.load!(file_name: config_file, env: ENV['SYMMETRIC_ENCRYPTION_ENV'] || Rails.env)
           rescue ArgumentError => exc
             puts "\nSymmetric Encryption not able to read keys."
             puts "#{exc.class.name} #{exc.message}"
