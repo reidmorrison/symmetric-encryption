@@ -29,13 +29,6 @@ Checkout the sister project [Rocket Job](http://rocketjob.io): Ruby's missing ba
 
 Fully supports Symmetric Encryption to encrypt data in flight and at rest while running jobs in the background.
 
-## Supports
-
-Symmetric Encryption works with the following Ruby VMs:
-
-- Ruby 2.1 and higher.
-- JRuby 9.1 and higher.
-
 ## Upgrading to SymmetricEncryption V4
 
 Version 4 of Symmetric Encryption has completely adopted the Ruby keyword arguments on most API's where
