@@ -100,8 +100,9 @@ Style/FrozenStringLiteralComment:
 Style/NumericPredicate:
   AutoCorrect: true
 
+# One line methods
 Style/EmptyMethod:
-  AutoCorrect: false
+  Enabled: false
 
 # Does not allow Symbols to load
 Security/YAMLLoad:
