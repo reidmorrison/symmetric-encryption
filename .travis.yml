@@ -22,6 +22,8 @@ matrix:
       gemfile: gemfiles/rails_4.2.gemfile
     - rvm: 2.6.0-preview1
       gemfile: gemfiles/rails_4.2.gemfile
+    - rvm: jruby-9.1.17.0
+      gemfile: gemfiles/rails_5.2.gemfile
   allow_failures:
     - rvm: 2.6.0-preview1
     - rvm: jruby-9.1.17.0

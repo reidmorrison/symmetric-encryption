@@ -1,5 +1,13 @@
 # Change Log
 
+## [v4.0.1](https://github.com/rocketjob/symmetric-encryption/tree/v4.0.1) (2018-05-03)
+[Full Changelog](https://github.com/rocketjob/symmetric-encryption/compare/v4.0.0...v4.0.1)
+
+- Fix #96 AR Validation regression with blank values.
+- Allow explicitly setting environment requested from config file.
+- Apply RuboCop changes.
+- Fixes #90 Fix parameter name.
+
 ## [v4.0.0](https://github.com/rocketjob/symmetric-encryption/tree/v4.0.0) (2017-08-30)
 [Full Changelog](https://github.com/rocketjob/symmetric-encryption/compare/v4.0.0.beta3...v4.0.0)
 

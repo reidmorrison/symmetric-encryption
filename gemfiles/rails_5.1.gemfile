@@ -9,7 +9,7 @@ gem "minitest"
 gem "minitest-stub_any_instance"
 gem "rake"
 gem "highline"
-gem "activerecord-jdbcsqlite3-adapter", platform: :jruby
+gem "activerecord-jdbcsqlite3-adapter", "51", platform: :jruby
 gem "jdbc-sqlite3", platform: :jruby
 gem "sqlite3", platform: :ruby
 gem "mongoid", "~> 6.0"

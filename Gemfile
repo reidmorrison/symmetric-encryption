@@ -2,7 +2,7 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem 'activerecord', '~> 4.2'
+gem 'activerecord', '~> 5.2'
 
 gem 'appraisal'
 gem 'awesome_print'
