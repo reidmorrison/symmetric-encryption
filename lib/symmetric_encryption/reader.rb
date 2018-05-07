@@ -194,11 +194,10 @@ module SymmetricEncryption
     #
     # At end of file, it returns nil if no more data is available, or the last
     # remaining bytes
-    def read(length = nil)
+    def read(length = nil, output_buffer = nil)
       data = nil
       if length
-        return '' if length.zero?
-        return nil if eof?
+        return output_buffer&.clear || '' if length.zero?
         # Read length bytes
         read_block while (@read_buffer.length < length) && !@ios.eof?
         if @read_buffer.empty?
@@ -221,8 +220,14 @@ module SymmetricEncryption
           data << @stream_cipher.final
         end
       end
-      @pos += data.length
-      data
+      @pos += data.length if data
+      if output_buffer
+        output_buffer.replace data.to_s
+        data.clear if data # deallocate string
+        output_buffer unless output_buffer.empty? && length
+      else
+        data
+      end
     end
 
     # Reads a single decrypted line from the file up to and including the optional sep_string.

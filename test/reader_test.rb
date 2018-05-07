@@ -184,6 +184,23 @@ class ReaderTest < Minitest::Test
             end
           end
 
+          it '#read(size, outbuf)' do
+            file          = SymmetricEncryption::Reader.open(@file_name)
+            eof           = file.eof?
+            output_buffer = "buffer"
+            data          = file.read(4096, output_buffer)
+            file.close
+
+            assert_equal @eof, eof
+            if @data_size.positive?
+              assert_equal @data_str, data
+              assert_equal data.object_id, output_buffer.object_id
+            else
+              assert_nil data
+              assert_empty output_buffer
+            end
+          end unless options[:compress]
+
           it '#each_line' do
             SymmetricEncryption::Reader.open(@file_name) do |file|
               i = 0
