@@ -216,8 +216,11 @@ module SymmetricEncryption
       end
       @pos += data.length if data
       if output_buffer
-        output_buffer.replace data.to_s
-        data.clear if data # deallocate string
+        output_buffer.clear
+        if data
+          output_buffer << data
+          data.clear # deallocate string
+        end
         output_buffer unless output_buffer.empty? && length
       else
         data
