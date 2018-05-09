@@ -364,7 +364,11 @@ module SymmetricEncryption
     # Read a block of data and append the decrypted data in the read buffer
     def read_block
       buf = @ios.read(@buffer_size, @output_buffer)
-      @read_buffer << @stream_cipher.update(buf) if buf && !buf.empty?
+      if buf && !buf.empty?
+        partial = @stream_cipher.update(buf)
+        @read_buffer << partial
+        partial.clear # deallocate string
+      end
       @read_buffer << @stream_cipher.final if @ios.eof?
     end
 
