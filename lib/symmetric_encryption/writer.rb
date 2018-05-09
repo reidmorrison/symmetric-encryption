@@ -167,6 +167,7 @@ module SymmetricEncryption
       @size   += bytes.size
       partial = @stream_cipher.update(bytes)
       @ios.write(partial) unless partial.empty?
+      partial.clear
       data.length
     end
 
