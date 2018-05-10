@@ -188,43 +188,34 @@ module SymmetricEncryption
     #
     # At end of file, it returns nil if no more data is available, or the last
     # remaining bytes
-    def read(length = nil, output_buffer = nil)
-      data = nil
-      if length
-        return output_buffer&.clear || '' if length.zero?
-        # Read length bytes
-        read_block while (@read_buffer.length < length) && !@ios.eof?
-        if @read_buffer.empty?
-          data = nil
-        elsif @read_buffer.length > length
-          data = @read_buffer.slice!(0..length - 1)
-        else
-          data         = @read_buffer
-          @read_buffer = ''
-        end
-      else
-        # Capture anything already in the buffer
-        data         = @read_buffer
-        @read_buffer = ''
+    def read(length = nil, outbuf = nil)
+      data = outbuf.clear if outbuf
+      remaining_length = length
 
-        unless @ios.eof?
-          # Read entire file
-          buf = @ios.read || ''
-          data << @stream_cipher.update(buf) if buf && !buf.empty?
-          data << @stream_cipher.final
+      until remaining_length == 0 || eof?
+        @read_buffer = read_block(remaining_length) if @read_buffer.nil?
+
+        if remaining_length && remaining_length < @read_buffer.length
+          buffered_data = @read_buffer.slice!(0..remaining_length - 1)
+        else
+          buffered_data = @read_buffer
+          @read_buffer  = nil
         end
-      end
-      @pos += data.length if data
-      if output_buffer
-        output_buffer.clear
+
         if data
-          output_buffer << data
-          data.clear # deallocate string
+          data << buffered_data
+        else
+          data = buffered_data
         end
-        output_buffer unless output_buffer.empty? && length
-      else
-        data
+
+        remaining_length -= buffered_data.length if remaining_length
+
+        buffered_data.clear unless buffered_data.equal?(data)
       end
+
+      @pos += data.length if data
+
+      data.to_s unless length && length > 0 && (data.nil? || data.empty?)
     end
 
     # Reads a single decrypted line from the file up to and including the optional sep_string.
@@ -242,13 +233,24 @@ module SymmetricEncryption
       return read(length) if sep_string.nil?
 
       # Read more data until we get the sep_string
-      while (index = @read_buffer.index(sep_string)).nil? && !@ios.eof?
-        break if length && @read_buffer.length >= length
-        read_block
+      until (index = @read_buffer&.index(sep_string)) || @ios.eof?
+        break if length && @read_buffer.to_s.length >= length
+        chunk = read_block
+        if @read_buffer
+          @read_buffer << chunk
+          chunk.clear
+        else
+          @read_buffer = chunk
+        end
       end
-      index ||= -1
-      data  = @read_buffer.slice!(0..index)
-      @pos  += data.length
+
+      if index
+        data = @read_buffer.to_s.slice!(0..index)
+      else
+        data = @read_buffer.to_s
+        @read_buffer = nil
+      end
+      @pos += data.length
       return nil if data.empty? && eof?
       data
     end
@@ -266,7 +268,7 @@ module SymmetricEncryption
 
     # Returns whether the end of file has been reached for this stream
     def eof?
-      @read_buffer.empty? && @ios.eof?
+      @read_buffer.nil? && @ios.eof?
     end
 
     # Return the number of bytes read so far from the input stream
@@ -274,7 +276,7 @@ module SymmetricEncryption
 
     # Rewind back to the beginning of the file
     def rewind
-      @read_buffer = ''
+      @read_buffer = nil
       @ios.rewind
       read_header
     end
@@ -308,12 +310,8 @@ module SymmetricEncryption
         rewind
         # Read and decrypt entire file a block at a time to get its total
         # unencrypted size
-        size = 0
-        until eof
-          read_block
-          size         += @read_buffer.size
-          @read_buffer = ''
-        end
+        size  = 0
+        size += read_block.size until eof?
         rewind
         offset = size + amount
       else
@@ -355,24 +353,22 @@ module SymmetricEncryption
       @stream_cipher.key = key || cipher.send(:key)
       @stream_cipher.iv  = iv || cipher.iv
 
-      # First call to #update should return an empty string anyway
-      if buf && !buf.empty?
-        @read_buffer = @stream_cipher.update(buf)
-        @read_buffer << @stream_cipher.final if @ios.eof?
-      else
-        @read_buffer = ''
-      end
+      @read_buffer = decrypt(buf)
     end
 
     # Read a block of data and append the decrypted data in the read buffer
-    def read_block
-      buf = @ios.read(@buffer_size, @output_buffer)
-      if buf && !buf.empty?
-        partial = @stream_cipher.update(buf)
-        @read_buffer << partial
-        partial.clear # deallocate string
-      end
-      @read_buffer << @stream_cipher.final if @ios.eof?
+    def read_block(length = nil)
+      buf = @ios.read(length || @buffer_size, @output_buffer)
+      decrypt(buf)
+    end
+
+    # Decrypts the given chunk of data and returns the result
+    def decrypt(buf)
+      return if buf.nil? || buf.empty?
+
+      decrypted  = @stream_cipher.update(buf)
+      decrypted << @stream_cipher.final if @ios.eof?
+      decrypted
     end
 
     def closed?
