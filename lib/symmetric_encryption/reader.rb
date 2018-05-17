@@ -125,7 +125,7 @@ module SymmetricEncryption
       @version        = version
       @header_present = false
       @closed         = false
-      @read_buffer    = ''
+      @read_buffer    = ''.b
 
       raise(ArgumentError, 'Buffer size cannot be smaller than 128') unless @buffer_size >= 128
 
@@ -312,7 +312,7 @@ module SymmetricEncryption
       @pos = 0
 
       # Read first block and check for the header
-      buf = @ios.read(@buffer_size, @output_buffer ||= '')
+      buf = @ios.read(@buffer_size, @output_buffer ||= ''.b)
 
       # Use cipher specified in header, or global cipher if it has no header
       iv, key, cipher_name, cipher = nil
@@ -342,7 +342,7 @@ module SymmetricEncryption
 
     # Read a block of data and append the decrypted data in the read buffer
     def read_block(length = nil)
-      buf = @ios.read(length || @buffer_size, @output_buffer ||= '')
+      buf = @ios.read(length || @buffer_size, @output_buffer ||= ''.b)
       decrypt(buf)
     end
 
@@ -350,7 +350,7 @@ module SymmetricEncryption
     def decrypt(buf)
       return if buf.nil? || buf.empty?
 
-      @read_buffer << @stream_cipher.update(buf, @cipher_buffer ||= '')
+      @read_buffer << @stream_cipher.update(buf, @cipher_buffer ||= ''.b)
       @read_buffer << @stream_cipher.final if @ios.eof?
     end
 
