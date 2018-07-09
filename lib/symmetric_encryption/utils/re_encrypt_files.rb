@@ -52,8 +52,16 @@ module SymmetricEncryption
       def re_encrypt_contents(file_name)
         return 0 if File.size(file_name) > 256 * 1024
 
+        lines              = File.read(file_name)
+        hits, output_lines = re_encrypt_lines(lines)
+
+        File.open(file_name, 'wb') { |file| file.write(output_lines) } if hits.positive?
+        hits
+      end
+
+      # Replaces instances of encrypted data within lines of text with re-encrypted values
+      def re_encrypt_lines(lines)
         hits         = 0
-        lines        = File.read(file_name)
         output_lines = ''
         r            = regexp
         lines.each_line do |line|
@@ -72,8 +80,7 @@ module SymmetricEncryption
               line
             end
         end
-        File.open(file_name, 'wb') { |file| file.write(output_lines) } if hits.positive?
-        hits
+        [hits, output_lines]
       end
 
       # Re Encrypt an entire file

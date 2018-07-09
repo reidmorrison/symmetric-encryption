@@ -3,33 +3,10 @@ module SymmetricEncryption
     class File
       attr_accessor :file_name, :key_encrypting_key
 
-      # Returns [Hash] initial configuration.
-      # Generates the encrypted key file for every environment except development and test.
-      def self.new_config(key_path: '/etc/symmetric-encryption',
-                          app_name: 'symmetric-encryption',
-                          environments: %i[development test release production],
-                          cipher_name: 'aes-256-cbc')
-
-        configs = {}
-        environments.each do |environment|
-          environment          = environment.to_sym
-          configs[environment] =
-            if %i[development test].include?(environment)
-              Keystore.dev_config
-            else
-              cfg = new_key_config(key_path: key_path, cipher_name: cipher_name, app_name: app_name, environment: environment)
-              {
-                ciphers: [cfg]
-              }
-            end
-        end
-        configs
-      end
-
-      # Returns [Hash] a new cipher, and writes its encrypted key file.
+      # Returns [Hash] a new keystore configuration after generating the data key.
       #
       # Increments the supplied version number by 1.
-      def self.new_key_config(key_path:, cipher_name:, app_name:, environment:, version: 0, dek: nil)
+      def self.generate_data_key(key_path:, cipher_name:, app_name:, environment:, version: 0, dek: nil)
         version >= 255 ? (version = 1) : (version += 1)
 
         dek   ||= SymmetricEncryption::Key.new(cipher_name: cipher_name)
@@ -37,12 +14,13 @@ module SymmetricEncryption
         kekek = SymmetricEncryption::Key.new(cipher_name: cipher_name)
 
         dek_file_name = ::File.join(key_path, "#{app_name}_#{environment}_v#{version}.encrypted_key")
-        new(file_name: dek_file_name, key_encrypting_key: kek).write(dek.key)
+        new(key_filename: dek_file_name, key_encrypting_key: kek).write(dek.key)
 
         kekek_file_name = ::File.join(key_path, "#{app_name}_#{environment}_v#{version}.kekek")
-        new(file_name: kekek_file_name).write(kekek.key)
+        new(key_filename: kekek_file_name).write(kekek.key)
 
         {
+          keystore:           :file,
           cipher_name:        dek.cipher_name,
           version:            version,
           key_filename:       dek_file_name,
@@ -60,8 +38,8 @@ module SymmetricEncryption
 
       # Stores the Encryption key in a file.
       # Secures the Encryption key by encrypting it with a key encryption key.
-      def initialize(file_name:, key_encrypting_key: nil)
-        @file_name          = file_name
+      def initialize(key_filename:, key_encrypting_key: nil)
+        @file_name          = key_filename
         @key_encrypting_key = key_encrypting_key
       end
 

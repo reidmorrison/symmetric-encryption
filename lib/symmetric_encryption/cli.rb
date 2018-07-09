@@ -197,26 +197,21 @@ module SymmetricEncryption
     end
 
     def generate_new_config
+      unless KEYSTORES.include?(keystore)
+        puts "Invalid keystore option: #{keystore}, must be one of #{KEYSTORES.join(', ')}"
+        exit(-3)
+      end
+
       config_file_does_not_exist!
       self.environments ||= %i[development test release production]
-      cfg               =
-        if keystore == :file
-          SymmetricEncryption::Keystore::File.new_config(
-            key_path:     key_path,
-            app_name:     app_name,
-            environments: environments,
-            cipher_name:  cipher_name
-          )
-        elsif %i[heroku environment].include?(keystore)
-          SymmetricEncryption::Keystore::Environment.new_config(
-            app_name:     app_name,
-            environments: environments,
-            cipher_name:  cipher_name
-          )
-        else
-          puts "Invalid keystore option: #{keystore}, must be one of #{KEYSTORES.join(', ')}"
-          exit(-3)
-        end
+      args              = {
+        app_name:     app_name,
+        environments: environments,
+        cipher_name:  cipher_name
+      }
+      args[:key_path]   = key_path if key_path
+      args[:regions]    = regions if regions && !regions.empty?
+      cfg               = KeyStore.new_config(keystore, **args)
       Config.write_file(config_file_path, cfg)
       puts "New configuration file created at: #{config_file_path}"
     end

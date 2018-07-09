@@ -4,32 +4,10 @@ module SymmetricEncryption
     class Environment < Memory
       attr_accessor :key_env_var, :encoding
 
-      # Returns [Hash] initial configuration for heroku.
-      # Displays the keys that need to be added to the heroku environment.
-      def self.new_config(app_name: 'symmetric-encryption',
-                          environments: %i[development test release production],
-                          cipher_name: 'aes-256-cbc')
-
-        configs = {}
-        environments.each do |environment|
-          environment          = environment.to_sym
-          configs[environment] =
-            if %i[development test].include?(environment)
-              Keystore.dev_config
-            else
-              cfg = new_key_config(cipher_name: cipher_name, app_name: app_name, environment: environment)
-              {
-                ciphers: [cfg]
-              }
-            end
-        end
-        configs
-      end
-
-      # Returns [Hash] a new cipher, and writes its encrypted key file.
+      # Returns [Hash] a new keystore configuration after generating the data key.
       #
       # Increments the supplied version number by 1.
-      def self.new_key_config(cipher_name:, app_name:, environment:, version: 0, dek: nil)
+      def self.generate_data_key(cipher_name:, app_name:, environment:, version: 0, dek: nil)
         version >= 255 ? (version = 1) : (version += 1)
 
         kek = SymmetricEncryption::Key.new(cipher_name: cipher_name)
@@ -39,6 +17,7 @@ module SymmetricEncryption
         new(key_env_var: key_env_var, key_encrypting_key: kek).write(dek.key)
 
         {
+          keystore:           :environment,
           cipher_name:        dek.cipher_name,
           version:            version,
           key_env_var:        key_env_var,
@@ -70,11 +49,8 @@ module SymmetricEncryption
       def write(key)
         encrypted_key = key_encrypting_key.encrypt(key)
         puts "\n\n********************************************************************************"
-        puts "Add the environment key to Heroku:\n\n"
-        puts "  heroku config:add #{key_env_var}=#{encoder.encode(encrypted_key)}"
-        puts
-        puts "Or, if using environment variables on another system set the environment variable as follows:\n\n"
-        puts "  export #{key_env_var}=\"#{encoder.encode(encrypted_key)}\"\n\n"
+        puts "Set the environment variable as follows:"
+        puts "  export #{key_env_var}=\"#{encoder.encode(encrypted_key)}\""
         puts '********************************************************************************'
       end
 

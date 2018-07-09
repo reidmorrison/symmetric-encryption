@@ -18,8 +18,8 @@ module SymmetricEncryption
                          encoding: :base64strict,
                          **config)
 
-      Key.migrate_config!(config)
-      key = Key.from_config(cipher_name: cipher_name, **config)
+      Keystore.migrate_config!(config)
+      key = Keystore.read_key(cipher_name: cipher_name, **config)
 
       Cipher.new(
         key:               key.key,

@@ -5,14 +5,14 @@ module SymmetricEncryption
       attr_accessor :key_encrypting_key
       attr_reader :encrypted_key
 
-      # Returns [Hash] a new cipher, and writes its encrypted key file.
+      # Returns [Hash] a new keystore configuration after generating the data key.
       #
       # Increments the supplied version number by 1.
       #
       # Notes:
       # * For development and testing purposes only!!
       # * Never store the encrypted encryption key in the source code / config file.
-      def self.new_key_config(cipher_name:, app_name:, environment:, version: 0, dek: nil)
+      def self.generate_data_key(cipher_name:, app_name:, environment:, version: 0, dek: nil)
         version >= 255 ? (version = 1) : (version += 1)
 
         kek = SymmetricEncryption::Key.new(cipher_name: cipher_name)
@@ -21,6 +21,7 @@ module SymmetricEncryption
         encrypted_key = new(key_encrypting_key: kek).write(dek.key)
 
         {
+          keystore:           :memory,
           cipher_name:        cipher_name,
           version:            version,
           encrypted_key:      encrypted_key,

@@ -2,8 +2,8 @@ require_relative '../test_helper'
 require 'stringio'
 
 module SymmetricEncryption
-  class EnvironmentTest < Minitest::Test
-    describe SymmetricEncryption::Keystore::Environment do
+  class HerokuTest < Minitest::Test
+    describe SymmetricEncryption::Keystore::Heroku do
       after do
         # Cleanup generated encryption key files.
         `rm tmp/tester* 2> /dev/null`
@@ -15,7 +15,7 @@ module SymmetricEncryption
         end
 
         let :keystore_config do
-          SymmetricEncryption::Keystore::Environment.generate_data_key(
+          SymmetricEncryption::Keystore::Heroku.generate_data_key(
             cipher_name: 'aes-256-cbc',
             app_name:    'tester',
             environment: 'test',
@@ -62,7 +62,7 @@ module SymmetricEncryption
         end
 
         let :keystore do
-          SymmetricEncryption::Keystore::Environment.new(key_env_var: 'TESTER_ENV_VAR', key_encrypting_key: key)
+          SymmetricEncryption::Keystore::Heroku.new(key_env_var: 'TESTER_ENV_VAR', key_encrypting_key: key)
         end
 
         it 'reads the key' do
