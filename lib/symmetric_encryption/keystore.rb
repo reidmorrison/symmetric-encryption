@@ -2,6 +2,7 @@ module SymmetricEncryption
   # Encryption keys are secured in Keystores
   module Keystore
     # @formatter:off
+    autoload :Aws,         'symmetric_encryption/keystore/aws'
     autoload :Environment, 'symmetric_encryption/keystore/environment'
     autoload :File,        'symmetric_encryption/keystore/file'
     autoload :Heroku,      'symmetric_encryption/keystore/heroku'
@@ -158,7 +159,6 @@ module SymmetricEncryption
       end
 
       unless key
-        args.delete(:keystore)
         keystore_class = keystore_for(args)
         store          = keystore_class.new(key_encrypting_key: key_encrypting_key, **args)
         key            = store.read
@@ -180,6 +180,8 @@ module SymmetricEncryption
         Keystore::File
       elsif config[:key_env_var]
         Keystore::Environment
+      else
+        raise(ArgumentError, 'Unknown keystore supplied in config')
       end
     end
 

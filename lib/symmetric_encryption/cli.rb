@@ -6,7 +6,7 @@ module SymmetricEncryption
                 :decrypt, :random_password, :new_keys, :generate, :environment,
                 :keystore, :re_encrypt, :version, :output_file_name, :compress,
                 :environments, :cipher_name, :rolling_deploy, :rotate_keys, :rotate_kek, :prompt, :show_version,
-                :cleanup_keys, :activate_key, :migrate
+                :cleanup_keys, :activate_key, :migrate, :regions
 
     KEYSTORES = %i[heroku environment file].freeze
 
@@ -127,8 +127,12 @@ module SymmetricEncryption
           @generate = config
         end
 
-        opts.on '-s', '--keystore heroku|environment|file', 'Generate a new configuration file and encryption keys for every environment.' do |keystore|
+        opts.on '-s', '--keystore heroku|environment|file|aws', 'Which keystore to use during generation or re-encryption.' do |keystore|
           @keystore = (keystore || 'file').downcase.to_sym
+        end
+
+        opts.on '-B', '--regions [us-east-1,us-east-2,us-west-1,us-west-2]', 'AWS KMS Regions to encrypt data key with.' do |regions|
+          @regions = regions.to_s.split(',').collect(&:strip) if regions
         end
 
         opts.on '-K', '--key-path KEY_PATH', 'Output path in which to write generated key files. Default: /etc/symmetric-encryption' do |path|

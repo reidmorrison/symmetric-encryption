@@ -17,6 +17,9 @@ gem 'activerecord-jdbcsqlite3-adapter', platform: :jruby
 gem 'jdbc-sqlite3', platform: :jruby
 gem 'sqlite3', platform: :ruby
 
+# Soft dependency, only required when storing encryption keys in AWS KMS
+gem 'aws-sdk-kms'
+
 group :development do
   gem 'rubocop'
 end

@@ -22,7 +22,7 @@ module SymmetricEncryption
   autoload :CLI,                    'symmetric_encryption/cli'
   autoload :Keystore,               'symmetric_encryption/keystore'
   module Utils
-    autoload :Generate,             'symmetric_encryption/utils/generate'
+    autoload :Aws,                  'symmetric_encryption/utils/aws'
     autoload :ReEncryptFiles,       'symmetric_encryption/utils/re_encrypt_files'
   end
 end
