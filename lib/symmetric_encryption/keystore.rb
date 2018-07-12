@@ -152,14 +152,14 @@ module SymmetricEncryption
     # Returns [Key] by recursively navigating the config tree.
     #
     # Supports N level deep key encrypting keys.
-    def self.read_key(key: nil, iv:, key_encrypting_key: nil, cipher_name: 'aes-256-cbc', **args)
+    def self.read_key(key: nil, iv:, key_encrypting_key: nil, cipher_name: 'aes-256-cbc', keystore: nil, version: 0, **args)
       if key_encrypting_key.is_a?(Hash)
         # Recurse up the chain returning the parent key_encrypting_key
         key_encrypting_key = read_key(cipher_name: cipher_name, **key_encrypting_key)
       end
 
       unless key
-        keystore_class = keystore_for(args)
+        keystore_class = keystore ? constantize_symbol(keystore) : keystore_for(args)
         store          = keystore_class.new(key_encrypting_key: key_encrypting_key, **args)
         key            = store.read
       end

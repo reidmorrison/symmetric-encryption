@@ -1,3 +1,5 @@
+require 'base64'
+require 'aws-sdk-kms'
 module SymmetricEncryption
   module Keystore
     # Support AWS Key Management Service (KMS)
@@ -49,7 +51,7 @@ module SymmetricEncryption
     #     - Loss of access to AWS accounts.
     #     - Loss of region(s) in which master keys are stored.
     class Aws
-      attr_reader :app_name, :environment, :version, :key_path, :region, :cipher_name
+      attr_reader :region, :key_files, :master_key_alias
 
       # Returns [Hash] a new keystore configuration after generating the data key.
       #
@@ -57,7 +59,7 @@ module SymmetricEncryption
       #
       # Sample Hash layout returned:
       # {
-      #   cipher_name: aes - 256 - cbc,
+      #   cipher_name: aes-256-cbc,
       #   version:     8,
       #   keystore:    :aws,
       #   key_files:   [
@@ -67,109 +69,97 @@ module SymmetricEncryption
       #   iv:          'T80pYzD0E6e/bJCdjZ6TiQ=='
       # }
       def self.generate_data_key(version: 0,
-        data_key: nil,
         regions: Utils::Aws::AWS_US_REGIONS,
         dek: nil,
         cipher_name:,
-        **args)
+        app_name:,
+        environment:,
+        key_path:)
 
         # TODO: Also support generating environment variables instead of files.
 
         version >= 255 ? (version = 1) : (version += 1)
         regions = Array(regions).dup
 
-        key_files = []
-        # Re-encrypt DEK in other regions using that regions CMK.
-        regions.each do |region|
-          keystore = new(region: region, version: version, **args)
-          if dek
-            data_key = keystore.aws.encrypt(dek.key)
-          else
-            # Generate new data key in the first region if not supplied.
-            data_key = keystore.aws.generate_data_key(cipher_name)
-            dek      = SymmetricEncryption::Key.new(cipher_name: cipher_name, key: data_key)
-          end
+        app_name         = app_name.downcase.strip
+        environment      = environment.downcase.strip
+        master_key_alias = master_key_alias(app_name, environment)
 
-          keystore.write(data_key)
-          key_files << {region: region, file_name: keystore.data_key_file_name}
+        # File per region for holding the encrypted data key
+        key_files = regions.collect do |region|
+          file_name = "#{app_name}_#{environment}_#{region}_v#{version}.encrypted_key"
+          {region: region, file_name: ::File.join(key_path, file_name)}
         end
 
+        keystore = new(key_files: key_files, master_key_alias: master_key_alias)
+        unless dek
+          data_key = keystore.aws(regions.first).generate_data_key(cipher_name)
+          dek      = Key.new(key: data_key, cipher_name: cipher_name)
+        end
+        keystore.write(dek.key)
+
         {
-          keystore:    :aws,
-          cipher_name: dek.cipher_name,
-          version:     version,
-          key_files:   key_files,
-          iv:          dek.iv
+          keystore:         :aws,
+          cipher_name:      dek.cipher_name,
+          version:          version,
+          master_key_alias: master_key_alias,
+          key_files:        key_files,
+          iv:               dek.iv
         }
+      end
+
+      # Alias pointing to the active version of the master key for that region.
+      def self.master_key_alias(app_name, environment)
+        @master_key_alias ||= "alias/symmetric-encryption/#{app_name}/#{environment}"
       end
 
       # Stores the Encryption key in a file.
       # Secures the Encryption key by encrypting it with a key encryption key.
-      def initialize(region:, version:, environment:, app_name: 'symmetric-encryption', key_path: '~/.symmetric-encryption', key_encrypting_key: nil)
-        @app_name    = app_name.downcase.strip
-        @environment = environment.downcase.strip
-        @version     = version.to_s.strip
-        @key_path    = key_path
-        @region      = region
+      def initialize(region: nil, key_files:, master_key_alias:, key_encrypting_key: nil)
+        @key_files        = key_files
+        @master_key_alias = master_key_alias
+        @region           = region || ENV['AWS_REGION'] || ENV['AWS_DEFAULT_REGION'] || ::Aws.config[:region]
         if key_encrypting_key
           raise(SymmetricEncryption::ConfigError, 'AWS KMS keystore encrypts the key itself, so does not support supplying a key_encrypting_key')
         end
       end
 
-      # Alias pointing to the active version of the master key for that region.
-      def master_key_alias
-        @master_key_alias ||= "alias/symmetric-encryption/#{app_name}/#{environment}"
-      end
-
       # Reads the data key environment variable, if present, otherwise a file.
       # Decrypts the key using the master key for this region.
       def read
-        encoded_dek = ENV[data_key_env_var_name]
+        key_file = key_files.find { |i| i[:region] == region }
+        raise(SymmetricEncryption::ConfigError, "region: #{region} not available in the supplied key_files") unless key_file
 
-        if encoded_dek.nil? && ::File.exist?(data_key_file_name)
-          # TODO: Validate that file is not globally readable.
-          encoded_dek = ::File.open(data_key_file_name, 'rb', &:read)
-        end
+        file_name = key_file[:file_name]
+        raise(SymmetricEncryption::ConfigError, 'file_name is mandatory for each key_file entry') unless file_name
 
-        unless encoded_dek
-          raise(SymmetricEncryption::ConfigError, "Could not read the data key from either ENV['#{data_key_env_var_name}'] or #{data_key_file_name}")
-        end
+        raise(SymmetricEncryption::ConfigError, "File #{file_name} could not be found") unless ::File.exist?(file_name)
 
-        encrypted_data_key = Base64.urlsafe_decode64(encoded_dek)
-        aws.decrypt(encrypted_data_key)
+        # TODO: Validate that file is not globally readable.
+        encoded_dek        = ::File.open(file_name, 'rb', &:read)
+        encrypted_data_key = Base64.decode64(encoded_dek)
+        aws(region).decrypt(encrypted_data_key)
       end
 
-      # Encrypt and write the key to file.
+      # Encrypt and write the data key to the file for each region.
       def write(data_key)
-        encrypted_data_key = aws.encrypt(data_key)
-        write_encrypted_key(encrypted_data_key)
+        key_files.each do |key_file|
+          region    = key_file[:region]
+          file_name = key_file[:file_name]
+
+          raise(ArgumentError, "region and file_name are mandatory for each key_file entry") unless region && file_name
+
+          encrypted_data_key = aws(region).encrypt(data_key)
+          encoded_dek        = Base64.encode64(encrypted_data_key)
+          write_to_file(file_name, encoded_dek)
+        end
       end
 
-      # Writes an encrypted data key to file.
-      def write_encrypted_key(encrypted_data_key)
-        encoded_dek = Base64.urlsafe_encode64(encrypted_data_key)
-        write_to_file(data_key_file_name, encoded_dek)
-      end
-
-      # Name of the environment variable that would hold the encoded encrypted data key.
-      def data_key_env_var_name
-        data_key_name.upcase.tr('-', '_')
-      end
-
-      # Name of the file that would hold the encoded encrypted data key.
-      def data_key_file_name
-        ::File.join(key_path, "#{data_key_name}.encrypted_key")
-      end
-
-      def aws
-        @aws ||= Utils::Aws.new(region: region, master_key_alias: master_key_alias)
+      def aws(region)
+        Utils::Aws.new(region: region, master_key_alias: master_key_alias)
       end
 
       private
-
-      def data_key_name
-        "#{app_name}_#{environment}_#{region}_v#{version}"
-      end
 
       # Write to the supplied file_name, backing up the existing file if present
       def write_to_file(file_name, data)
@@ -178,14 +168,6 @@ module SymmetricEncryption
         ::File.rename(file_name, "#{file_name}.#{Time.now.to_i}") if ::File.exist?(file_name)
         ::File.open(file_name, 'wb') { |file| file.write(data) }
       end
-
-      # def create_data_key_env_var
-      #   encrypted_dek = create_encrypted_data_key
-      #   encoded_dek   = Base64.urlsafe_encode64(encrypted_dek)
-      #   env_var       = data_key_env_var_name
-      #   {env_var => encoded_dek}
-      # end
-
     end
   end
 end
