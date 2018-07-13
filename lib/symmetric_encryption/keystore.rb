@@ -49,10 +49,13 @@ module SymmetricEncryption
     #     by the servers that have not been updated yet.
     #     Default: false
     #
+    #   keystore: [Symbol]
+    #     If supplied, changes the keystore during key rotation.
+    #
     # Notes:
     # * iv_filename is no longer supported and is removed when creating a new random cipher.
     #     * `iv` does not need to be encrypted and is included in the clear.
-    def self.rotate_keys!(full_config, environments: [], app_name:, rolling_deploy: false)
+    def self.rotate_keys!(full_config, environments: [], app_name:, rolling_deploy: false, keystore: nil)
       full_config.each_pair do |environment, cfg|
         # Only rotate keys for specified environments. Default, all
         next if !environments.empty? && !environments.include?(environment.to_sym)
@@ -67,7 +70,7 @@ module SymmetricEncryption
 
         cipher_name = config[:cipher_name] || 'aes-256-cbc'
 
-        keystore_class = keystore_for(config)
+        keystore_class = keystore ? constantize_symbol(keystore) : keystore_for(config)
 
         args            = {
           cipher_name: cipher_name,

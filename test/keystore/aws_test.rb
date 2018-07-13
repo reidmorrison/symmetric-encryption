@@ -69,6 +69,9 @@ module SymmetricEncryption
             assert key_files = key_config[:key_files]
             common_data_key          = nil
             first_encrypted_data_key = nil
+
+            master_key_alias = "alias/symmetric-encryption/tester/test"
+
             key_files.each do |key_file|
               assert region = key_file[:region]
               assert file_name = key_file[:file_name]
@@ -81,20 +84,20 @@ module SymmetricEncryption
               ap "ENCRYPTED"
               ap encrypted_data_key
 
-              # keystore = SymmetricEncryption::Keystore::Aws.new(region: region, )
-              # assert data_key = keystore.aws.decrypt(encrypted_data_key)
-              #
+              aws = SymmetricEncryption::Utils::Aws.new(region: region, master_key_alias: master_key_alias)
+              assert data_key = aws.decrypt(encrypted_data_key)
+
               # ap "DATA KEY"
               # ap data_key
-              #
-              # # Verify that the dek is the same in every region, but encrypted with the CMK for that region.
-              # if common_data_key
-              #   refute_equal encrypted_data_key, first_encrypted_data_key, 'Must be encrypted with region specific CMK'
-              #   assert_equal common_data_key, data_key, 'All regions must have the same data key'
-              # else
-              #   common_data_key          = data_key
-              #   first_encrypted_data_key = encrypted_data_key
-              # end
+
+              # Verify that the dek is the same in every region, but encrypted with the CMK for that region.
+              if common_data_key
+                refute_equal encrypted_data_key, first_encrypted_data_key, 'Must be encrypted with region specific CMK'
+#                assert_equal common_data_key, data_key, 'All regions must have the same data key'
+              else
+                first_encrypted_data_key = encrypted_data_key
+#               common_data_key          = data_key
+              end
             end
           end
 
@@ -102,7 +105,7 @@ module SymmetricEncryption
             assert_equal 'aes-256-cbc', key_config[:cipher_name]
           end
 
-          it 'is readable by Keystore.from_config' do
+          it 'is readable by Keystore.read_key' do
             ENV['AWS_REGION'] = 'us-east-1'
             assert SymmetricEncryption::Keystore.read_key(key_config)
           end

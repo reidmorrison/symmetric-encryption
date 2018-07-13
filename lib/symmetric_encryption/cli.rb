@@ -19,7 +19,7 @@ module SymmetricEncryption
       @environment      = ENV['SYMMETRIC_ENCRYPTION_ENV'] || ENV['RACK_ENV'] || ENV['RAILS_ENV'] || 'development'
       @config_file_path = File.expand_path(ENV['SYMMETRIC_ENCRYPTION_CONFIG'] || 'config/symmetric-encryption.yml')
       @app_name         = 'symmetric-encryption'
-      @key_path         = '/etc/symmetric-encryption'
+      @key_path         = '~/.symmetric-encryption'
       @cipher_name      = 'aes-256-cbc'
       @rolling_deploy   = false
       @prompt           = false
@@ -135,7 +135,7 @@ module SymmetricEncryption
           @regions = regions.to_s.split(',').collect(&:strip) if regions
         end
 
-        opts.on '-K', '--key-path KEY_PATH', 'Output path in which to write generated key files. Default: /etc/symmetric-encryption' do |path|
+        opts.on '-K', '--key-path KEY_PATH', 'Output path in which to write generated key files. Default: ~/.symmetric-encryption' do |path|
           @key_path = path
         end
 
@@ -215,7 +215,7 @@ module SymmetricEncryption
       }
       args[:key_path]   = key_path if key_path
       args[:regions]    = regions if regions && !regions.empty?
-      cfg               = KeyStore.new_config(keystore, **args)
+      cfg               = Keystore.generate_data_keys(keystore, **args)
       Config.write_file(config_file_path, cfg)
       puts "New configuration file created at: #{config_file_path}"
     end
@@ -227,8 +227,13 @@ module SymmetricEncryption
     end
 
     def run_rotate_keys
+      if keystore && KEYSTORES.include?(keystore)
+        puts "Invalid keystore option: #{keystore}, must be one of #{KEYSTORES.join(', ')}"
+        exit(-3)
+      end
+
       config = Config.read_file(config_file_path)
-      SymmetricEncryption::Keystore.rotate_keys!(config, environments: environments || [], app_name: app_name, rolling_deploy: rolling_deploy)
+      SymmetricEncryption::Keystore.rotate_keys!(config, environments: environments || [], app_name: app_name, rolling_deploy: rolling_deploy, keystore: keystore)
       Config.write_file(config_file_path, config)
       puts "Existing configuration file updated with new keys: #{config_file_path}"
     end

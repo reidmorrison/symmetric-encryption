@@ -62,9 +62,10 @@ module SymmetricEncryption
       #   cipher_name: aes-256-cbc,
       #   version:     8,
       #   keystore:    :aws,
+      #   master_key_alias: 'alias/symmetric-encryption/application/production',
       #   key_files:   [
-      #                  {region: blah1, file_name: "/etc/clarity/clarity_production_v6_blah1.encrypted_key"},
-      #                  {region: blah2, file_name: "/etc/clarity/clarity_production_v6_blah2.encrypted_key"},
+      #                  {region: blah1, file_name: "~/symmetric-encryption/application_production_blah1_v6.encrypted_key"},
+      #                  {region: blah2, file_name: "~/symmetric-encryption/application_production_blah2_v6.encrypted_key"},
       #                ],
       #   iv:          'T80pYzD0E6e/bJCdjZ6TiQ=='
       # }
@@ -81,8 +82,6 @@ module SymmetricEncryption
         version >= 255 ? (version = 1) : (version += 1)
         regions = Array(regions).dup
 
-        app_name         = app_name.downcase.strip
-        environment      = environment.downcase.strip
         master_key_alias = master_key_alias(app_name, environment)
 
         # File per region for holding the encrypted data key
