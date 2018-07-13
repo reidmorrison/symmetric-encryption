@@ -8,7 +8,9 @@ module SymmetricEncryption
       end
 
       let :the_test_path do
-        'tmp/keystore_test'
+        path = "tmp/keystore_test"
+        FileUtils.makedirs(path) unless ::File.exist?(path)
+        path
       end
 
       after do
