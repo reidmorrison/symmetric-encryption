@@ -1,3 +1,3 @@
 module SymmetricEncryption
-  VERSION = '4.1.0'.freeze
+  VERSION = '4.1.0.beta1'.freeze
 end

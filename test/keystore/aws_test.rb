@@ -14,7 +14,7 @@ module SymmetricEncryption
 
         after do
           # Cleanup generated encryption key files.
-          `rm -r tmp/test_path 2> /dev/null`
+          #`rm -r tmp/test_path 2> /dev/null`
         end
 
         let :regions do
@@ -80,23 +80,19 @@ module SymmetricEncryption
               assert_equal expected_file_name, file_name
               assert ::File.exist?(file_name)
 
-              assert encrypted_data_key = ::File.read(file_name)
-              ap "ENCRYPTED"
-              ap encrypted_data_key
+              assert encoded_data_key = ::File.read(file_name)
+              encrypted_data_key = Base64.strict_decode64(encoded_data_key)
 
               aws = SymmetricEncryption::Utils::Aws.new(region: region, master_key_alias: master_key_alias)
               assert data_key = aws.decrypt(encrypted_data_key)
 
-              # ap "DATA KEY"
-              # ap data_key
-
               # Verify that the dek is the same in every region, but encrypted with the CMK for that region.
               if common_data_key
                 refute_equal encrypted_data_key, first_encrypted_data_key, 'Must be encrypted with region specific CMK'
-#                assert_equal common_data_key, data_key, 'All regions must have the same data key'
+                assert_equal common_data_key, data_key, 'All regions must have the same data key'
               else
                 first_encrypted_data_key = encrypted_data_key
-#               common_data_key          = data_key
+                common_data_key          = data_key
               end
             end
           end

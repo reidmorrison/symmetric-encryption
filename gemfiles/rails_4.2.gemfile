@@ -12,6 +12,7 @@ gem "highline"
 gem "activerecord-jdbcsqlite3-adapter", "~> 1.0", platform: :jruby
 gem "jdbc-sqlite3", platform: :jruby
 gem "sqlite3", platform: :ruby
+gem "aws-sdk-kms"
 gem "mongoid", "~> 5.0"
 
 group :development do

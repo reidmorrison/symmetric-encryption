@@ -136,7 +136,7 @@ module SymmetricEncryption
 
         # TODO: Validate that file is not globally readable.
         encoded_dek        = ::File.open(file_name, 'rb', &:read)
-        encrypted_data_key = Base64.decode64(encoded_dek)
+        encrypted_data_key = Base64.strict_decode64(encoded_dek)
         aws(region).decrypt(encrypted_data_key)
       end
 
@@ -149,7 +149,7 @@ module SymmetricEncryption
           raise(ArgumentError, "region and file_name are mandatory for each key_file entry") unless region && file_name
 
           encrypted_data_key = aws(region).encrypt(data_key)
-          encoded_dek        = Base64.encode64(encrypted_data_key)
+          encoded_dek        = Base64.strict_encode64(encrypted_data_key)
           write_to_file(file_name, encoded_dek)
         end
       end
