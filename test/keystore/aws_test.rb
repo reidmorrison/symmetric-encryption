@@ -3,7 +3,7 @@ require 'stringio'
 
 module SymmetricEncryption
   module Keystore
-    class FileTest < Minitest::Test
+    class AwsTest < Minitest::Test
       describe SymmetricEncryption::Keystore::File do
         before do
           unless (ENV['AWS_ACCESS_KEY_ID'] && ENV['AWS_SECRET_ACCESS_KEY']) || ENV['AWS_CONFIG_FILE']
@@ -12,9 +12,13 @@ module SymmetricEncryption
           end
         end
 
+        let :the_test_path do
+          'tmp/keystore/aws_test'
+        end
+
         after do
           # Cleanup generated encryption key files.
-          #`rm -r tmp/test_path 2> /dev/null`
+          `rm #{the_test_path}/* 2> /dev/null`
         end
 
         let :regions do
@@ -28,7 +32,7 @@ module SymmetricEncryption
         let :key_config do
           SymmetricEncryption::Keystore::Aws.generate_data_key(
             regions:     regions,
-            key_path:    'tmp/test_path',
+            key_path:    the_test_path,
             cipher_name: 'aes-256-cbc',
             app_name:    'tester',
             environment: 'test',
@@ -75,7 +79,7 @@ module SymmetricEncryption
             key_files.each do |key_file|
               assert region = key_file[:region]
               assert file_name = key_file[:file_name]
-              expected_file_name = "tmp/test_path/tester_test_#{region}_v11.encrypted_key"
+              expected_file_name = "#{the_test_path}/tester_test_#{region}_v11.encrypted_key"
 
               assert_equal expected_file_name, file_name
               assert ::File.exist?(file_name)
@@ -112,7 +116,7 @@ module SymmetricEncryption
             SymmetricEncryption::Keystore::Aws.new(
               region:           'us-east-1',
               master_key_alias: master_key_alias,
-              key_files:        [{region: 'us-east-1', file_name: 'tmp/test_path/file_1'}]
+              key_files:        [{region: 'us-east-1', file_name: "#{the_test_path}/file_1"}]
             )
           end
 

@@ -7,9 +7,13 @@ module SymmetricEncryption
         SymmetricEncryption::Keystore::File.new(file_name: 'tmp/tester.key', key_encrypting_key: SymmetricEncryption::Key.new)
       end
 
+      let :the_test_path do
+        'tmp/keystore_test'
+      end
+
       after do
         # Cleanup generated encryption key files.
-        `rm tmp/tester* 2>/dev/null`
+        `rm #{the_test_path}/* 2> /dev/null`
       end
 
       let :random_key do
@@ -60,7 +64,7 @@ module SymmetricEncryption
         let :config do
           SymmetricEncryption::Keystore.generate_data_keys(
             keystore:     :file,
-            key_path:     'tmp',
+            key_path:     the_test_path,
             app_name:     'tester',
             environments: environments,
             cipher_name:  'aes-128-cbc'
@@ -85,7 +89,7 @@ module SymmetricEncryption
         let :config do
           SymmetricEncryption::Keystore.generate_data_keys(
             keystore:     :file,
-            key_path:     'tmp',
+            key_path:     the_test_path,
             app_name:     'tester',
             environments: environments,
             cipher_name:  'aes-128-cbc'
@@ -130,7 +134,7 @@ module SymmetricEncryption
         end
 
         let :dek_file_name do
-          'tmp/dek_tester_dek.encrypted_key'
+          "#{the_test_path}/dek_tester_dek.encrypted_key"
         end
 
         describe 'key' do
@@ -209,7 +213,7 @@ module SymmetricEncryption
 
         describe 'file store with kekek' do
           let :kekek_file_name do
-            'tmp/tester_kekek.key'
+            "#{the_test_path}/tester_kekek.key"
           end
 
           let :config do

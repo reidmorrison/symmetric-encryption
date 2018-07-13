@@ -4,11 +4,6 @@ require 'stringio'
 module SymmetricEncryption
   class EnvironmentTest < Minitest::Test
     describe SymmetricEncryption::Keystore::Environment do
-      after do
-        # Cleanup generated encryption key files.
-        `rm tmp/tester* 2> /dev/null`
-      end
-
       describe '.generate_data_key' do
         let :version do
           10

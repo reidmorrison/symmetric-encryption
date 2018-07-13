@@ -4,9 +4,13 @@ require 'stringio'
 module SymmetricEncryption
   class FileTest < Minitest::Test
     describe SymmetricEncryption::Keystore::File do
+      let :the_test_path do
+        'tmp/keystore/file_test'
+      end
+
       after do
         # Cleanup generated encryption key files.
-        `rm tmp/tester* 2> /dev/null`
+        `rm #{the_test_path}/* 2> /dev/null`
       end
 
       describe '.generate_data_key' do
@@ -16,7 +20,7 @@ module SymmetricEncryption
 
         let :key_config do
           SymmetricEncryption::Keystore::File.generate_data_key(
-            key_path:    'tmp',
+            key_path:    the_test_path,
             cipher_name: 'aes-256-cbc',
             app_name:    'tester',
             environment: 'test',
@@ -49,7 +53,7 @@ module SymmetricEncryption
         end
 
         it 'creates the encrypted key file' do
-          file_name = 'tmp/tester_test_v11.encrypted_key'
+          file_name = "#{the_test_path}/tester_test_v11.encrypted_key"
           assert_equal file_name, key_config[:key_filename]
           assert File.exist?(file_name)
         end
@@ -66,7 +70,7 @@ module SymmetricEncryption
 
       describe '#write, #read' do
         let :keystore do
-          SymmetricEncryption::Keystore::File.new(key_filename: 'tmp/tester.key', key_encrypting_key: SymmetricEncryption::Key.new)
+          SymmetricEncryption::Keystore::File.new(key_filename: "#{the_test_path}/tester.key", key_encrypting_key: SymmetricEncryption::Key.new)
         end
 
         it 'stores the key' do
