@@ -56,13 +56,12 @@ Options:
 * `--config CONFIG_FILE`
     * Path and filename of the generated configuration file.
     * Default: `config/symmetric-encryption.yml`.
-* `--keystore [heroku|environment|file]`
+* `--keystore [aws|environment|file|heroku]`
     * Specify which keystore to use to hold the encryption keys.
     * Valid values:
-        * `heroku`
-            * Generate a configuration file for use on heroku.
-            * Follow the instructions displayed to store the encrypted encryption key
-              as a heroku environment settings.
+        * `aws`
+            * Generate a configuration file for use with the [AWS Key Management Service](https://aws.amazon.com/kms/).
+            * See instructions below on setting up the AWS Credentials prior to generating or rotating encryption keys.
         * `environment`
             * Generate a configuration file where the encrypted encryption key is held in an environment variable
               instead of using the default file store.
@@ -70,18 +69,22 @@ Options:
         * `file`
             * Stores the encrypted encryption key as files on disk.
             * See `--key-path` to change the location of the file keystore.
+        * `heroku`
+            * Generate a configuration file for use on heroku.
+            * Follow the instructions displayed to store the encrypted encryption key
+              as a heroku environment settings.
     * Default: `file`
+* `--regions`
+    * Used by the `aws` keystore to set the regions that should be supported.
+    * Default: `us-east-1,us-east-2,us-west-1,us-west-2`
 
-##### Example
+### File Keystore
 
-It is recommended to run the following commands using the same user that the application will run under. In this
-example it will use the user `rails`
-Create the directory to act as the file keystore, and lock it down so that :
+Create the directory where the output files will be created and secure it so that no other users can see the files:
 
 ~~~
-sudo mkdir /etc/symmetric-encryption
-sudo chown rails /etc/symmetric-encryption
-chown rails /etc/rails/keys/*
+mkdir ~/.symmetric-encryption
+chmod -R 0400 ~/.symmetric-encryption
 ~~~
 
 Generate file keystore, using an application name of `my_app`. Create keystores for each of the environments
@@ -98,9 +101,9 @@ The following files were created:
 ~~~
 config/symmetric-encryption.yml
 
-/etc/symmetric-encryption/my_app_preprod_v1.key
-/etc/symmetric-encryption/my_app_acceptance_v1.key
-/etc/symmetric-encryption/my_app_production_v1.key
+~/.symmetric-encryption/my_app_preprod_v1.key
+~/.symmetric-encryption/my_app_acceptance_v1.key
+~/.symmetric-encryption/my_app_production_v1.key
 ~~~
 
 Move the file for each environment to all of the servers for that environment that will be running Symmetric Encryption.
@@ -110,7 +113,7 @@ When running multiple Rails servers in a particular environment copy the same ke
 I.e. All Rails servers in each environment must run the same encryption keys.
 
 The file `config/symmetric-encryption.yml` should be stored in the source control system along with the other source code.
-Do not store any of the key files in `/etc/symmetric-encryption` in the source control system since they must be kept separate
+Do not store any of the key files in `~/.symmetric-encryption` in the source control system since they must be kept separate
 at all times from the above `config/symmetric-encryption.yml` file.
 
 To meet PCI Compliance the above steps need to be completed by an Operations Administrator and not by a developer
@@ -118,13 +121,88 @@ or software engineer. The developers should never have access to the key files, 
 
 It is recommended to lock down the key files to prevent any other user from being able to read them:
 ~~~
-sudo chmod -R 0400 /etc/symmetric-encryption
+chmod -R 0400 ~/.symmetric-encryption
 ~~~
 
-##### Heroku Example
+### Heroku Keystore
 
 Specify Heroku as the keystore so that the encrypted encryption keys can be stored in Heroku instead of in files.
 
     symmetric-encryption --generate --keystore heroku --app-name my_app --envs "development,test,production"
+    
+### AWS KMS keystore
+
+Symmetric Encryption can use the [AWS Key Management Service (KMS)](https://aws.amazon.com/kms/) to hold and manage
+the Key Encrypting Key (Customer Master Key).
+
+This is the most secure keystore that Symmetric Encryption currently supports. By storing the master key
+in AWS KMS it cannot be read or exported, only used to encrypt or decrypt the data encryption keys. The encrypted
+data encryption key is stored locally on the file system since it has been secured by encrypting it with the 
+AWS KMS Customer Master key.
+
+Symmetric Encryption creates a new Customer Master Key in AWS KMS so that it can be managed and rotated directly
+from within the AWS KMS management interface.
+
+#### AWS Dependencies
+
+The AWS KMS gem is a soft dependency, which is only required when the AWS KMS keystore is being used by
+Symmetric Encryption. Add the following line to Gemfile when using bundler:
+
+    gem 'aws-sdk-kms'
+
+If not using Bundler, run the following from the command line:
+
+    gem install 'aws-sdk-kms'
+    
+#### Setting up the AWS Credentials:
+
+In order to create new keys, or to rotate new keys using the AWS KMS, it is necessary to create the necessary
+AWS Credentials.
+
+It is recommended to use separate _management_ AWS KMS credentials to manage the keys. These credentials should
+be granted access all KMS operations. See Access Control below for securing runtime privileges by environment.
+
+Follow the AWS instructions for [creating and setting the AWS credentials](https://docs.aws.amazon.com/sdk-for-ruby/v3/developer-guide/setup-config.html) 
+
+#### Setting up the AWS Credentials:
+
+Once the AWS _management_ credentials have been created and set, the new keys can now be generated.
+
+When new keys are generated or rotated, they will be encrypted with the master key for every region
+specified. This allows data to be encrypted in one region and to be decrypted in another region during a disaster
+scenario.
+
+By default the following regions are configured: `us-east-1,us-east-2,us-west-1,us-west-2`
+
+The configured regions can be overriden by setting the `--regions` flag above.
+
+Example: Generate New Keys for the first time, targeting AWS keystore:
+
+    symmetric-encryption --generate --keystore aws --app-name my_app --environments "development,test,production"
+
+Example:  Rotate existing keys targeting AWS for the new keys:
+
+    symmetric-encryption --rotate-keys --keystore aws --app-name my_app --environments production
+
+Once the new keys have been generated, they should be moved to the relevant servers. By default the files
+are generated in `~/.symmetric-encryption` unless the flag `--key-path` was used to change the path.
+
+#### Setting a Region
+
+The simplest way to set the region is to set the `AWS_REGION` environment variable.
+
+    export AWS_REGION=us-west-2
+    
+See the AWS documentation for more options in [setting the AWS Region](https://docs.aws.amazon.com/sdk-for-ruby/v3/developer-guide/setup-config.html).
+
+#### Access Control
+
+Each environment should have its own credentials and those credentials should be restricted to decrypting using 
+the Customer Master Key (CMK) for that environment only. This prevents different environments from being able 
+to decrypt the data encryption key (DEK) from another environment.
+
+For each key, in each region change the permissions on the key itself so that only that environment's 
+AWS API user can access that key. For example, create a user `rails_release` for the release environment 
+and limit it to decrypt authorization on the `release` key.
 
 ### Next => [Command Line](cli.html)

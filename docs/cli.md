@@ -4,6 +4,8 @@ layout: default
 
 ## Command Line Interface
 
+If running Symmetric Encryption v3, see [Rake Tasks](rake_tasks.html)
+
 Symmetric Encryption v4 now uses a standalone command line interface to:
 * Encrypt files
 * Decrypt files
