@@ -29,27 +29,25 @@ Generate the configuration file and encryption keys for every environment:
 Options:
 * `--key-path OUTPUT_PATH`
     * The path where the encrypted key files should be written to.
-      For example `/etc/symmetric-encryption`.
     * This path should be outside of the application and definitely under a
       path that would _not_ be included in the source control system.
     * Secure the path and generated files so that only the user under which the
       application runs can access them.
     * Move the environment specific key files to their relevant environments
       and then destroy them from development machines.
-    * Only used by the file keystore, when using `--heroku` or `--environment` then `--key-path` is not used.
-    * If the directory does not exist it will attempt to create it. However, the default of `/etc/symmetric-encryption`
-      is seldom writable by regular user accounts.
-    * Default: `/etc/symmetric-encryption`
+    * Ignored when using the `--heroku` or `--environment` keystores.
+    * If the directory does not exist it will attempt to create it.
+    * Default: `~/.symmetric-encryption`
 * `--app-name NAME`
     * Set an application name.
     * If running rails, recommended to set this to the rails application name.
     * The file keystore uses the app name as part of the file name.
     * The environment keystore uses the app name as part of the environment variable name.
-    * Recommed using a lowercase application name.
+    * Recommend using a lowercase application name.
     * Default: `symmetric-encryption`
-* `--envs ENVIRONMENTS`
+* `--environments ENVIRONMENTS`
     * Comma separated list of environments for which to generate the config file.
-    * Default: development,test,release,production
+    * Default: `development,test,release,production`
 * `--cipher-name NAME`
     * Name of the cipher to use when generating a new config file, or when rotating keys.
     * Default: `aes-256-cbc`
@@ -140,8 +138,8 @@ in AWS KMS it cannot be read or exported, only used to encrypt or decrypt the da
 data encryption key is stored locally on the file system since it has been secured by encrypting it with the 
 AWS KMS Customer Master key.
 
-Symmetric Encryption creates a new Customer Master Key in AWS KMS so that it can be managed and rotated directly
-from within the AWS KMS management interface.
+Symmetric Encryption creates a new Customer Master Key in AWS KMS in every AWS Region and for every environment 
+so that they can be managed and rotated directly from within the AWS KMS management interface.
 
 #### AWS Dependencies
 
@@ -152,15 +150,15 @@ Symmetric Encryption. Add the following line to Gemfile when using bundler:
 
 If not using Bundler, run the following from the command line:
 
-    gem install 'aws-sdk-kms'
+    gem install aws-sdk-kms
     
 #### Setting up the AWS Credentials:
 
 In order to create new keys, or to rotate new keys using the AWS KMS, it is necessary to create the necessary
 AWS Credentials.
 
-It is recommended to use separate _management_ AWS KMS credentials to manage the keys. These credentials should
-be granted access all KMS operations. See Access Control below for securing runtime privileges by environment.
+It is recommended to use a separate _management_ AWS KMS credential to manage the keys. These credentials should
+be granted access to all KMS operations. See Access Control below for securing runtime privileges by environment.
 
 Follow the AWS instructions for [creating and setting the AWS credentials](https://docs.aws.amazon.com/sdk-for-ruby/v3/developer-guide/setup-config.html) 
 
@@ -176,11 +174,11 @@ By default the following regions are configured: `us-east-1,us-east-2,us-west-1,
 
 The configured regions can be overriden by setting the `--regions` flag above.
 
-Example: Generate New Keys for the first time, targeting AWS keystore:
+Example: Generate New Keys for the first time, targeting the AWS keystore:
 
     symmetric-encryption --generate --keystore aws --app-name my_app --environments "development,test,production"
 
-Example:  Rotate existing keys targeting AWS for the new keys:
+Example:  Rotate existing keys migrating to AWS for the new keys:
 
     symmetric-encryption --rotate-keys --keystore aws --app-name my_app --environments production
 
@@ -188,6 +186,9 @@ Once the new keys have been generated, they should be moved to the relevant serv
 are generated in `~/.symmetric-encryption` unless the flag `--key-path` was used to change the path.
 
 #### Setting a Region
+
+The AWS region must be set on every server that uses Symmetric Encryption so that it uses the AWS KMS service
+in that region.
 
 The simplest way to set the region is to set the `AWS_REGION` environment variable.
 
