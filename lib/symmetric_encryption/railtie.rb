@@ -29,12 +29,13 @@ module SymmetricEncryption #:nodoc:
     config.before_configuration do
       # Check if already configured
       unless ::SymmetricEncryption.cipher?
-        app_name    = Rails::Application.subclasses.first.parent.to_s.underscore
-        if (env_var = ENV['SYMMETRIC_ENCRYPTION_CONFIG'])
-          config_file = Pathname.new File.expand_path(env_var)
-        else
-          config_file = Rails.root.join('config', 'symmetric-encryption.yml')
-        end
+        app_name      = Rails::Application.subclasses.first.parent.to_s.underscore
+        config_file   =
+          if (env_var = ENV['SYMMETRIC_ENCRYPTION_CONFIG'])
+            Pathname.new File.expand_path(env_var)
+          else
+            Rails.root.join('config', 'symmetric-encryption.yml')
+          end
         if config_file.file?
           begin
             ::SymmetricEncryption::Config.load!(file_name: config_file, env: ENV['SYMMETRIC_ENCRYPTION_ENV'] || Rails.env)

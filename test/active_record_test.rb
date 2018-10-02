@@ -119,26 +119,26 @@ class ActiveRecordTest < Minitest::Test
     let :user do
       User.new(
         # Encrypted Attribute
-        bank_account_number: bank_account_number,
+        bank_account_number:    bank_account_number,
         # Encrypted Attribute
         social_security_number: social_security_number,
         name:                   person_name,
         # data type specific fields
-        string_value:        STRING_VALUE,
-        long_string_value:   LONG_STRING_VALUE,
-        binary_string_value: BINARY_STRING_VALUE,
-        integer_value:       INTEGER_VALUE,
-        float_value:         FLOAT_VALUE,
-        decimal_value:       DECIMAL_VALUE,
-        datetime_value:      DATETIME_VALUE,
-        time_value:          TIME_VALUE,
-        date_value:          DATE_VALUE,
-        true_value:          true,
-        false_value:         false,
-        data_yaml:           hash_data.dup,
-        data_json:           hash_data.dup,
-        text:                'hello',
-        number:              '21'
+        string_value:           STRING_VALUE,
+        long_string_value:      LONG_STRING_VALUE,
+        binary_string_value:    BINARY_STRING_VALUE,
+        integer_value:          INTEGER_VALUE,
+        float_value:            FLOAT_VALUE,
+        decimal_value:          DECIMAL_VALUE,
+        datetime_value:         DATETIME_VALUE,
+        time_value:             TIME_VALUE,
+        date_value:             DATE_VALUE,
+        true_value:             true,
+        false_value:            false,
+        data_yaml:              hash_data.dup,
+        data_json:              hash_data.dup,
+        text:                   'hello',
+        number:                 '21'
       )
     end
 
@@ -167,17 +167,17 @@ class ActiveRecordTest < Minitest::Test
     describe ':random_iv' do
       it 'false' do
         user.social_security_number = social_security_number
-        assert first_value = user.social_security_number
+        assert first_value          = user.social_security_number
         # Assign the same value
         user.social_security_number = social_security_number
         assert_equal first_value, user.social_security_number
       end
 
       it 'true' do
-        user.string_value = STRING_VALUE
+        user.string_value  = STRING_VALUE
         assert first_value = user.encrypted_string_value
-        user.string_value = 'blah'
-        user.string_value = STRING_VALUE
+        user.string_value  = 'blah'
+        user.string_value  = STRING_VALUE
         refute_equal first_value, user.encrypted_string_value
       end
 
@@ -200,7 +200,7 @@ class ActiveRecordTest < Minitest::Test
 
         it 'does not change when equal' do
           user.save!
-          before             = user.encrypted_string_value
+          before            = user.encrypted_string_value
           user.string_value = STRING_VALUE
           refute user.string_value_changed?
           assert_equal before, user.encrypted_string_value
@@ -405,7 +405,7 @@ class ActiveRecordTest < Minitest::Test
 
       describe '#reload' do
         it 'reverts changes' do
-          new_bank_account_number   = '444444444'
+          new_bank_account_number  = '444444444'
           user.bank_account_number = new_bank_account_number
           assert_equal new_bank_account_number, user.bank_account_number
 
@@ -416,8 +416,8 @@ class ActiveRecordTest < Minitest::Test
         end
 
         it 'reverts changes to encrypted field' do
-          new_bank_account_number             = '111111111'
-          new_encrypted_bank_account_number   = SymmetricEncryption.encrypt(new_bank_account_number)
+          new_bank_account_number            = '111111111'
+          new_encrypted_bank_account_number  = SymmetricEncryption.encrypt(new_bank_account_number)
           user.encrypted_bank_account_number = new_encrypted_bank_account_number
           assert_equal new_encrypted_bank_account_number, user.encrypted_bank_account_number
           assert_equal new_bank_account_number, user.bank_account_number
@@ -591,7 +591,7 @@ class ActiveRecordTest < Minitest::Test
         UniqueUser.destroy_all
         @email      = 'whatever@not-unique.com'
         @username   = 'gibby007'
-        user       = UniqueUser.create!(email: @email)
+        user        = UniqueUser.create!(email: @email)
         @email_user = UniqueUser.create!(username: @username)
       end
 

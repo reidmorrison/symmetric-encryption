@@ -85,17 +85,17 @@ begin
           encrypted_social_security_number: @social_security_number_encrypted,
           name:                             'Joe Bloggs',
           # data type specific fields
-          integer_value:         @integer_value,
-          aliased_integer_value: @integer_value,
-          float_value:           @float_value,
-          decimal_value:         @decimal_value,
-          datetime_value:        @datetime_value,
-          time_value:            @time_value,
-          date_value:            @date_value,
-          true_value:            true,
-          false_value:           false,
-          data_yaml:             @h.dup,
-          data_json:             @h.dup
+          integer_value:                    @integer_value,
+          aliased_integer_value:            @integer_value,
+          float_value:                      @float_value,
+          decimal_value:                    @decimal_value,
+          datetime_value:                   @datetime_value,
+          time_value:                       @time_value,
+          date_value:                       @date_value,
+          true_value:                       true,
+          false_value:                      false,
+          data_yaml:                        @h.dup,
+          data_json:                        @h.dup
         )
       end
 
@@ -144,17 +144,17 @@ begin
 
       it 'support same iv' do
         @user.social_security_number = @social_security_number
-        assert first_value = @user.social_security_number
+        assert first_value           = @user.social_security_number
         # Assign the same value
         @user.social_security_number = @social_security_number
         assert_equal first_value, @user.social_security_number
       end
 
       it 'support a random iv' do
-        @user.string = @string
+        @user.string       = @string
         assert first_value = @user.encrypted_string
-        @user.string = 'blah'
-        @user.string = @string.dup
+        @user.string       = 'blah'
+        @user.string       = @string.dup
         refute_equal first_value, @user.encrypted_string
       end
 

@@ -70,7 +70,7 @@ module SymmetricEncryption
     end
 
     def parser
-      @parser ||= OptionParser.new do |opts|
+      @parser     ||= OptionParser.new do |opts|
         opts.banner = <<~BANNER
           Symmetric Encryption v#{VERSION}
 
@@ -212,7 +212,7 @@ module SymmetricEncryption
 
       config_file_does_not_exist!
       self.environments ||= %i[development test release production]
-      args              = {
+      args                = {
         app_name:     app_name,
         environments: environments,
         cipher_name:  cipher_name
@@ -254,7 +254,8 @@ module SymmetricEncryption
       config.each_pair do |env, cfg|
         next if environments && !environments.include?(env.to_sym)
         next unless ciphers = cfg[:ciphers]
-        highest = ciphers.max_by { |i| i[:version] }
+
+        highest             = ciphers.max_by { |i| i[:version] }
         ciphers.clear
         ciphers << highest
       end
@@ -268,7 +269,8 @@ module SymmetricEncryption
       config.each_pair do |env, cfg|
         next if environments && !environments.include?(env.to_sym)
         next unless ciphers = cfg[:ciphers]
-        highest = ciphers.max_by { |i| i[:version] }
+
+        highest             = ciphers.max_by { |i| i[:version] }
         ciphers.delete(highest)
         ciphers.unshift(highest)
       end
@@ -338,6 +340,7 @@ module SymmetricEncryption
     # Ensure that the config file does not already exist before generating a new one.
     def config_file_does_not_exist!
       return unless File.exist?(config_file_path)
+
       puts "\nConfiguration file already exists, please move or rename: #{config_file_path}\n\n"
       exit(-1)
     end

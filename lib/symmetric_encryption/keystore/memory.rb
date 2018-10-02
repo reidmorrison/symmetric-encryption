@@ -15,7 +15,7 @@ module SymmetricEncryption
       def self.generate_data_key(cipher_name:, app_name:, environment:, version: 0, dek: nil)
         version >= 255 ? (version = 1) : (version += 1)
 
-        kek = SymmetricEncryption::Key.new(cipher_name: cipher_name)
+        kek   = SymmetricEncryption::Key.new(cipher_name: cipher_name)
         dek ||= SymmetricEncryption::Key.new(cipher_name: cipher_name)
 
         encrypted_key = new(key_encrypting_key: kek).write(dek.key)

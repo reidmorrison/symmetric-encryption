@@ -68,8 +68,8 @@ module SymmetricEncryption
           line.force_encoding(SymmetricEncryption::UTF8_ENCODING)
           output_lines <<
             if line.valid_encoding? && (result = line.match(r))
-              encrypted = result[0]
-              new_value = re_encrypt(encrypted)
+              encrypted                        = result[0]
+              new_value                        = re_encrypt(encrypted)
               if new_value != encrypted
                 hits += 1
                 line.gsub(encrypted, new_value)

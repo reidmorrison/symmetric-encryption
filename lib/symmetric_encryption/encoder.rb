@@ -36,12 +36,14 @@ module SymmetricEncryption
     class Base64
       def encode(binary_string)
         return binary_string if binary_string.nil? || (binary_string == '')
+
         encoded_string = ::Base64.encode64(binary_string)
         encoded_string.force_encoding(SymmetricEncryption::UTF8_ENCODING)
       end
 
       def decode(encoded_string)
         return encoded_string if encoded_string.nil? || (encoded_string == '')
+
         decoded_string = ::Base64.decode64(encoded_string)
         decoded_string.force_encoding(SymmetricEncryption::BINARY_ENCODING)
       end
@@ -50,12 +52,14 @@ module SymmetricEncryption
     class Base64Strict
       def encode(binary_string)
         return binary_string if binary_string.nil? || (binary_string == '')
+
         encoded_string = ::Base64.strict_encode64(binary_string)
         encoded_string.force_encoding(SymmetricEncryption::UTF8_ENCODING)
       end
 
       def decode(encoded_string)
         return encoded_string if encoded_string.nil? || (encoded_string == '')
+
         decoded_string = ::Base64.decode64(encoded_string)
         decoded_string.force_encoding(SymmetricEncryption::BINARY_ENCODING)
       end
@@ -64,12 +68,14 @@ module SymmetricEncryption
     class Base16
       def encode(binary_string)
         return binary_string if binary_string.nil? || (binary_string == '')
+
         encoded_string = binary_string.to_s.unpack('H*').first
         encoded_string.force_encoding(SymmetricEncryption::UTF8_ENCODING)
       end
 
       def decode(encoded_string)
         return encoded_string if encoded_string.nil? || (encoded_string == '')
+
         decoded_string = [encoded_string].pack('H*')
         decoded_string.force_encoding(SymmetricEncryption::BINARY_ENCODING)
       end

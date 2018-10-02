@@ -6,7 +6,7 @@ class SymmetricEncryptionTest < Minitest::Test
   describe 'SymmetricEncryption' do
     describe 'configuration' do
       before do
-        config   = SymmetricEncryption::Config.new(
+        config = SymmetricEncryption::Config.new(
           file_name: File.join(File.dirname(__FILE__), 'config', 'symmetric-encryption.yml'),
           env:       'test'
         )
@@ -146,7 +146,7 @@ class SymmetricEncryptionTest < Minitest::Test
       before do
         @social_security_number = '987654321'
         # Encrypt data without a header and encode with base64 which has a trailing '\n'
-        no_header = SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number, header: false)
+        no_header               = SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number, header: false)
         assert @encrypted_0_ssn = SymmetricEncryption.cipher(0).encode(no_header)
       end
 

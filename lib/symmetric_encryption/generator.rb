@@ -12,7 +12,7 @@ module SymmetricEncryption
       raise(ArgumentError, "Invalid type: #{type.inspect}. Valid types: #{SymmetricEncryption::COERCION_TYPES.inspect}") unless SymmetricEncryption::COERCION_TYPES.include?(type)
 
       if model.const_defined?(:EncryptedAttributes, _search_ancestors = false)
-        mod = model.const_get(:EncryptedAttributes)
+        mod                                                           = model.const_get(:EncryptedAttributes)
       else
         mod = model.const_set(:EncryptedAttributes, Module.new)
         model.send(:include, mod)

@@ -6,7 +6,7 @@ require 'stringio'
 class WriterTest < Minitest::Test
   describe SymmetricEncryption::Writer do
     before do
-      @data             = [
+      @data = [
         "Hello World\n",
         "Keep this secret\n",
         'And keep going even further and further...'

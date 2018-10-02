@@ -5,70 +5,94 @@ AllCops:
     - '.git/**/*'
     - 'docs/**/*'
 
-Layout/SpaceInsideHashLiteralBraces:
-  EnforcedStyle: no_space
-  EnforcedStyleForEmptyBraces: no_space
+#
+# Layout
+#
+
+# Match existing layout
+Layout/AlignHash:
+  EnforcedHashRocketStyle: table
+  EnforcedColonStyle: table
+
+# Match existing layout
+Layout/BlockAlignment:
+  EnforcedStyleAlignWith: start_of_block
+
+# Phase 2:
+# Layout/ClassStructure
+#   Enabled: true
+
+Layout/ConditionPosition:
+  Enabled: true
 
 # Match existing layout
 Layout/DotPosition:
+  AutoCorrect: true
   EnforcedStyle: trailing
 
-# Rubocop cannot yet see beyond one line above or below, when aligning =
+Layout/EndAlignment:
+  AutoCorrect: true
+
+# Prevent accidental windows line endings
+Layout/EndOfLine:
+  EnforcedStyle: lf
+
+# ForceEqualSignAlignment is broken, see https://github.com/rubocop-hq/rubocop/pull/5696
 Layout/ExtraSpacing:
-  Enabled: false
   AllowForAlignment: true
   ForceEqualSignAlignment: true
-  AutoCorrect: false
+  AutoCorrect: true
 
 # Pick one
 Layout/IndentHeredoc:
   EnforcedStyle: squiggly
 
-# Match existing layout
-Layout/MultilineMethodCallIndentation:
-  EnforcedStyle: indented
-  IndentationWidth: 2
+Layout/RescueEnsureAlignment:
+  AutoCorrect: true
 
 # Rubocop cannot yet see beyond one line above or below, when aligning =
 Layout/SpaceAroundOperators:
-  Enabled: false
   AllowForAlignment: true
-  AutoCorrect: false
+  AutoCorrect: true
 
 # Match existing layout
 Layout/SpaceInsideHashLiteralBraces:
   EnforcedStyle: no_space
   EnforcedStyleForEmptyBraces: no_space
 
+# Files must end with a blank line
+Layout/TrailingBlankLines:
+  EnforcedStyle: final_newline
+
 # TODO: Soften Limits for phase 1 only
 Metrics/AbcSize:
-  Max: 40
+  Max: 80
 
 # Support long block lengths for tests
 Metrics/BlockLength:
   Exclude:
-    - 'test/**/*'
+  - '**/test/**/*'
 
 # Soften limits
 Metrics/ClassLength:
   Max: 250
   Exclude:
-    - 'test/**/*'
+  - '**/test/**/*'
 
 # TODO: Soften Limits for phase 1 only
 Metrics/CyclomaticComplexity:
   Max: 15
 
-# TODO: Soften Limits for phase 1 only
+# Soften limits
 Metrics/LineLength:
   Max: 128
   Exclude:
-    - 'cli.rb'
-    - 'test/**/*'
+  - 'cli.rb'
+  - '**/test/**/*'
 
 # Soften limits
 Metrics/MethodLength:
-  Max: 50
+  Max: 250
 
 # Soften limits
 Metrics/ModuleLength:
@@ -81,17 +105,27 @@ Metrics/ParameterLists:
 Metrics/PerceivedComplexity:
   Max: 21
 
-# Initialization Vector abbreviation
+# ip is IP Address
 Naming/UncommunicativeMethodParamName:
-  AllowedNames: ['iv', '_', 'io', 'ap']
+  AllowedNames:
+  - ip
+  - id
+  - iv
+  - _
+  - io
+  - ap
 
-# Needed for testing DateTime
-Style/DateTime:
-  Exclude: ['test/**/*']
+# Does not allow Symbols to load
+Security/YAMLLoad:
+  AutoCorrect: false
 
 # TODO: Soften Limits for phase 1 only
 Style/Documentation:
   Enabled: false
+
+# One line methods
+Style/EmptyMethod:
+  EnforcedStyle: expanded
 
 # Ruby 3 compatibility feature
 Style/FrozenStringLiteralComment:
@@ -100,10 +134,10 @@ Style/FrozenStringLiteralComment:
 Style/NumericPredicate:
   AutoCorrect: true
 
-# One line methods
-Style/EmptyMethod:
+# Incorrectly changes job.fail to job.raise
+Style/SignalException:
   Enabled: false
 
-# Does not allow Symbols to load
-Security/YAMLLoad:
-  AutoCorrect: false
+# Since English may not be loaded, cannot force its use.
+Style/SpecialGlobalVars:
+  Enabled: false

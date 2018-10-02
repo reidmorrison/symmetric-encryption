@@ -10,7 +10,7 @@ module SymmetricEncryption
       def self.generate_data_key(cipher_name:, app_name:, environment:, version: 0, dek: nil)
         version >= 255 ? (version = 1) : (version += 1)
 
-        kek = SymmetricEncryption::Key.new(cipher_name: cipher_name)
+        kek   = SymmetricEncryption::Key.new(cipher_name: cipher_name)
         dek ||= SymmetricEncryption::Key.new(cipher_name: cipher_name)
 
         key_env_var = "#{app_name}_#{environment}_v#{version}".upcase.tr('-', '_')
@@ -41,6 +41,7 @@ module SymmetricEncryption
       def read
         encrypted = ENV[key_env_var]
         raise "The Environment Variable #{key_env_var} must be set with the encrypted encryption key." unless encrypted
+
         binary = encoder.decode(encrypted)
         key_encrypting_key.decrypt(binary)
       end
@@ -49,7 +50,7 @@ module SymmetricEncryption
       def write(key)
         encrypted_key = key_encrypting_key.encrypt(key)
         puts "\n\n********************************************************************************"
-        puts "Set the environment variable as follows:"
+        puts 'Set the environment variable as follows:'
         puts "  export #{key_env_var}=\"#{encoder.encode(encrypted_key)}\""
         puts '********************************************************************************'
       end

@@ -6,7 +6,7 @@ require 'stringio'
 class ReaderTest < Minitest::Test
   describe SymmetricEncryption::Reader do
     before do
-      @data     = [
+      @data = [
         "Hello World\n",
         "Keep this secret\n",
         'And keep going even further and further...'
@@ -17,7 +17,7 @@ class ReaderTest < Minitest::Test
       @cipher                        = SymmetricEncryption.cipher(0)
       @data_encrypted_without_header = @cipher.binary_encrypt(@data_str, header: false)
 
-      header                      = SymmetricEncryption::Header.new(
+      header = SymmetricEncryption::Header.new(
         version:     @cipher.version,
         iv:          @cipher.iv,
         key:         @cipher.send(:key),
@@ -189,7 +189,7 @@ class ReaderTest < Minitest::Test
             # Not supported with compressed files
             if file.is_a?(SymmetricEncryption::Reader)
               eof           = file.eof?
-              output_buffer = "buffer"
+              output_buffer = 'buffer'
               data          = file.read(4096, output_buffer)
               file.close
 
@@ -242,7 +242,7 @@ class ReaderTest < Minitest::Test
 
           it '#gets(delim)' do
             SymmetricEncryption::Reader.open(@file_name) do |file|
-              i = 0
+              i           = 0
               while (line = file.gets("\n"))
                 assert_equal @data[i], line
                 i += 1
@@ -253,7 +253,7 @@ class ReaderTest < Minitest::Test
 
           it '#gets(delim,size)' do
             SymmetricEncryption::Reader.open(@file_name) do |file|
-              i = 0
+              i  = 0
               i += 1 while file.gets("\n", 128)
               assert_equal (@data_size.positive? ? 3 : 0), i
             end

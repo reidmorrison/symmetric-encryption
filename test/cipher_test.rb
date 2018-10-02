@@ -93,7 +93,7 @@ class CipherTest < Minitest::Test
                 always_add_header: always_add_header
               )
 
-              h         = @encrypted_values[cipher_name][encoding] if @encrypted_values[cipher_name]
+              h = @encrypted_values[cipher_name][encoding] if @encrypted_values[cipher_name]
               skip "Add @encrypted_values for cipher_name: #{cipher_name} and encoding: #{encoding}, value: #{@cipher.encrypt(@social_security_number).inspect}" unless h
               @social_security_number_encrypted = h[always_add_header ? :header : :no_header]
 
@@ -150,7 +150,7 @@ class CipherTest < Minitest::Test
 
       describe 'with configuration' do
         before do
-          @cipher                 = SymmetricEncryption::Cipher.new(
+          @cipher = SymmetricEncryption::Cipher.new(
             key:         '1234567890ABCDEF',
             iv:          '1234567890ABCDEF',
             cipher_name: 'aes-128-cbc',
@@ -181,7 +181,7 @@ class CipherTest < Minitest::Test
               key.key,
               key.cipher_name
             )
-            header        = SymmetricEncryption::Header.new
+            header = SymmetricEncryption::Header.new
             header.parse(binary_header)
             assert_equal true, header.compressed?
             assert random_cipher = SymmetricEncryption::Cipher.new(iv: key.iv, key: key.key, cipher_name: key.cipher_name)

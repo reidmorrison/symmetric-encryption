@@ -53,8 +53,8 @@ module SymmetricEncryption
       env ||= defined?(Rails) ? Rails.env : ENV['RACK_ENV'] || ENV['RAILS_ENV'] || 'development'
 
       unless file_name
-        root      = defined?(Rails) ? Rails.root : '.'
-        file_name =
+        root          = defined?(Rails) ? Rails.root : '.'
+        file_name     =
           if (env_var = ENV['SYMMETRIC_ENCRYPTION_CONFIG'])
             File.expand_path(env_var)
           else
@@ -101,6 +101,7 @@ module SymmetricEncryption
         object
       end
     end
+
     private_class_method :deep_symbolize_keys
 
     # Iterate through the Hash symbolizing all keys.
@@ -119,28 +120,29 @@ module SymmetricEncryption
         object
       end
     end
+
     private_class_method :deep_stringify_keys
 
     # Migrate old configuration format for this environment
     def self.migrate_old_formats!(config)
       # Inline single cipher before :ciphers
       unless config.key?(:ciphers)
-        inline_cipher = {}
+        inline_cipher                               = {}
         config.keys.each { |key| inline_cipher[key] = config.delete(key) }
-        config[:ciphers] = [inline_cipher]
+        config[:ciphers]                            = [inline_cipher]
       end
 
       # Copy Old :private_rsa_key into each ciphers config
       # Cipher.from_config replaces it with the RSA Kek
       if config[:private_rsa_key]
-        private_rsa_key = config.delete(:private_rsa_key)
+        private_rsa_key                                           = config.delete(:private_rsa_key)
         config[:ciphers].each { |cipher| cipher[:private_rsa_key] = private_rsa_key }
       end
 
       # Old :cipher_name
       config[:ciphers].each do |cipher|
         if (old_key_name_cipher = cipher.delete(:cipher))
-          cipher[:cipher_name] = old_key_name_cipher
+          cipher[:cipher_name]  = old_key_name_cipher
         end
 
         # Only temporarily used during v4 Beta process
@@ -156,6 +158,7 @@ module SymmetricEncryption
       end
       config
     end
+
     private_class_method :migrate_old_formats!
   end
 end

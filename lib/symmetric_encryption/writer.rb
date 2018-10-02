@@ -47,7 +47,7 @@ module SymmetricEncryption
     #  ensure
     #    csv.close if csv
     #  end
-    def self.open(file_name_or_stream, compress: nil, **args)
+    def Writer.open(file_name_or_stream, compress: nil, **args)
       if file_name_or_stream.is_a?(String)
         file_name_or_stream = ::File.open(file_name_or_stream, 'wb')
         compress            = !(/\.(zip|gz|gzip|xls.|)\z/i === file_name_or_stream) if compress.nil?
@@ -69,7 +69,7 @@ module SymmetricEncryption
     # Notes:
     # * Do not use this method for writing large files.
     def self.write(file_name_or_stream, data, **args)
-      self.open(file_name_or_stream, **args) { |f| f.write(data) }
+      Writer.open(file_name_or_stream, **args) { |f| f.write(data) }
     end
 
     # Encrypt an entire file.
@@ -90,7 +90,7 @@ module SymmetricEncryption
     # Notes:
     # * The file contents are streamed so that the entire file is _not_ loaded into memory.
     def self.encrypt(source:, target:, **args)
-      self.open(target, **args) { |output_file| IO.copy_stream(source, output_file) }
+      Writer.open(target, **args) { |output_file| IO.copy_stream(source, output_file) }
     end
 
     # Encrypt data before writing to the supplied stream
@@ -142,6 +142,7 @@ module SymmetricEncryption
     # ensure that the encrypted stream is closed before the stream itself is closed.
     def close(close_child_stream = true)
       return if closed?
+
       if size.positive?
         final = @stream_cipher.final
         @ios.write(final) unless final.empty?
@@ -157,7 +158,7 @@ module SymmetricEncryption
       return unless data
 
       bytes   = data.to_s
-      @size   += bytes.size
+      @size  += bytes.size
       partial = @stream_cipher.update(bytes, @cipher_buffer ||= ''.b)
       @ios.write(partial) unless partial.empty?
       data.length

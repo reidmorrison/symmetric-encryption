@@ -13,7 +13,7 @@ module SymmetricEncryption
         end
 
         let :the_test_path do
-          path = "tmp/keystore/aws_test"
+          path = 'tmp/keystore/aws_test'
           FileUtils.makedirs(path) unless ::File.exist?(path)
           path
         end
@@ -72,24 +72,24 @@ module SymmetricEncryption
           end
 
           it 'creates encrypted key file for every region' do
-            assert key_files = key_config[:key_files]
+            assert key_files         = key_config[:key_files]
             common_data_key          = nil
             first_encrypted_data_key = nil
 
-            master_key_alias = "alias/symmetric-encryption/tester/test"
+            master_key_alias = 'alias/symmetric-encryption/tester/test'
 
             key_files.each do |key_file|
-              assert region = key_file[:region]
-              assert file_name = key_file[:file_name]
+              assert region      = key_file[:region]
+              assert file_name   = key_file[:file_name]
               expected_file_name = "#{the_test_path}/tester_test_#{region}_v11.encrypted_key"
 
               assert_equal expected_file_name, file_name
               assert ::File.exist?(file_name)
 
               assert encoded_data_key = ::File.read(file_name)
-              encrypted_data_key = Base64.strict_decode64(encoded_data_key)
+              encrypted_data_key      = Base64.strict_decode64(encoded_data_key)
 
-              aws = SymmetricEncryption::Utils::Aws.new(region: region, master_key_alias: master_key_alias)
+              aws             = SymmetricEncryption::Utils::Aws.new(region: region, master_key_alias: master_key_alias)
               assert data_key = aws.decrypt(encrypted_data_key)
 
               # Verify that the dek is the same in every region, but encrypted with the CMK for that region.

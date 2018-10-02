@@ -179,7 +179,7 @@ class CipherTest < Minitest::Test
         end
 
         it 'encrypted string' do
-          header = SymmetricEncryption::Header.new
+          header           = SymmetricEncryption::Header.new
           assert remainder = header.parse!(binary_encrypted_value)
           assert_equal SymmetricEncryption.cipher.version, header.version
           refute header.compressed?

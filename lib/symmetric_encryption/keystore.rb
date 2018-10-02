@@ -72,7 +72,7 @@ module SymmetricEncryption
 
         keystore_class = keystore ? constantize_symbol(keystore) : keystore_for(config)
 
-        args            = {
+        args = {
           cipher_name: cipher_name,
           app_name:    app_name,
           version:     version,
@@ -104,7 +104,7 @@ module SymmetricEncryption
         # Only generate new keys for keystore's that have a key encrypting key
         next unless config[:key_encrypting_key]
 
-        version = config.delete(:version) || 1
+        version  = config.delete(:version) || 1
         version -= 1
 
         always_add_header = config.delete(:always_add_header)
@@ -117,7 +117,7 @@ module SymmetricEncryption
         cipher_name    = key.cipher_name
         keystore_class = keystore_for(config)
 
-        args            = {
+        args = {
           cipher_name: cipher_name,
           app_name:    app_name,
           version:     version,
@@ -141,14 +141,14 @@ module SymmetricEncryption
     def self.dev_config
       {
         ciphers:
-          [
-            {
-              key:         '1234567890ABCDEF',
-              iv:          '1234567890ABCDEF',
-              cipher_name: 'aes-128-cbc',
-              version:     1
-            }
-          ]
+                 [
+                   {
+                     key:         '1234567890ABCDEF',
+                     iv:          '1234567890ABCDEF',
+                     cipher_name: 'aes-128-cbc',
+                     version:     1
+                   }
+                 ]
       }
     end
 
@@ -219,12 +219,12 @@ module SymmetricEncryption
 
       # Migrate old encrypted_iv
       if (encrypted_iv = config.delete(:encrypted_iv)) && private_rsa_key
-        encrypted_iv = RSAKey.new(private_rsa_key).decrypt(encrypted_iv)
-        config[:iv]  = ::Base64.decode64(encrypted_iv)
+        encrypted_iv   = RSAKey.new(private_rsa_key).decrypt(encrypted_iv)
+        config[:iv]    = ::Base64.decode64(encrypted_iv)
       end
 
       # Migrate old iv_filename
-      if (file_name = config.delete(:iv_filename)) && private_rsa_key
+      if (file_name  = config.delete(:iv_filename)) && private_rsa_key
         encrypted_iv = ::File.read(file_name)
         config[:iv]  = RSAKey.new(private_rsa_key).decrypt(encrypted_iv)
       end
@@ -233,10 +233,9 @@ module SymmetricEncryption
       config[:key_encrypting_key] = RSAKey.new(private_rsa_key) if private_rsa_key
 
       # Migrate old encrypted_key to new binary format
-      if (encrypted_key = config[:encrypted_key]) && private_rsa_key
+      if (encrypted_key        = config[:encrypted_key]) && private_rsa_key
         config[:encrypted_key] = ::Base64.decode64(encrypted_key)
       end
     end
-
   end
 end

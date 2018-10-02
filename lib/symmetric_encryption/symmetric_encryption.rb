@@ -55,6 +55,7 @@ module SymmetricEncryption
     end
 
     return @@cipher if version.nil? || (@@cipher.version == version)
+
     secondary_ciphers.find { |c| c.version == version } || (@@cipher if version.zero?)
   end
 
@@ -264,7 +265,7 @@ module SymmetricEncryption
   #     encoded_str.end_with?("\n") ? SymmetricEncryption.cipher(0) : SymmetricEncryption.cipher
   #   end
   def self.select_cipher(&block)
-    @@select_cipher = block ? block : nil
+    @@select_cipher = block || nil
   end
 
   # Load the Encryption Configuration from a YAML file

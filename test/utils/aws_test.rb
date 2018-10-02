@@ -36,7 +36,7 @@ module SymmetricEncryption
 
         describe '#create_master_key' do
           it 'creates a new master key' do
-            skip "Only run if really needed, gets tested once as part of the CMK auto-create"
+            skip 'Only run if really needed, gets tested once as part of the CMK auto-create'
             aws.delete_master_key(retention_days: 7)
             aws.create_master_key
           end
@@ -68,7 +68,6 @@ module SymmetricEncryption
             assert_equal message, decrypted
           end
         end
-
       end
     end
   end

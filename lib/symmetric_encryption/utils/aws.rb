@@ -15,7 +15,7 @@ module SymmetricEncryption
       AWS_KEY_SPEC_MAP = {
         'aes-256-cbc' => 'AES_256',
         'aes-128-cbc' => 'AES_128'
-      }
+      }.freeze
 
       # TODO: Move to Keystore::Aws
       # Rotate the Customer Master key in each of the supplied regions.
@@ -68,6 +68,7 @@ module SymmetricEncryption
       def key_spec(cipher_name)
         key_spec = AWS_KEY_SPEC_MAP[cipher_name]
         raise("OpenSSL Cipher: #{cipher_name} has not yet been mapped to an AWS key spec.") unless key_spec
+
         key_spec
       end
 
@@ -112,9 +113,9 @@ module SymmetricEncryption
         resp = client.create_key(
           description: 'Symmetric Encryption for Ruby Customer Masker Key',
           tags:        [
-                         {tag_key: 'CreatedAt', tag_value: Time.now.to_s},
-                         {tag_key: 'CreatedBy', tag_value: whoami}
-                       ]
+            {tag_key: 'CreatedAt', tag_value: Time.now.to_s},
+            {tag_key: 'CreatedBy', tag_value: whoami}
+          ]
         )
         resp.key_metadata.key_id
       end
@@ -130,6 +131,7 @@ module SymmetricEncryption
         yield
       rescue ::Aws::KMS::Errors::NotFoundException
         raise if attempt >= 2
+
         create_master_key
         attempt += 1
         retry

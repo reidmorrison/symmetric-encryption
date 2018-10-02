@@ -8,7 +8,7 @@ module SymmetricEncryption
       end
 
       let :the_test_path do
-        path = "tmp/keystore_test"
+        path = 'tmp/keystore_test'
         FileUtils.makedirs(path) unless ::File.exist?(path)
         path
       end
@@ -119,7 +119,7 @@ module SymmetricEncryption
             assert ciphers = key_rotation[env.to_sym][:ciphers], "Environment #{env} is missing ciphers: #{key_rotation[env.to_sym].inspect}"
             assert_equal 2, ciphers.size, "Environment #{env}: #{ciphers.inspect}"
             assert new_config = ciphers.first
-            assert file_name = new_config[:key_filename], "Environment #{env} is missing key_filename: #{ciphers.inspect}"
+            assert file_name  = new_config[:key_filename], "Environment #{env} is missing key_filename: #{ciphers.inspect}"
             assert File.exist?(file_name)
             assert_equal 2, new_config[:version]
           end

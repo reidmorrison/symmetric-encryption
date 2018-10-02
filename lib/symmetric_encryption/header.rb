@@ -38,6 +38,7 @@ module SymmetricEncryption
     # Note: The encoding of the supplied buffer is forced to binary if not already binary
     def self.present?(buffer)
       return false if buffer.nil? || (buffer == '')
+
       buffer.force_encoding(SymmetricEncryption::BINARY_ENCODING)
       buffer.start_with?(MAGIC_HEADER)
     end
@@ -112,6 +113,7 @@ module SymmetricEncryption
     def parse!(buffer)
       offset = parse(buffer)
       return if offset.zero?
+
       buffer.slice!(0..offset - 1)
       buffer
     end
@@ -151,7 +153,7 @@ module SymmetricEncryption
 
       # Remove header and extract flags
       self.version = buffer.getbyte(offset)
-      offset       += 1
+      offset      += 1
 
       unless cipher
         raise(
@@ -160,7 +162,7 @@ module SymmetricEncryption
         )
       end
 
-      flags  = buffer.getbyte(offset)
+      flags   = buffer.getbyte(offset)
       offset += 1
 
       self.compress = (flags & FLAG_COMPRESSED) != 0
@@ -195,7 +197,7 @@ module SymmetricEncryption
 
     # Returns [String] this header as a string
     def to_s
-      flags = 0
+      flags  = 0
       flags |= FLAG_COMPRESSED if compressed?
       flags |= FLAG_IV if iv
       flags |= FLAG_KEY if key
@@ -256,9 +258,9 @@ module SymmetricEncryption
       #   Exception when
       #   - offset exceeds length of buffer
       #   byteslice truncates when too long, but returns nil when start is beyond end of buffer
-      len    = buffer.byteslice(offset, 2).unpack('v').first
+      len     = buffer.byteslice(offset, 2).unpack('v').first
       offset += 2
-      out    = buffer.byteslice(offset, len)
+      out     = buffer.byteslice(offset, len)
       [out, offset + len]
     end
   end

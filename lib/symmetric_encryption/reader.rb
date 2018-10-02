@@ -59,7 +59,7 @@ module SymmetricEncryption
     # ensure
     #   csv.close if csv
     # end
-    def self.open(file_name_or_stream, buffer_size: 16_384, **args, &block)
+    def Reader.open(file_name_or_stream, buffer_size: 16_384, **args, &block)
       ios = file_name_or_stream.is_a?(String) ? ::File.open(file_name_or_stream, 'rb') : file_name_or_stream
 
       begin
@@ -76,7 +76,7 @@ module SymmetricEncryption
     # Notes:
     # * Do not use this method for reading large files.
     def self.read(file_name_or_stream, **args)
-      self.open(file_name_or_stream, **args, &:read)
+      Reader.open(file_name_or_stream, **args, &:read)
     end
 
     # Decrypt an entire file.
@@ -93,7 +93,7 @@ module SymmetricEncryption
     # Notes:
     # * The file contents are streamed so that the entire file is _not_ loaded into memory.
     def self.decrypt(source:, target:, **args)
-      self.open(source, **args) { |input_file| IO.copy_stream(input_file, target) }
+      Reader.open(source, **args) { |input_file| IO.copy_stream(input_file, target) }
     end
 
     # Returns [true|false] whether the file or stream contains any data
@@ -159,6 +159,7 @@ module SymmetricEncryption
     # ensure that the encrypted stream is closed before the stream itself is closed
     def close(close_child_stream = true)
       return if closed?
+
       @ios.close if close_child_stream
       @closed = true
     end
@@ -184,7 +185,7 @@ module SymmetricEncryption
     # At end of file, it returns nil if no more data is available, or the last
     # remaining bytes
     def read(length = nil, outbuf = nil)
-      data = outbuf.to_s.clear
+      data             = outbuf.to_s.clear
       remaining_length = length
 
       until remaining_length == 0 || eof?
@@ -201,7 +202,7 @@ module SymmetricEncryption
       end
 
       @pos += data.length
-      data unless data.empty? && length && length > 0
+      data unless data.empty? && length && length.positive?
     end
 
     # Reads a single decrypted line from the file up to and including the optional sep_string.
@@ -221,12 +222,14 @@ module SymmetricEncryption
       # Read more data until we get the sep_string
       while (index = @read_buffer.index(sep_string)).nil? && !@ios.eof?
         break if length && @read_buffer.length >= length
+
         read_block
       end
       index ||= -1
-      data  = @read_buffer.slice!(0..index)
-      @pos  += data.length
+      data    = @read_buffer.slice!(0..index)
+      @pos   += data.length
       return nil if data.empty? && eof?
+
       data
     end
 

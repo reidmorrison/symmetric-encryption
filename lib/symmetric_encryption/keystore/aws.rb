@@ -70,22 +70,22 @@ module SymmetricEncryption
       #   iv:          'T80pYzD0E6e/bJCdjZ6TiQ=='
       # }
       def self.generate_data_key(version: 0,
-        regions: Utils::Aws::AWS_US_REGIONS,
-        dek: nil,
-        cipher_name:,
-        app_name:,
-        environment:,
-        key_path:)
+                                 regions: Utils::Aws::AWS_US_REGIONS,
+                                 dek: nil,
+                                 cipher_name:,
+                                 app_name:,
+                                 environment:,
+                                 key_path:)
 
         # TODO: Also support generating environment variables instead of files.
 
         version >= 255 ? (version = 1) : (version += 1)
-        regions = Array(regions).dup
+        regions                   = Array(regions).dup
 
         master_key_alias = master_key_alias(app_name, environment)
 
         # File per region for holding the encrypted data key
-        key_files = regions.collect do |region|
+        key_files   = regions.collect do |region|
           file_name = "#{app_name}_#{environment}_#{region}_v#{version}.encrypted_key"
           {region: region, file_name: ::File.join(key_path, file_name)}
         end
@@ -146,7 +146,7 @@ module SymmetricEncryption
           region    = key_file[:region]
           file_name = key_file[:file_name]
 
-          raise(ArgumentError, "region and file_name are mandatory for each key_file entry") unless region && file_name
+          raise(ArgumentError, 'region and file_name are mandatory for each key_file entry') unless region && file_name
 
           encrypted_data_key = aws(region).encrypt(data_key)
           encoded_dek        = Base64.strict_encode64(encrypted_data_key)

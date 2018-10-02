@@ -133,8 +133,10 @@ module SymmetricEncryption
     #       compression
     def encrypt(str, random_iv: false, compress: false, header: always_add_header)
       return if str.nil?
+
       str = str.to_s
       return str if str.empty?
+
       encrypted = binary_encrypt(str, random_iv: random_iv, compress: compress, header: header)
       encode(encrypted)
     end
@@ -161,6 +163,7 @@ module SymmetricEncryption
       return unless decoded
 
       return decoded if decoded.empty?
+
       decrypted = binary_decrypt(decoded)
 
       # Try to force result to UTF-8 encoding, but if it is not valid, force it back to Binary
@@ -178,6 +181,7 @@ module SymmetricEncryption
     # Returned string is UTF8 encoded except for encoding :none
     def encode(binary_string)
       return binary_string if binary_string.nil? || (binary_string == '')
+
       encoder.encode(binary_string)
     end
 
@@ -187,6 +191,7 @@ module SymmetricEncryption
     # Returned string is Binary encoded
     def decode(encoded_string)
       return encoded_string if encoded_string.nil? || (encoded_string == '')
+
       encoder.decode(encoded_string)
     end
 
@@ -243,6 +248,7 @@ module SymmetricEncryption
     # See #encrypt to encrypt and encode the result as a string.
     def binary_encrypt(str, random_iv: false, compress: false, header: always_add_header)
       return if str.nil?
+
       string = str.to_s
       return string if string.empty?
 
@@ -300,6 +306,7 @@ module SymmetricEncryption
     #   is automatically set to the same UTF-8 or Binary encoding
     def binary_decrypt(encrypted_string, header: Header.new)
       return if encrypted_string.nil?
+
       str = encrypted_string.to_s
       str.force_encoding(SymmetricEncryption::BINARY_ENCODING)
       return str if str.empty?
@@ -309,8 +316,8 @@ module SymmetricEncryption
 
       openssl_cipher = ::OpenSSL::Cipher.new(header.cipher_name || cipher_name)
       openssl_cipher.decrypt
-      openssl_cipher.key = header.key || @key
-      if (iv = header.iv || @iv)
+      openssl_cipher.key  = header.key || @key
+      if (iv              = header.iv || @iv)
         openssl_cipher.iv = iv
       end
       result = openssl_cipher.update(data)

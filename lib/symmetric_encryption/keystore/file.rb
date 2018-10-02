@@ -9,7 +9,7 @@ module SymmetricEncryption
       def self.generate_data_key(key_path:, cipher_name:, app_name:, environment:, version: 0, dek: nil)
         version >= 255 ? (version = 1) : (version += 1)
 
-        dek   ||= SymmetricEncryption::Key.new(cipher_name: cipher_name)
+        dek ||= SymmetricEncryption::Key.new(cipher_name: cipher_name)
         kek   = SymmetricEncryption::Key.new(cipher_name: cipher_name)
         kekek = SymmetricEncryption::Key.new(cipher_name: cipher_name)
 
