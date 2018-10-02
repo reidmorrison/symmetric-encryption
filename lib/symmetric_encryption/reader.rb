@@ -98,14 +98,7 @@ module SymmetricEncryption
     # Notes:
     # * The file contents are streamed so that the entire file is _not_ loaded into memory.
     def self.decrypt(source:, target:, block_size: 65_535, **args)
-      target_ios    = target.is_a?(String) ? ::File.open(target, 'wb') : target
-      bytes_written = 0
-      self.open(source, **args) do |input_ios|
-        bytes_written += target_ios.write(input_ios.read(block_size)) until input_ios.eof?
-      end
-      bytes_written
-    ensure
-      target_ios.close if target_ios&.respond_to?(:closed?) && !target_ios.closed?
+      self.open(source, **args) { |input_file| IO.copy_stream(input_file, target) }
     end
 
     # Returns [true|false] whether the file or stream contains any data
@@ -132,6 +125,7 @@ module SymmetricEncryption
       @version        = version
       @header_present = false
       @closed         = false
+      @read_buffer    = ''.b
 
       raise(ArgumentError, 'Buffer size cannot be smaller than 128') unless @buffer_size >= 128
 
@@ -194,35 +188,25 @@ module SymmetricEncryption
     #
     # At end of file, it returns nil if no more data is available, or the last
     # remaining bytes
-    def read(length = nil)
-      data = nil
-      if length
-        return '' if length.zero?
-        return nil if eof?
-        # Read length bytes
-        read_block while (@read_buffer.length < length) && !@ios.eof?
-        if @read_buffer.empty?
-          data = nil
-        elsif @read_buffer.length > length
-          data = @read_buffer.slice!(0..length - 1)
-        else
-          data         = @read_buffer
-          @read_buffer = ''
-        end
-      else
-        # Capture anything already in the buffer
-        data         = @read_buffer
-        @read_buffer = ''
+    def read(length = nil, outbuf = nil)
+      data = outbuf.to_s.clear
+      remaining_length = length
 
-        unless @ios.eof?
-          # Read entire file
-          buf = @ios.read || ''
-          data << @stream_cipher.update(buf) if buf && !buf.empty?
-          data << @stream_cipher.final
+      until remaining_length == 0 || eof?
+        read_block(remaining_length) if @read_buffer.empty?
+
+        if remaining_length && remaining_length < @read_buffer.length
+          data << @read_buffer.slice!(0, remaining_length)
+        else
+          data << @read_buffer
+          @read_buffer.clear
         end
+
+        remaining_length = length - data.length if length
       end
+
       @pos += data.length
-      data
+      data unless data.empty? && length && length > 0
     end
 
     # Reads a single decrypted line from the file up to and including the optional sep_string.
@@ -272,7 +256,7 @@ module SymmetricEncryption
 
     # Rewind back to the beginning of the file
     def rewind
-      @read_buffer = ''
+      @read_buffer.clear
       @ios.rewind
       read_header
     end
@@ -307,10 +291,10 @@ module SymmetricEncryption
         # Read and decrypt entire file a block at a time to get its total
         # unencrypted size
         size = 0
-        until eof
+        until eof?
           read_block
-          size         += @read_buffer.size
-          @read_buffer = ''
+          size += @read_buffer.size
+          @read_buffer.clear
         end
         rewind
         offset = size + amount
@@ -328,7 +312,7 @@ module SymmetricEncryption
       @pos = 0
 
       # Read first block and check for the header
-      buf = @ios.read(@buffer_size)
+      buf = @ios.read(@buffer_size, @output_buffer ||= ''.b)
 
       # Use cipher specified in header, or global cipher if it has no header
       iv, key, cipher_name, cipher = nil
@@ -353,19 +337,20 @@ module SymmetricEncryption
       @stream_cipher.key = key || cipher.send(:key)
       @stream_cipher.iv  = iv || cipher.iv
 
-      # First call to #update should return an empty string anyway
-      if buf && !buf.empty?
-        @read_buffer = @stream_cipher.update(buf)
-        @read_buffer << @stream_cipher.final if @ios.eof?
-      else
-        @read_buffer = ''
-      end
+      decrypt(buf)
     end
 
     # Read a block of data and append the decrypted data in the read buffer
-    def read_block
-      buf = @ios.read(@buffer_size)
-      @read_buffer << @stream_cipher.update(buf) if buf && !buf.empty?
+    def read_block(length = nil)
+      buf = @ios.read(length || @buffer_size, @output_buffer ||= ''.b)
+      decrypt(buf)
+    end
+
+    # Decrypts the given chunk of data and returns the result
+    def decrypt(buf)
+      return if buf.nil? || buf.empty?
+
+      @read_buffer << @stream_cipher.update(buf, @cipher_buffer ||= ''.b)
       @read_buffer << @stream_cipher.final if @ios.eof?
     end
 

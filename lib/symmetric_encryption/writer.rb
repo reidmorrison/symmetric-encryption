@@ -90,14 +90,7 @@ module SymmetricEncryption
     # Notes:
     # * The file contents are streamed so that the entire file is _not_ loaded into memory.
     def self.encrypt(source:, target:, block_size: 65_535, **args)
-      source_ios    = source.is_a?(String) ? ::File.open(source, 'rb') : source
-      bytes_written = 0
-      self.open(target, **args) do |output_file|
-        bytes_written += output_file.write(source_ios.read(block_size)) until source_ios.eof?
-      end
-      bytes_written
-    ensure
-      source_ios.close if source_ios&.respond_to?(:closed?) && !source_ios.closed?
+      self.open(target, **args) { |output_file| IO.copy_stream(source, output_file) }
     end
 
     # Encrypt data before writing to the supplied stream
@@ -165,7 +158,7 @@ module SymmetricEncryption
 
       bytes   = data.to_s
       @size   += bytes.size
-      partial = @stream_cipher.update(bytes)
+      partial = @stream_cipher.update(bytes, @cipher_buffer ||= ''.b)
       @ios.write(partial) unless partial.empty?
       data.length
     end
