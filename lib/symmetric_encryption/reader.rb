@@ -90,14 +90,9 @@ module SymmetricEncryption
     #   target: [String|IO]
     #     Target file_name or IOStream
     #
-    #   block_size: [Integer]
-    #     Number of bytes to read into memory for each read.
-    #     For very large files using a larger block size is faster.
-    #     Default: 65535
-    #
     # Notes:
     # * The file contents are streamed so that the entire file is _not_ loaded into memory.
-    def self.decrypt(source:, target:, block_size: 65_535, **args)
+    def self.decrypt(source:, target:, **args)
       self.open(source, **args) { |input_file| IO.copy_stream(input_file, target) }
     end
 

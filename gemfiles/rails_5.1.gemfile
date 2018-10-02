@@ -13,7 +13,7 @@ gem "activerecord-jdbcsqlite3-adapter", "51", platform: :jruby
 gem "jdbc-sqlite3", platform: :jruby
 gem "sqlite3", platform: :ruby
 gem "aws-sdk-kms"
-gem "mongoid", "~> 6.0"
+gem "mongoid", "~> 7.0"
 
 group :development do
   gem "rubocop"

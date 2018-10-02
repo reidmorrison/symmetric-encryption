@@ -21,7 +21,7 @@ module SymmetricEncryption
     #   compress: [true|false]
     #     Uses Zlib to compress the data before it is encrypted and
     #     written to the file/stream.
-    #     Default: false
+    #     Default: true, unless the file_name extension indicates it is already compressed.
     #
     # Note: Compression occurs before encryption
     #
@@ -47,11 +47,16 @@ module SymmetricEncryption
     #  ensure
     #    csv.close if csv
     #  end
-    def self.open(file_name_or_stream, compress: false, **args)
-      ios = file_name_or_stream.is_a?(String) ? ::File.open(file_name_or_stream, 'wb') : file_name_or_stream
+    def self.open(file_name_or_stream, compress: nil, **args)
+      if file_name_or_stream.is_a?(String)
+        file_name_or_stream = ::File.open(file_name_or_stream, 'wb')
+        compress            = !(/\.(zip|gz|gzip|xls.|)\z/i === file_name_or_stream) if compress.nil?
+      else
+        compress = true if compress.nil?
+      end
 
       begin
-        file = new(ios, compress: compress, **args)
+        file = new(file_name_or_stream, compress: compress, **args)
         file = Zlib::GzipWriter.new(file) if compress
         block_given? ? yield(file) : file
       ensure
@@ -82,14 +87,9 @@ module SymmetricEncryption
     #     Whether to compress the target file prior to encryption.
     #     Default: false
     #
-    #   block_size: [Integer]
-    #     Number of bytes to read into memory for each read.
-    #     For very large files using a larger block size is faster.
-    #     Default: 65535
-    #
     # Notes:
     # * The file contents are streamed so that the entire file is _not_ loaded into memory.
-    def self.encrypt(source:, target:, block_size: 65_535, **args)
+    def self.encrypt(source:, target:, **args)
       self.open(target, **args) { |output_file| IO.copy_stream(source, output_file) }
     end
 

@@ -1,12 +1,30 @@
 # Change Log
 
-## [v4.0.1](https://github.com/rocketjob/symmetric-encryption/tree/v4.0.1) (2018-05-03)
-[Full Changelog](https://github.com/rocketjob/symmetric-encryption/compare/v4.0.0...v4.0.1)
+## [v4.1.0](https://github.com/rocketjob/symmetric-encryption/tree/HEAD)
 
-- Fix #96 AR Validation regression with blank values.
-- Allow explicitly setting environment requested from config file.
-- Apply RuboCop changes.
-- Fixes #90 Fix parameter name.
+[Full Changelog](https://github.com/rocketjob/symmetric-encryption/compare/v4.0.0...v4.1.0)
+
+**Closed issues:**
+
+- Cipher with version:1 not found in any of the configured SymmetricEncryption ciphers [\#103](https://github.com/rocketjob/symmetric-encryption/issues/103)
+- Query Db? [\#102](https://github.com/rocketjob/symmetric-encryption/issues/102)
+- Validating for nil is giving false in my tests/Getting Coercible::UnsupportedCoercion: Coercible::Coercer::Object\#to\_string errors [\#96](https://github.com/rocketjob/symmetric-encryption/issues/96)
+- Can't get array column to encrypt [\#91](https://github.com/rocketjob/symmetric-encryption/issues/91)
+- Generate files command appears to suggest wrong parameter for app name [\#90](https://github.com/rocketjob/symmetric-encryption/issues/90)
+- Order preserving encryption [\#89](https://github.com/rocketjob/symmetric-encryption/issues/89)
+- Issue saving non-string fields - Encrypted date test must be a value encrypted using SymmetricEncryption.encrypt [\#88](https://github.com/rocketjob/symmetric-encryption/issues/88)
+- Multi-environment usage [\#87](https://github.com/rocketjob/symmetric-encryption/issues/87)
+- Detect encryption version of an encrypted attribute [\#86](https://github.com/rocketjob/symmetric-encryption/issues/86)
+- Documentation is out of date [\#84](https://github.com/rocketjob/symmetric-encryption/issues/84)
+- Padding Check Failed [\#82](https://github.com/rocketjob/symmetric-encryption/issues/82)
+
+**Merged pull requests:**
+
+- Feature/aws kms [\#104](https://github.com/rocketjob/symmetric-encryption/pull/104) ([reidmorrison](https://github.com/reidmorrison))
+- Add missing check ENV variable [\#101](https://github.com/rocketjob/symmetric-encryption/pull/101) ([ggwpp](https://github.com/ggwpp))
+- Support output buffer in Reader\#read and drastically reduce Reader & Writer memory usage [\#98](https://github.com/rocketjob/symmetric-encryption/pull/98) ([janko-m](https://github.com/janko-m))
+- Allow explicitly setting environment requested from config file [\#97](https://github.com/rocketjob/symmetric-encryption/pull/97) ([whatcould](https://github.com/whatcould))
+- Documentation/fix links [\#85](https://github.com/rocketjob/symmetric-encryption/pull/85) ([tingaloo](https://github.com/tingaloo))
 
 ## [v4.0.0](https://github.com/rocketjob/symmetric-encryption/tree/v4.0.0) (2017-08-30)
 [Full Changelog](https://github.com/rocketjob/symmetric-encryption/compare/v4.0.0.beta3...v4.0.0)

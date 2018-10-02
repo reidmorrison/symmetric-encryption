@@ -87,7 +87,7 @@ class ReaderTest < Minitest::Test
 
     [
       # No Header
-      {header: false, random_key: false, random_iv: false},
+      {header: false, random_key: false, random_iv: false, compress: false},
       # Default Header with random key and iv
       {},
       # Header with no compression ( default anyway )
@@ -185,21 +185,24 @@ class ReaderTest < Minitest::Test
           end
 
           it '#read(size, outbuf)' do
-            file          = SymmetricEncryption::Reader.open(@file_name)
-            eof           = file.eof?
-            output_buffer = "buffer"
-            data          = file.read(4096, output_buffer)
-            file.close
+            file = SymmetricEncryption::Reader.open(@file_name)
+            # Not supported with compressed files
+            if file.is_a?(SymmetricEncryption::Reader)
+              eof           = file.eof?
+              output_buffer = "buffer"
+              data          = file.read(4096, output_buffer)
+              file.close
 
-            assert_equal @eof, eof
-            if @data_size.positive?
-              assert_equal @data_str, data
-              assert_equal data.object_id, output_buffer.object_id
-            else
-              assert_nil data
-              assert_empty output_buffer
+              assert_equal @eof, eof
+              if @data_size.positive?
+                assert_equal @data_str, data
+                assert_equal data.object_id, output_buffer.object_id
+              else
+                assert_nil data
+                assert_empty output_buffer
+              end
             end
-          end unless options[:compress]
+          end
 
           it '#each_line' do
             SymmetricEncryption::Reader.open(@file_name) do |file|
@@ -301,7 +304,7 @@ class ReaderTest < Minitest::Test
       before do
         @file_name = '_test'
         # Create encrypted file with old encryption key
-        SymmetricEncryption::Writer.open(@file_name, version: 0, header: false, random_key: false, random_iv: false) do |file|
+        SymmetricEncryption::Writer.open(@file_name, version: 0, header: false, random_key: false, random_iv: false, compress: false) do |file|
           @data.inject(0) { |sum, str| sum + file.write(str) }
         end
       end

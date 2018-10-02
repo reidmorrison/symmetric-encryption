@@ -99,8 +99,12 @@ module SymmetricEncryption
           @prompt = true
         end
 
-        opts.on '-z', '--compress', 'Compress encrypted output file.' do
+        opts.on '-z', '--compress', 'Compress encrypted output file. [Default for encrypting files]' do
           @compress = true
+        end
+
+        opts.on '-Z', '--no-compress', 'Does not compress the output file. [Default for encrypting strings]' do
+          @compress = false
         end
 
         opts.on '-E', '--env ENVIRONMENT', "Environment to use in the config file. Default: SYMMETRIC_ENCRYPTION_ENV || RACK_ENV || RAILS_ENV || 'development'" do |environment|
@@ -312,7 +316,7 @@ module SymmetricEncryption
 
         puts('Values do not match, please try again') if value1 != value2
       end
-
+      compress  = false if compress.nil?
       encrypted = SymmetricEncryption.cipher(version).encrypt(value1, compress: compress)
       output_file_name ? File.open(output_file_name, 'wb') { |f| f << encrypted } : puts("\n\nEncrypted: #{encrypted}\n\n")
     end
