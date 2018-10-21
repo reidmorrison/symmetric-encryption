@@ -59,7 +59,7 @@ module SymmetricEncryption
     # ensure
     #   csv.close if csv
     # end
-    def Reader.open(file_name_or_stream, buffer_size: 16_384, **args, &block)
+    def self.open(file_name_or_stream, buffer_size: 16_384, **args, &block)
       ios = file_name_or_stream.is_a?(String) ? ::File.open(file_name_or_stream, 'rb') : file_name_or_stream
 
       begin
@@ -345,11 +345,20 @@ module SymmetricEncryption
     end
 
     # Decrypts the given chunk of data and returns the result
-    def decrypt(buf)
-      return if buf.nil? || buf.empty?
+    if defined?(JRuby)
+      def decrypt(buf)
+        return if buf.nil? || buf.empty?
 
-      @read_buffer << @stream_cipher.update(buf, @cipher_buffer ||= ''.b)
-      @read_buffer << @stream_cipher.final if @ios.eof?
+        @read_buffer << @stream_cipher.update(buf)
+        @read_buffer << @stream_cipher.final if @ios.eof?
+      end
+    else
+      def decrypt(buf)
+        return if buf.nil? || buf.empty?
+
+        @read_buffer << @stream_cipher.update(buf, @cipher_buffer ||= ''.b)
+        @read_buffer << @stream_cipher.final if @ios.eof?
+      end
     end
 
     def closed?

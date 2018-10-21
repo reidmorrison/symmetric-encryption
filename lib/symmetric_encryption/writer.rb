@@ -47,7 +47,7 @@ module SymmetricEncryption
     #  ensure
     #    csv.close if csv
     #  end
-    def Writer.open(file_name_or_stream, compress: nil, **args)
+    def self.open(file_name_or_stream, compress: nil, **args)
       if file_name_or_stream.is_a?(String)
         file_name_or_stream = ::File.open(file_name_or_stream, 'wb')
         compress            = !(/\.(zip|gz|gzip|xls.|)\z/i === file_name_or_stream) if compress.nil?
@@ -154,14 +154,26 @@ module SymmetricEncryption
     # Write to the IO Stream as encrypted data.
     #
     # Returns [Integer] the number of bytes written.
-    def write(data)
-      return unless data
+    if defined?(JRuby)
+      def write(data)
+        return unless data
 
-      bytes   = data.to_s
-      @size  += bytes.size
-      partial = @stream_cipher.update(bytes, @cipher_buffer ||= ''.b)
-      @ios.write(partial) unless partial.empty?
-      data.length
+        bytes   = data.to_s
+        @size  += bytes.size
+        partial = @stream_cipher.update(bytes)
+        @ios.write(partial) unless partial.empty?
+        data.length
+      end
+    else
+      def write(data)
+        return unless data
+
+        bytes   = data.to_s
+        @size  += bytes.size
+        partial = @stream_cipher.update(bytes, @cipher_buffer ||= ''.b)
+        @ios.write(partial) unless partial.empty?
+        data.length
+      end
     end
 
     # Write to the IO Stream as encrypted data.

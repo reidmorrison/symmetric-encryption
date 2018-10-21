@@ -232,9 +232,9 @@ class ReaderTest < Minitest::Test
             assert_equal @eof, eof
             if @data_size.positive?
               assert_equal @data_str, data
+            elsif defined?(JRuby)
               # On JRuby Zlib::GzipReader.new(file) returns '' instead of nil on an empty file
-            elsif defined?(JRuby) && options[:compress] && (usecase == :empty)
-              assert_equal '', data
+              assert data.blank?
             else
               assert_nil data
             end
