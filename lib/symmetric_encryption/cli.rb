@@ -219,7 +219,7 @@ module SymmetricEncryption
       }
       args[:key_path]   = key_path if key_path
       args[:regions]    = regions if regions && !regions.empty?
-      cfg               = Keystore.generate_data_keys(keystore, **args)
+      cfg               = Keystore.generate_data_keys(keystore: keystore, **args)
       Config.write_file(config_file_path, cfg)
       puts "New configuration file created at: #{config_file_path}"
     end

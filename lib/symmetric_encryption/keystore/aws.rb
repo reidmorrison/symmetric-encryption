@@ -75,7 +75,8 @@ module SymmetricEncryption
                                  cipher_name:,
                                  app_name:,
                                  environment:,
-                                 key_path:)
+                                 key_path:,
+                                 **args)
 
         # TODO: Also support generating environment variables instead of files.
 

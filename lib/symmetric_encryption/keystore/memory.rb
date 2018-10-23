@@ -12,7 +12,7 @@ module SymmetricEncryption
       # Notes:
       # * For development and testing purposes only!!
       # * Never store the encrypted encryption key in the source code / config file.
-      def self.generate_data_key(cipher_name:, app_name:, environment:, version: 0, dek: nil)
+      def self.generate_data_key(cipher_name:, app_name:, environment:, version: 0, dek: nil, **args)
         version >= 255 ? (version = 1) : (version += 1)
 
         kek   = SymmetricEncryption::Key.new(cipher_name: cipher_name)
