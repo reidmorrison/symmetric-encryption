@@ -25,11 +25,11 @@ module SymmetricEncryption
 
     class None
       def encode(binary_string)
-        binary_string.dup
+        binary_string&.dup
       end
 
       def decode(encoded_string)
-        encoded_string.dup
+        encoded_string&.dup
       end
     end
 
