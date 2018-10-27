@@ -46,12 +46,20 @@ class EncoderTest < Minitest::Test
           assert_equal '', @encoder.encode('')
         end
 
+        it 'return a new object when encoding' do
+          assert_not_same @data, @encoder.encode(@data)
+        end
+
         it 'return nil when decoding nil' do
           assert_nil @encoder.decode(nil)
         end
 
         it "return '' when decoding ''" do
           assert_equal '', @encoder.decode('')
+        end
+
+        it 'return a new object when decoding' do
+          assert_not_same @data_encoded, @encoder.decode(@data_encoded)
         end
       end
     end
