@@ -231,7 +231,7 @@ module SymmetricEncryption
     end
 
     def run_rotate_keys
-      if keystore && KEYSTORES.include?(keystore)
+      if keystore && !KEYSTORES.include?(keystore)
         puts "Invalid keystore option: #{keystore}, must be one of #{KEYSTORES.join(', ')}"
         exit(-3)
       end
