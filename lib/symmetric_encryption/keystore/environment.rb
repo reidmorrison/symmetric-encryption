@@ -7,7 +7,7 @@ module SymmetricEncryption
       # Returns [Hash] a new keystore configuration after generating the data key.
       #
       # Increments the supplied version number by 1.
-      def self.generate_data_key(cipher_name:, app_name:, environment:, version: 0, dek: nil)
+      def self.generate_data_key(cipher_name:, app_name:, environment:, version: 0, dek: nil, **args)
         version >= 255 ? (version = 1) : (version += 1)
 
         kek   = SymmetricEncryption::Key.new(cipher_name: cipher_name)
