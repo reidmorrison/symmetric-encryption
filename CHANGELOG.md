@@ -1,9 +1,20 @@
 # Change Log
 
-## [v4.1.0](https://github.com/rocketjob/symmetric-encryption/tree/HEAD)
+## [v4.1.3](https://github.com/rocketjob/symmetric-encryption/tree/v4.1.3)
 
-[Full Changelog](https://github.com/rocketjob/symmetric-encryption/compare/v4.0.0...v4.1.0)
+**Closed issues:**
 
+- Rails: Accessing the decrypted attribute corrupts the encrypted attribute content [\#108](https://github.com/rocketjob/symmetric-encryption/issues/108)
+- Issues with named parameters for generate CLI command [\#106](https://github.com/rocketjob/symmetric-encryption/issues/106)
+- Unable to use --rotate-keys generated from v3.8.3 in v4.0.0 [\#95](https://github.com/rocketjob/symmetric-encryption/issues/95)
+
+**Merged pull requests:**
+
+- Fix run\_rotate\_keys [\#111](https://github.com/rocketjob/symmetric-encryption/pull/111) ([viniciusnz](https://github.com/viniciusnz))
+- Prevent encrypted attribute corruption when using None-encoder [\#109](https://github.com/rocketjob/symmetric-encryption/pull/109) ([gr8bit](https://github.com/gr8bit))
+- Fixed issues with named parameters as part of the generate CLI command. [\#107](https://github.com/rocketjob/symmetric-encryption/pull/107) ([rmorlok](https://github.com/rmorlok))
+
+## [v4.1.0](https://github.com/rocketjob/symmetric-encryption/tree/v4.1.0)
 **Closed issues:**
 
 - Cipher with version:1 not found in any of the configured SymmetricEncryption ciphers [\#103](https://github.com/rocketjob/symmetric-encryption/issues/103)

@@ -28,6 +28,9 @@ matrix:
   - rvm: 2.6.0-preview1
   - rvm: jruby-9.2.3.0
 
+jdk:
+- openjdk10
+
 services:
 - mongodb
 
