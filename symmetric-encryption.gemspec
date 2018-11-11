@@ -13,7 +13,6 @@ Gem::Specification.new do |s|
   s.homepage              = 'http://rocketjob.github.io/symmetric-encryption/'
   s.summary               = 'Encrypt ActiveRecord and Mongoid attributes, files and passwords in configuration files.'
   s.files                 = Dir['{lib,examples}/**/*', 'LICENSE.txt', 'Rakefile', 'README.md']
-  s.test_files            = Dir['test/**/*']
   s.license               = 'Apache-2.0'
   s.required_ruby_version = '>= 2.3'
   s.bindir                = 'bin'
