@@ -1,5 +1,6 @@
 require_relative '../test_helper'
 require 'stringio'
+require 'fileutils'
 
 module SymmetricEncryption
   class FileTest < Minitest::Test
@@ -54,10 +55,11 @@ module SymmetricEncryption
           end
         end
 
-        it 'creates the encrypted key file' do
+        it 'creates the encrypted key file with the correct permissions' do
           file_name = "#{the_test_path}/tester_test_v11.encrypted_key"
           assert_equal file_name, key_config[:key_filename]
           assert File.exist?(file_name)
+          assert_equal File.stat(file_name).mode.to_s(8), '100600'
         end
 
         it 'retains cipher_name' do
@@ -75,9 +77,19 @@ module SymmetricEncryption
           SymmetricEncryption::Keystore::File.new(key_filename: "#{the_test_path}/tester.key", key_encrypting_key: SymmetricEncryption::Key.new)
         end
 
+        after do
+          FileUtils.chmod 0600, Dir.glob("#{the_test_path}/*")
+        end
+
         it 'stores the key' do
           keystore.write('TEST')
           assert_equal 'TEST', keystore.read
+        end
+
+        it 'raises an exception when the file can be read/written by others' do
+          keystore.write('TEST')
+          FileUtils.chmod 0666, Dir.glob("#{the_test_path}/*")
+          assert_raises { keystore.read }
         end
       end
     end
