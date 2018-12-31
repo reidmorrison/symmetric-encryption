@@ -8,7 +8,7 @@ module SymmetricEncryption
                 :environments, :cipher_name, :rolling_deploy, :rotate_keys, :rotate_kek, :prompt, :show_version,
                 :cleanup_keys, :activate_key, :migrate, :regions
 
-    KEYSTORES = %i[heroku environment file].freeze
+    KEYSTORES = %i[aws heroku environment file].freeze
 
     def self.run!(argv)
       new(argv).run!
