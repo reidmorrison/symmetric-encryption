@@ -45,8 +45,11 @@ module SymmetricEncryption
 
       # Returns the Encryption key in the clear.
       def read
-        # TODO: Validate that file is not globally readable.
-        raise(SymmetricEncryption::ConfigError, "Symmetric Encryption key file: '#{file_name}' not found") unless ::File.exist?(file_name)
+        raise(SymmetricEncryption::ConfigError,
+              "Symmetric Encryption key file: '#{file_name}' not found") unless ::File.exists?(file_name)
+        raise(SymmetricEncryption::ConfigError,
+              "Symmetric Encryption key file '#{file_name}' has the wrong "\
+              "permissions: #{::File.stat(file_name).mode.to_s(8)}. Expected 100600.") unless correct_permissions?
 
         data = read_from_file
         key_encrypting_key ? key_encrypting_key.decrypt(data) : data
@@ -72,7 +75,16 @@ module SymmetricEncryption
         key_path = ::File.dirname(file_name)
         ::FileUtils.mkdir_p(key_path) unless ::File.directory?(key_path)
         ::File.rename(file_name, "#{file_name}.#{Time.now.to_i}") if ::File.exist?(file_name)
-        ::File.open(file_name, 'wb') { |file| file.write(data) }
+        ::File.open(file_name, 'wb', 0600) { |file| file.write(data) }
+      end
+
+      # Returns true if the file is owned by the user running this code and it
+      # has the correct mode - readable and writable by its owner and no one 
+      # else, much like the keys one has in ~/.ssh
+      def correct_permissions?
+        stat = ::File.stat(file_name)
+        
+        stat.owned? && stat.mode.to_s(8) == '100600'
       end
     end
   end
