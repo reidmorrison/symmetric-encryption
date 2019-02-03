@@ -2,23 +2,33 @@ require_relative 'test_helper'
 
 # Tests for SymmetricEncryption::Cipher
 class CipherTest < Minitest::Test
-  ['aes-128-cbc'].each do |cipher_name|
-    # ['aes-128-cbc', 'aes-128-gcm'].each do |cipher_name|
+  # ['aes-128-cbc'].each do |cipher_name|
+  ['aes-128-cbc', 'aes-128-gcm'].each do |cipher_name|
     describe "Cipher: #{cipher_name}" do
+      let :key do
+        'ABCDEF1234567890'
+      end
+
+      let :iv do
+        cipher_name.include?('gcm') ? 'AB1234567890' : 'ABCDEF1234567890'
+      end
+
       describe 'standalone' do
         it 'allows setting the cipher_name' do
           cipher = SymmetricEncryption::Cipher.new(
             cipher_name: cipher_name,
-            key:         '1234567890ABCDEF',
-            iv:          '1234567890ABCDEF',
+            key:         key,
+            iv:          iv,
             encoding:    :none
           )
           assert_equal cipher_name, cipher.cipher_name
         end
 
         it 'does not require an iv' do
+          skip "GCM Requires an IV" if cipher_name.include?('gcm')
+
           cipher = SymmetricEncryption::Cipher.new(
-            key:               '1234567890ABCDEF',
+            key:               key,
             cipher_name:       cipher_name,
             encoding:          :none,
             always_add_header: false
@@ -30,8 +40,8 @@ class CipherTest < Minitest::Test
         it 'throw an exception on bad data' do
           cipher = SymmetricEncryption::Cipher.new(
             cipher_name: cipher_name,
-            key:         '1234567890ABCDEF',
-            iv:          '1234567890ABCDEF',
+            key:         key,
+            iv:          iv,
             encoding:    :none
           )
           assert_raises OpenSSL::Cipher::CipherError do
@@ -64,30 +74,30 @@ class CipherTest < Minitest::Test
                     no_header: "\xC97\x8B\x8E\xC1\xD3k\xCC\xA4\xA0\xEFy+B\x90\x9A"
                   }
                 },
-                # 'aes-128-gcm' => {
-                #   base64:       {
-                #     header:    "QEVuQwAAOcqz9UDbd1Sn\n",
-                #     no_header: "Ocqz9UDbd1Sn\n"
-                #   },
-                #   base64strict: {
-                #     header:    'QEVuQwAAOcqz9UDbd1Sn',
-                #     no_header: 'Ocqz9UDbd1Sn'
-                #   },
-                #   base16:       {
-                #     header:    '40456e43000039cab3f540db7754a7',
-                #     no_header: '39cab3f540db7754a7'
-                #   },
-                #   none:         {
-                #     header:    "@EnC\x00\x009\xCA\xB3\xF5@\xDBwT\xA7",
-                #     no_header: "9\xCA\xB3\xF5@\xDBwT\xA7"
-                #   },
-                # }
+                'aes-128-gcm' => {
+                  base64:       {
+                    header:    "QEVuQwAAylTZmUsTM6N9\n",
+                    no_header: "ylTZmUsTM6N9\n"
+                  },
+                  base64strict: {
+                    header:    'QEVuQwAAylTZmUsTM6N9',
+                    no_header: 'ylTZmUsTM6N9'
+                  },
+                  base16:       {
+                    header:    '40456e430000ca54d9994b1333a37d',
+                    no_header: 'ca54d9994b1333a37d'
+                  },
+                  none:         {
+                    header:    "@EnC\x00\x00\xCAT\xD9\x99K\x133\xA3}",
+                    no_header: "\xCAT\xD9\x99K\x133\xA3}"
+                  },
+                }
               }
 
               @non_utf8 = "\xc2".force_encoding('binary')
               @cipher   = SymmetricEncryption::Cipher.new(
-                key:               'ABCDEF1234567890',
-                iv:                'ABCDEF1234567890',
+                key:               key,
+                iv:                iv,
                 cipher_name:       cipher_name,
                 encoding:          encoding,
                 always_add_header: always_add_header
@@ -103,6 +113,7 @@ class CipherTest < Minitest::Test
             it 'encrypt simple string' do
               assert encrypted = @cipher.encrypt(@social_security_number)
               assert_equal @social_security_number_encrypted, encrypted
+              assert @cipher.decrypt(encrypted)
             end
 
             it 'decrypt string' do

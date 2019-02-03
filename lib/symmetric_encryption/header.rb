@@ -8,7 +8,7 @@ module SymmetricEncryption
   class Header
     # Encrypted data includes this header prior to encoding when
     # `always_add_header` is true.
-    MAGIC_HEADER      = '@EnC'.force_encoding(SymmetricEncryption::BINARY_ENCODING)
+    MAGIC_HEADER      = '@EnC'.b
     MAGIC_HEADER_SIZE = MAGIC_HEADER.size
 
     # [true|false] Whether to compress the data before encryption.
@@ -128,13 +128,13 @@ module SymmetricEncryption
       #
       # Consists of:
       #    4 Bytes: Magic Header Prefix: @Enc
-      #    1 Byte:  The version of the cipher used to encrypt the header.
+      #    1 Byte:  The version of the cipher used to encrypt the data, and key if present.
       #    1 Byte:  Flags:
       #       Bit 1: Whether the data is compressed
       #       Bit 2: Whether the IV is included
-      #       Bit 3: Whether the Key is included
+      #       Bit 3: Whether the Encrypted Key is included
       #       Bit 4: Whether the Cipher Name is included
-      #       Bit 5: Future use
+      #       Bit 5: Whether the Auth Tag is included
       #       Bit 6: Future use
       #       Bit 7: Future use
       #       Bit 8: Future use
@@ -143,7 +143,9 @@ module SymmetricEncryption
       #    2 Bytes: Key Length (little endian), if included.
       #      Key in binary form
       #    2 Bytes: Cipher Name Length (little endian), if included.
-      #      Cipher name it UTF8 text
+      #      Cipher name is UTF8 text
+      #    2 Bytes: Auth Tag Length (little endian), if included.
+      #      Auth Tag is binary data
 
       buffer.force_encoding(SymmetricEncryption::BINARY_ENCODING)
       header = buffer.byteslice(offset, MAGIC_HEADER_SIZE)
