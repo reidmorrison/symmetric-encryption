@@ -19,7 +19,7 @@ module SymmetricEncryption
       @environment      = ENV['SYMMETRIC_ENCRYPTION_ENV'] || ENV['RACK_ENV'] || ENV['RAILS_ENV'] || 'development'
       @config_file_path = File.expand_path(ENV['SYMMETRIC_ENCRYPTION_CONFIG'] || 'config/symmetric-encryption.yml')
       @app_name         = 'symmetric-encryption'
-      @key_path         = "#{ENV['HOME']}/.symmetric-encryption"
+      @key_path         = '~/.symmetric-encryption'
       @cipher_name      = 'aes-256-cbc'
       @rolling_deploy   = false
       @prompt           = false
@@ -292,7 +292,7 @@ module SymmetricEncryption
         require 'highline'
       rescue LoadError
         puts("\nPlease install gem highline before using the command line task to decrypt an entered string.\n   gem install \"highline\"\n\n")
-        exit(-2)
+        exit -2
       end
 
       encrypted = HighLine.new.ask('Enter the value to decrypt:')
@@ -307,7 +307,7 @@ module SymmetricEncryption
         require 'highline'
       rescue LoadError
         puts("\nPlease install gem highline before using the command line task to encrypt an entered string.\n   gem install \"highline\"\n\n")
-        exit(-2)
+        exit -2
       end
       value1 = nil
       value2 = 0
