@@ -1,11 +1,37 @@
 # Change Log
 
-## [v4.1.3](https://github.com/rocketjob/symmetric-encryption/tree/v4.1.3)
+## [v4.1.4](https://github.com/rocketjob/symmetric-encryption/tree/v4.1.4) (2019-02-12)
+[Full Changelog](https://github.com/rocketjob/symmetric-encryption/compare/v4.1.3...v4.1.4)
 
 **Closed issues:**
 
+- symmetric-encryption --generate fails [\#115](https://github.com/rocketjob/symmetric-encryption/issues/115)
+
+**Merged pull requests:**
+
+- Use dirname to create a parent path for new config file [\#116](https://github.com/rocketjob/symmetric-encryption/pull/116) ([cmrd-senya](https://github.com/cmrd-senya))
+
+## [v4.1.3](https://github.com/rocketjob/symmetric-encryption/tree/v4.1.3) (2019-02-03)
+[Full Changelog](https://github.com/rocketjob/symmetric-encryption/compare/v4.1.2...v4.1.3)
+
+**Closed issues:**
+
+- I gotta ask... --generate creates world-readable key files? [\#99](https://github.com/rocketjob/symmetric-encryption/issues/99)
+
+**Merged pull requests:**
+
+- Add AWS to list of available keystores [\#113](https://github.com/rocketjob/symmetric-encryption/pull/113) ([tommysolsen](https://github.com/tommysolsen))
+- Feature/key files are only readable by owner [\#112](https://github.com/rocketjob/symmetric-encryption/pull/112) ([nesteves](https://github.com/nesteves))
+
+## [v4.1.2](https://github.com/rocketjob/symmetric-encryption/tree/v4.1.2) (2018-11-11)
+[Full Changelog](https://github.com/rocketjob/symmetric-encryption/compare/v4.1.0...v4.1.2)
+
+**Closed issues:**
+
+- Require active record causes trouble when it is not in use [\#110](https://github.com/rocketjob/symmetric-encryption/issues/110)
 - Rails: Accessing the decrypted attribute corrupts the encrypted attribute content [\#108](https://github.com/rocketjob/symmetric-encryption/issues/108)
 - Issues with named parameters for generate CLI command [\#106](https://github.com/rocketjob/symmetric-encryption/issues/106)
+- AWS KMS Keystore not available? [\#105](https://github.com/rocketjob/symmetric-encryption/issues/105)
 - Unable to use --rotate-keys generated from v3.8.3 in v4.0.0 [\#95](https://github.com/rocketjob/symmetric-encryption/issues/95)
 
 **Merged pull requests:**
@@ -14,7 +40,9 @@
 - Prevent encrypted attribute corruption when using None-encoder [\#109](https://github.com/rocketjob/symmetric-encryption/pull/109) ([gr8bit](https://github.com/gr8bit))
 - Fixed issues with named parameters as part of the generate CLI command. [\#107](https://github.com/rocketjob/symmetric-encryption/pull/107) ([rmorlok](https://github.com/rmorlok))
 
-## [v4.1.0](https://github.com/rocketjob/symmetric-encryption/tree/v4.1.0)
+## [v4.1.0](https://github.com/rocketjob/symmetric-encryption/tree/v4.1.0) (2018-10-21)
+[Full Changelog](https://github.com/rocketjob/symmetric-encryption/compare/v4.0.0...v4.1.0)
+
 **Closed issues:**
 
 - Cipher with version:1 not found in any of the configured SymmetricEncryption ciphers [\#103](https://github.com/rocketjob/symmetric-encryption/issues/103)
@@ -33,7 +61,7 @@
 
 - Feature/aws kms [\#104](https://github.com/rocketjob/symmetric-encryption/pull/104) ([reidmorrison](https://github.com/reidmorrison))
 - Add missing check ENV variable [\#101](https://github.com/rocketjob/symmetric-encryption/pull/101) ([ggwpp](https://github.com/ggwpp))
-- Support output buffer in Reader\#read and drastically reduce Reader & Writer memory usage [\#98](https://github.com/rocketjob/symmetric-encryption/pull/98) ([janko-m](https://github.com/janko-m))
+- Support output buffer in Reader\#read and drastically reduce Reader & Writer memory usage [\#98](https://github.com/rocketjob/symmetric-encryption/pull/98) ([janko](https://github.com/janko))
 - Allow explicitly setting environment requested from config file [\#97](https://github.com/rocketjob/symmetric-encryption/pull/97) ([whatcould](https://github.com/whatcould))
 - Documentation/fix links [\#85](https://github.com/rocketjob/symmetric-encryption/pull/85) ([tingaloo](https://github.com/tingaloo))
 
