@@ -11,7 +11,7 @@ gem "rake"
 gem "highline"
 gem "activerecord-jdbcsqlite3-adapter", "51", platform: :jruby
 gem "jdbc-sqlite3", platform: :jruby
-gem "sqlite3", platform: :ruby
+gem "sqlite3", "~> 1.3.0", platform: :ruby
 gem "aws-sdk-kms"
 gem "mongoid", "~> 7.0"
 
