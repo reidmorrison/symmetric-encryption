@@ -20,6 +20,9 @@ gem 'sqlite3', '~> 1.3.0', platform: :ruby
 # Soft dependency, only required when storing encryption keys in AWS KMS
 gem 'aws-sdk-kms'
 
+gem 'google-cloud-kms'
+gem 'google-protobuf', '>= 3.7.0.rc.2' # doesn't have to be loaded explicitly after 3.7.0 is released
+
 group :development do
   gem 'rubocop'
 end

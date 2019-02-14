@@ -13,6 +13,8 @@ gem "activerecord-jdbcsqlite3-adapter", "50", platform: :jruby
 gem "jdbc-sqlite3", platform: :jruby
 gem "sqlite3", "~> 1.3.0", platform: :ruby
 gem "aws-sdk-kms"
+gem "google-cloud-kms"
+gem "google-protobuf", ">= 3.7.0.rc.2"
 gem "mongoid", "~> 6.0"
 
 group :development do
