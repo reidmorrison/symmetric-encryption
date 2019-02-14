@@ -1,4 +1,3 @@
-require 'base64'
 require 'aws-sdk-kms'
 module SymmetricEncryption
   module Keystore
@@ -51,6 +50,8 @@ module SymmetricEncryption
     #     - Loss of access to AWS accounts.
     #     - Loss of region(s) in which master keys are stored.
     class Aws
+      include Utils::Files
+
       attr_reader :region, :key_files, :master_key_alias
 
       # Returns [Hash] a new keystore configuration after generating the data key.
@@ -131,13 +132,8 @@ module SymmetricEncryption
         raise(SymmetricEncryption::ConfigError, "region: #{region} not available in the supplied key_files") unless key_file
 
         file_name = key_file[:file_name]
-        raise(SymmetricEncryption::ConfigError, 'file_name is mandatory for each key_file entry') unless file_name
 
-        raise(SymmetricEncryption::ConfigError, "File #{file_name} could not be found") unless ::File.exist?(file_name)
-
-        # TODO: Validate that file is not globally readable.
-        encoded_dek        = ::File.open(file_name, 'rb', &:read)
-        encrypted_data_key = Base64.strict_decode64(encoded_dek)
+        encrypted_data_key = read_file_and_decode(file_name)
         aws(region).decrypt(encrypted_data_key)
       end
 
@@ -150,23 +146,12 @@ module SymmetricEncryption
           raise(ArgumentError, 'region and file_name are mandatory for each key_file entry') unless region && file_name
 
           encrypted_data_key = aws(region).encrypt(data_key)
-          encoded_dek        = Base64.strict_encode64(encrypted_data_key)
-          write_to_file(file_name, encoded_dek)
+          write_encoded_to_file(file_name, encrypted_data_key)
         end
       end
 
       def aws(region)
         Utils::Aws.new(region: region, master_key_alias: master_key_alias)
-      end
-
-      private
-
-      # Write to the supplied file_name, backing up the existing file if present
-      def write_to_file(file_name, data)
-        path = ::File.dirname(file_name)
-        ::FileUtils.mkdir_p(path) unless ::File.directory?(path)
-        ::File.rename(file_name, "#{file_name}.#{Time.now.to_i}") if ::File.exist?(file_name)
-        ::File.open(file_name, 'wb') { |file| file.write(data) }
       end
     end
   end
