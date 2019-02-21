@@ -37,25 +37,16 @@ end
 
 begin
   require 'active_record'
-  require 'symmetric_encryption/extensions/active_record/base'
-rescue LoadError
-end
-
-begin
-  require 'active_model'
+  require 'symmetric_encryption/railties/attr_encrypted'
   require 'symmetric_encryption/railties/symmetric_encryption_validator'
+
+  ActiveRecord::Base.include(SymmetricEncryption::Railties::AttrEncrypted)
 rescue LoadError
 end
 
 begin
   require 'mongoid'
-  require 'symmetric_encryption/extensions/mongoid/encrypted'
-rescue LoadError
-end
-
-begin
-  require 'mongo_mapper'
-  warn 'MongoMapper support is deprecated. Please upgrade to Mongoid.'
-  require 'symmetric_encryption/extensions/mongo_mapper/plugins/encrypted_key'
+  require 'symmetric_encryption/railties/mongoid_encrypted'
+  require 'symmetric_encryption/railties/symmetric_encryption_validator'
 rescue LoadError
 end
