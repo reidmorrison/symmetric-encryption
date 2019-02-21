@@ -1,6 +1,10 @@
 module SymmetricEncryption
   module Railties
     module AttrEncrypted
+      def self.included(base)
+        base.extend ClassMethods
+      end
+
       module ClassMethods
         # Transparently encrypt and decrypt values stored via ActiveRecord.
         #
