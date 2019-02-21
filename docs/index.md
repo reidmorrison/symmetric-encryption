@@ -41,7 +41,7 @@ SymmetricEncryption.decrypt "JqLJOi6dNjWI9kX9lSL1XQ=="
 
 * Externalization of symmetric encryption keys so that they are not in the
   source code, or the source code control system.
-* For maximum security uses randomized keys and initialization vectors extracted 
+* For maximum security uses randomized keys and initialization vectors extracted
   from the entire encryption key space.
 * Option to generate a new initialization vector (IV) with every encrypted value.
 
@@ -54,12 +54,12 @@ SymmetricEncryption.decrypt "JqLJOi6dNjWI9kX9lSL1XQ=="
 * Stream based encryption and decryption so that large files can be read or
   written with encryption.
 * When selected, compress and decompress file streams on the fly.
-* Generate a new randomized key and initialization vector (IV) for every file. 
+* Generate a new randomized key and initialization vector (IV) for every file.
 
 ### Compression
 
 * Transparently compress data prior to encryption.
-* During decryption data is automatically decompressed. 
+* During decryption data is automatically decompressed.
 * Uses Ruby built-in support for OpenSSL and Zlib for high performance and
   maximum portability without introducing any additional dependencies.
 
@@ -78,7 +78,7 @@ Symmetric Encryption v4 introduces an extensive command line interface to:
 * Generate new passwords
 * Generate a new configuration file
 * Perform Key rotation
-  
+
 ## Encrypting Passwords in configuration files
 
 Passwords can be encrypted in any YAML configuration file.
@@ -158,6 +158,20 @@ gem 'symmetric-encryption'
 Install the Gem with bundler
 
     bundle install
+
+### Using without extensions
+
+By default `symmetric-encryption` extends ORMs (ActiveRecord) and loads a Railstie to integrate with Rails configuration. However you may want to disable this behavior and instead use classes provided by Symmetric Encryption and perform configuration by yourself. To do this you should disable automatic require of the gem in your Gemfile:
+
+~~~ruby
+gem 'symmetric-encryption', require: false
+~~~
+
+And then you should manually require Symmetric Encryption library core module which just loads the library classes without any extensions at the place where you use it:
+
+~~~ruby
+require 'symmetric_encryption/core'
+~~~
 
 ## Support
 
