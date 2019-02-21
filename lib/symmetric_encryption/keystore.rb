@@ -4,6 +4,7 @@ module SymmetricEncryption
     # @formatter:off
     autoload :Aws,         'symmetric_encryption/keystore/aws'
     autoload :Environment, 'symmetric_encryption/keystore/environment'
+    autoload :Gcp,         'symmetric_encryption/keystore/gcp'
     autoload :File,        'symmetric_encryption/keystore/file'
     autoload :Heroku,      'symmetric_encryption/keystore/heroku'
     autoload :Memory,      'symmetric_encryption/keystore/memory'

@@ -1,6 +1,8 @@
 module SymmetricEncryption
   module Keystore
     class File
+      include Utils::Files
+
       attr_accessor :file_name, :key_encrypting_key
 
       # Returns [Hash] a new keystore configuration after generating the data key.
@@ -51,32 +53,17 @@ module SymmetricEncryption
               "Symmetric Encryption key file '#{file_name}' has the wrong "\
               "permissions: #{::File.stat(file_name).mode.to_s(8)}. Expected 100600.") unless correct_permissions?
 
-        data = read_from_file
+        data = read_from_file(file_name)
         key_encrypting_key ? key_encrypting_key.decrypt(data) : data
       end
 
       # Encrypt and write the key to file.
       def write(key)
         data = key_encrypting_key ? key_encrypting_key.encrypt(key) : key
-        write_to_file(data)
+        write_to_file(file_name, data)
       end
 
       private
-
-      # Read from the file, raising an exception if it is not found
-      def read_from_file
-        ::File.open(file_name, 'rb', &:read)
-      rescue Errno::ENOENT
-        raise(SymmetricEncryption::ConfigError, "Symmetric Encryption key file: '#{file_name}' not found or readable")
-      end
-
-      # Write to the supplied file_name, backing up the existing file if present
-      def write_to_file(data)
-        key_path = ::File.dirname(file_name)
-        ::FileUtils.mkdir_p(key_path) unless ::File.directory?(key_path)
-        ::File.rename(file_name, "#{file_name}.#{Time.now.to_i}") if ::File.exist?(file_name)
-        ::File.open(file_name, 'wb', 0600) { |file| file.write(data) }
-      end
 
       # Returns true if the file is owned by the user running this code and it
       # has the correct mode - readable and writable by its owner and no one 

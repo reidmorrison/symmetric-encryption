@@ -8,7 +8,7 @@ module SymmetricEncryption
                 :environments, :cipher_name, :rolling_deploy, :rotate_keys, :rotate_kek, :prompt, :show_version,
                 :cleanup_keys, :activate_key, :migrate, :regions
 
-    KEYSTORES = %i[aws heroku environment file].freeze
+    KEYSTORES = %i[aws heroku environment file gcp].freeze
 
     def self.run!(argv)
       new(argv).run!
@@ -131,7 +131,7 @@ module SymmetricEncryption
           @generate = config
         end
 
-        opts.on '-s', '--keystore heroku|environment|file|aws', 'Which keystore to use during generation or re-encryption.' do |keystore|
+        opts.on '-s', '--keystore heroku|environment|file|aws|gcp', 'Which keystore to use during generation or re-encryption.' do |keystore|
           @keystore = (keystore || 'file').downcase.to_sym
         end
 

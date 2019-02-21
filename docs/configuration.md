@@ -71,6 +71,9 @@ Options:
             * Generate a configuration file for use on heroku.
             * Follow the instructions displayed to store the encrypted encryption key
               as a heroku environment settings.
+        * `gcp`
+            * Generate a configuration file for use with the [Google Cloud Platform KMS](https://cloud.google.com/kms/).
+            * See instructions below on setting up access credentials and settings.
     * Default: `file`
 * `--regions`
     * Used by the `aws` keystore to set the regions that should be supported.
@@ -205,5 +208,38 @@ to decrypt the data encryption key (DEK) from another environment.
 For each key, in each region change the permissions on the key itself so that only that environment's 
 AWS API user can access that key. For example, create a user `rails_release` for the release environment 
 and limit it to decrypt authorization on the `release` key.
+
+### Google Cloud Platform KMS
+
+Symmetric Encryption can use the Google Cloud Platform [Key Management Service (KMS)](https://cloud.google.com/kms) to hold and manage the Key Encrypting Key.
+
+Symmetric Encryption expects that you have already created a key and a keyring in GCP KSM. It is expected that the keyring name matches your application name and that your key name matches your environment name.
+
+#### GCP KMS Dependencies
+
+The GCP KMS gem is a soft dependency, which is only required when the GCP KMS keystore is being used by
+Symmetric Encryption. Add the following line to Gemfile when using bundler:
+
+    gem 'google-cloud-kms'
+
+If not using Bundler, run the following from the command line:
+
+    gem install google-cloud-kms
+
+#### Setting up the GCP Credentials:
+
+You're expected to have a service account with permissions for encryption/decryption using GCP KMS keys. Follow the GCP instructions for [creating and setting credentials](https://cloud.google.com/docs/authentication/getting-started#auth-cloud-implicit-ruby).
+
+#### Setting GCP environment variables
+
+You have to set `GOOGLE_CLOUD_PROJECT` environment variable to the value of your project id at GCP console.
+
+There is also an optional variable `GOOGLE_CLOUD_LOCATION` which can be set to your key location. If not set it is assumed that your key location is `global`.
+
+#### Generating a key
+
+You can generate a new key with the following command:
+
+    symmetric-encryption --generate --keystore gcp --app-name my_app --environments "development,test,production"
 
 ### Next => [Command Line](cli.html)
