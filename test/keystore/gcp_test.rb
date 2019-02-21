@@ -4,6 +4,12 @@ module SymmetricEncryption
   module Keystore
     class GcpTest < Minitest::Test
       describe SymmetricEncryption::Keystore::Gcp do
+        before do
+          unless ENV['GOOGLE_CLOUD_KEYFILE']
+            skip 'Set GOOGLE_CLOUD_KEYFILE to run Google Cloud Platform KMS tests'
+          end
+        end
+
         let(:the_test_path) do
           path = 'tmp/keystore/gcp_test'
           FileUtils.makedirs(path) unless ::File.exist?(path)
