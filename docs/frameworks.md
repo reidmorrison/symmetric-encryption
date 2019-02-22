@@ -81,6 +81,47 @@ Each type maps to the built-in Ruby types as follows:
 * :json      => Uses JSON serialization, useful for hashes and arrays
 * :yaml      => Uses YAML serialization, useful for hashes and arrays
 
+#### ActiveRecord Attributes API (Rails 5+)
+
+Another possibility to use Symmetric Encryption is by using [ActiveRecord Attributes API](https://api.rubyonrails.org/classes/ActiveRecord/Attributes/ClassMethods.html). Symmetric Encryption includes a class called `SymmetricEncryption::EncryptedStringType` which can be used as a type for an attribute, for instance:
+
+~~~ruby
+class User < ActiveRecord::Base
+  attribute :string, SymmetricEncryption::EncryptedStringType.new(encrypt_params: {random_iv: true})
+  attribute :age, SymmetricEncryption::EncryptedStringType.new(encrypt_params: {type: :integer}, decrypt_params: {type: :integer})
+end
+~~~
+
+You can also register your type and reference the type as a symbol:
+
+~~~ruby
+ActiveRecord::Type.register(:encrypted_string, SymmetricEncryption::EncryptedStringType)
+
+class User < ActiveRecord::Base
+  attribute :string, :encrypted_string, encrypt_params: {random_iv: true}
+end
+~~~
+
+You can also create your own types which inherit the behavior of the `SymmetricEncryption::EncryptedStringType`:
+
+~~~ruby
+class MyEncryptedString < SymmetricEncryption::EncryptedStringType
+  def initialize
+    super(encrypt_params: {random_iv: true})
+  end
+end
+
+ActiveRecord::Type.register(:encrypted_string, MyEncryptedString)
+
+class User < ActiveRecord::Base
+  attribute :string, :encrypted_string
+end
+~~~
+
+`SymmetricEncryption::EncryptedStringType` passes `encrypt_params` hash to `SymmetricEncryption.encrypt` method and `decrypt_params` hash to `SymmetricEncryption.decrypt` so you may tweak your encryption settings this way.
+
+Also note that unlike using `attr_encrypted` when you use `SymmetricEncryption::EncryptedStringType` your database column name is not prefixed with the `encrypted_` string. It is expected to match the name which you use in the attribute definition.
+
 ### Mongoid
 
 To encrypt a field in a Mongoid document, just add "encrypted: true" at the end
