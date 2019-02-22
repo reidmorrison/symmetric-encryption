@@ -14,8 +14,8 @@ module SymmetricEncryption #:nodoc:
     #   end
     config.symmetric_encryption = ::SymmetricEncryption
 
-    # Initialize Symmetry. This will look for a symmetry.yml in the config
-    # directory and configure Symmetry appropriately.
+    # Initialize Symmetric Encryption. This will look for a symmetric-encryption.yml in the config
+    # directory and configure Symmetric Encryption appropriately.
     #
     # @example symmetric-encryption.yml
     #

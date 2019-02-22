@@ -130,7 +130,7 @@ chmod -R 0400 ~/.symmetric-encryption
 Specify Heroku as the keystore so that the encrypted encryption keys can be stored in Heroku instead of in files.
 
     symmetric-encryption --generate --keystore heroku --app-name my_app --envs "development,test,production"
-    
+
 ### AWS KMS keystore
 
 Symmetric Encryption can use the [AWS Key Management Service (KMS)](https://aws.amazon.com/kms/) to hold and manage
@@ -138,10 +138,10 @@ the Key Encrypting Key (Customer Master Key).
 
 This is the most secure keystore that Symmetric Encryption currently supports. By storing the master key
 in AWS KMS it cannot be read or exported, only used to encrypt or decrypt the data encryption keys. The encrypted
-data encryption key is stored locally on the file system since it has been secured by encrypting it with the 
+data encryption key is stored locally on the file system since it has been secured by encrypting it with the
 AWS KMS Customer Master key.
 
-Symmetric Encryption creates a new Customer Master Key in AWS KMS in every AWS Region and for every environment 
+Symmetric Encryption creates a new Customer Master Key in AWS KMS in every AWS Region and for every environment
 so that they can be managed and rotated directly from within the AWS KMS management interface.
 
 #### AWS Dependencies
@@ -154,7 +154,7 @@ Symmetric Encryption. Add the following line to Gemfile when using bundler:
 If not using Bundler, run the following from the command line:
 
     gem install aws-sdk-kms
-    
+
 #### Setting up the AWS Credentials:
 
 In order to create new keys, or to rotate new keys using the AWS KMS, it is necessary to create the necessary
@@ -163,9 +163,9 @@ AWS Credentials.
 It is recommended to use a separate _management_ AWS KMS credential to manage the keys. These credentials should
 be granted access to all KMS operations. See Access Control below for securing runtime privileges by environment.
 
-Follow the AWS instructions for [creating and setting the AWS credentials](https://docs.aws.amazon.com/sdk-for-ruby/v3/developer-guide/setup-config.html) 
+Follow the AWS instructions for [creating and setting the AWS credentials](https://docs.aws.amazon.com/sdk-for-ruby/v3/developer-guide/setup-config.html)
 
-#### Setting up the AWS Credentials:
+#### Generating new data keys:
 
 Once the AWS _management_ credentials have been created and set, the new keys can now be generated.
 
@@ -196,17 +196,17 @@ in that region.
 The simplest way to set the region is to set the `AWS_REGION` environment variable.
 
     export AWS_REGION=us-west-2
-    
+
 See the AWS documentation for more options in [setting the AWS Region](https://docs.aws.amazon.com/sdk-for-ruby/v3/developer-guide/setup-config.html).
 
 #### Access Control
 
-Each environment should have its own credentials and those credentials should be restricted to decrypting using 
-the Customer Master Key (CMK) for that environment only. This prevents different environments from being able 
+Each environment should have its own credentials and those credentials should be restricted to decrypting using
+the Customer Master Key (CMK) for that environment only. This prevents different environments from being able
 to decrypt the data encryption key (DEK) from another environment.
 
-For each key, in each region change the permissions on the key itself so that only that environment's 
-AWS API user can access that key. For example, create a user `rails_release` for the release environment 
+For each key, in each region change the permissions on the key itself so that only that environment's
+AWS API user can access that key. For example, create a user `rails_release` for the release environment
 and limit it to decrypt authorization on the `release` key.
 
 ### Google Cloud Platform KMS
