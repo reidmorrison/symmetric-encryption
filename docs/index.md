@@ -2,7 +2,7 @@
 layout: default
 ---
 
-### Symmetric Encryption for Ruby Projects using OpenSSL
+## Symmetric Encryption for Ruby Projects using OpenSSL
 
 Any project that wants to meet PCI compliance has to ensure that the data is encrypted
 whilst in flight and at rest. Amongst many other requirements all passwords
@@ -79,7 +79,7 @@ Symmetric Encryption v4 introduces an extensive command line interface to:
 * Generate a new configuration file
 * Perform Key rotation
 
-## Encrypting Passwords in configuration files
+### Encrypting Passwords in configuration files
 
 Passwords can be encrypted in any YAML configuration file.
 
@@ -95,7 +95,7 @@ production:
   password: <%= SymmetricEncryption.try_decrypt "JqLJOi6dNjWI9kX9lSL1XQ==\n" %>
 ~~~
 
-### Notes
+#### Notes
 
 * Use `SymmetricEncryption.try_decrypt` to return nil if it
   fails to decrypt the value, which is essential when the encryption keys differ
@@ -111,7 +111,7 @@ production:
     raise("Environment #{Rails.env} not defined in redis.yml") unless cfg
 ~~~
 
-## Large File Encryption
+### Large File Encryption
 
 Example: Read and decrypt a line at a time from a file
 
@@ -147,7 +147,7 @@ end
 * Ruby v2.1, v2.2, v2.3, v2.4, or higher.
 * JRuby v1.7.23, v9.0.5.0, or higher.
 
-### Installation
+## Installation
 
 Add the following line to Gemfile
 
