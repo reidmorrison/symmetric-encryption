@@ -51,7 +51,7 @@ module SymmetricEncryption
               "Symmetric Encryption key file: '#{file_name}' not found") unless ::File.exists?(file_name)
         raise(SymmetricEncryption::ConfigError,
               "Symmetric Encryption key file '#{file_name}' has the wrong "\
-              "permissions: #{::File.stat(file_name).mode.to_s(8)}. Expected 100600.") unless correct_permissions?
+              "permissions: #{::File.stat(file_name).mode.to_s(8)}. Expected 100600 or 100400.") unless correct_permissions?
 
         data = read_from_file(file_name)
         key_encrypting_key ? key_encrypting_key.decrypt(data) : data
@@ -66,12 +66,12 @@ module SymmetricEncryption
       private
 
       # Returns true if the file is owned by the user running this code and it
-      # has the correct mode - readable and writable by its owner and no one 
+      # has the correct mode - readable and writable by its owner and no one
       # else, much like the keys one has in ~/.ssh
       def correct_permissions?
         stat = ::File.stat(file_name)
-        
-        stat.owned? && stat.mode.to_s(8) == '100600'
+
+        stat.owned? && %w(100600 100400).include?(stat.mode.to_s(8))
       end
     end
   end
