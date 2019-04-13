@@ -13,6 +13,7 @@ module SymmetricEncryption
   autoload :Coerce,                 'symmetric_encryption/coerce'
   autoload :Config,                 'symmetric_encryption/config'
   autoload :Encoder,                'symmetric_encryption/encoder'
+  autoload :EncryptedStringType,    'symmetric_encryption/types/encrypted_string_type'
   autoload :Generator,              'symmetric_encryption/generator'
   autoload :Header,                 'symmetric_encryption/header'
   autoload :Key,                    'symmetric_encryption/key'
