@@ -8,11 +8,6 @@ require 'erb'
 # The symmetric key is protected using the private key below and must
 # be distributed separately from the application
 module SymmetricEncryption
-  # Defaults
-  @@cipher            = nil
-  @@secondary_ciphers = []
-  @@select_cipher     = nil
-
   # List of types supported when encrypting or decrypting data
   #
   # Each type maps to the built-in Ruby types as follows:
@@ -39,7 +34,7 @@ module SymmetricEncryption
   def self.cipher=(cipher)
     raise(ArgumentError, 'Cipher must respond to :encrypt and :decrypt') unless cipher.nil? || (cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt))
 
-    @@cipher = cipher
+    @cipher = cipher
   end
 
   # Returns the Primary Symmetric Cipher being used
@@ -54,14 +49,14 @@ module SymmetricEncryption
       )
     end
 
-    return @@cipher if version.nil? || (@@cipher.version == version)
+    return @cipher if version.nil? || (@cipher.version == version)
 
-    secondary_ciphers.find { |c| c.version == version } || (@@cipher if version.zero?)
+    secondary_ciphers.find { |c| c.version == version } || (@cipher if version.zero?)
   end
 
   # Returns whether a primary cipher has been set
   def self.cipher?
-    !@@cipher.nil?
+    !@cipher.nil?
   end
 
   # Set the Secondary Symmetric Ciphers Array to be used
@@ -71,12 +66,23 @@ module SymmetricEncryption
     secondary_ciphers.each do |cipher|
       raise(ArgumentError, 'secondary_ciphers can only consist of SymmetricEncryption::Ciphers') unless cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt)
     end
-    @@secondary_ciphers = secondary_ciphers
+    @secondary_ciphers = secondary_ciphers
   end
 
   # Returns the Primary Symmetric Cipher being used
   def self.secondary_ciphers
-    @@secondary_ciphers
+    @secondary_ciphers
+  end
+
+  # Whether to randomize the iv by default.
+  # true: Generate a new random IV by default. [HIGHLY RECOMMENDED]
+  # false: Do not generate a new random IV by default.
+  def self.randomize_iv?
+    @randomize_iv
+  end
+
+  def self.randomize_iv(randomize_iv)
+    @randomize_iv = randomize_iv
   end
 
   # Decrypt supplied string.
@@ -133,9 +139,9 @@ module SymmetricEncryption
           if version
             # Supplied version takes preference
             cipher(version)
-          elsif @@select_cipher
+          elsif @select_cipher
             # Use cipher_selector if present to decide which cipher to use
-            @@select_cipher.call(str, decoded)
+            @select_cipher.call(str, decoded)
           else
             # Global cipher
             cipher
@@ -172,10 +178,12 @@ module SymmetricEncryption
   #     to convert it to a string
   #
   #   random_iv [true|false]
-  #     Whether the encypted value should use a random IV every time the
-  #     field is encrypted.
-  #     It is recommended to set this to true where feasible. If the encrypted
-  #     value could be used as part of a SQL where clause, or as part
+  #     Mandatory unless `SymmetricEncryption.randomize_iv = true` has been called.
+  #
+  #     Whether the encrypted value should use a random IV every time the field is encrypted.
+  #     It is recommended to set this to true where possible.
+  #
+  #     If the encrypted value could be used as part of a SQL where clause, or as part
   #     of any lookup, then it must be false.
   #     Setting random_iv to true will result in a different encrypted output for
   #     the same input string.
@@ -203,7 +211,7 @@ module SymmetricEncryption
   #     Note: If type is set to something other than :string, it's expected that
   #       the coercible gem is available in the path.
   #     Default: :string
-  def self.encrypt(str, random_iv: false, compress: false, type: :string, header: cipher.always_add_header)
+  def self.encrypt(str, random_iv: SymmetricEncryption.randomize_iv?, compress: false, type: :string, header: cipher.always_add_header)
     return str if str.nil? || (str == '')
 
     # Encrypt and then encode the supplied string
@@ -265,7 +273,7 @@ module SymmetricEncryption
   #     encoded_str.end_with?("\n") ? SymmetricEncryption.cipher(0) : SymmetricEncryption.cipher
   #   end
   def self.select_cipher(&block)
-    @@select_cipher = block || nil
+    @select_cipher = block || nil
   end
 
   # Load the Encryption Configuration from a YAML file
@@ -288,4 +296,10 @@ module SymmetricEncryption
 
   BINARY_ENCODING = Encoding.find('binary')
   UTF8_ENCODING   = Encoding.find('UTF-8')
+
+  # Defaults
+  @cipher            = nil
+  @secondary_ciphers = []
+  @select_cipher     = nil
+  @random_iv         = false
 end

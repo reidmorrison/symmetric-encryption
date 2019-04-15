@@ -1,5 +1,5 @@
 module SymmetricEncryption
-  module Railties
+  module ActiveRecord
     module AttrEncrypted
       def self.included(base)
         base.extend ClassMethods
@@ -39,7 +39,7 @@ module SymmetricEncryption
         #       compression
         #       Note: Adds a 6 byte header prior to encoding, only if :random_iv is false
         #       Default: false
-        def attr_encrypted(*params)
+        def attr_encrypted(*attributes, random_iv: nil, type: :string, compress: false)
           # Ensure ActiveRecord has created all its methods first
           # Ignore failures since the table may not yet actually exist
           begin
@@ -48,10 +48,21 @@ module SymmetricEncryption
             nil
           end
 
-          options = params.last.is_a?(Hash) ? params.pop.dup : {}
+          random_iv = true if random_iv.nil? && SymmetricEncryption.randomize_iv?
 
-          params.each do |attribute|
-            SymmetricEncryption::Generator.generate_decrypted_accessors(self, attribute, "encrypted_#{attribute}", options)
+          if random_iv.nil?
+            warn("attr_encrypted() no longer allows a default value for option `random_iv`. Add `random_iv: false` if it is required.")
+          end
+
+          attributes.each do |attribute|
+            SymmetricEncryption::Generator.generate_decrypted_accessors(
+              self,
+              attribute,
+              "encrypted_#{attribute}",
+              random_iv: random_iv,
+              type:      type,
+              compress:  compress
+            )
             encrypted_attributes[attribute.to_sym] = "encrypted_#{attribute}".to_sym
           end
         end

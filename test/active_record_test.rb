@@ -36,36 +36,36 @@ ActiveRecord::Schema.define version: 0 do
 end
 
 class User < ActiveRecord::Base
-  attr_encrypted :bank_account_number
-  attr_encrypted :social_security_number
-  attr_encrypted :string_value,        random_iv: true
-  attr_encrypted :long_string_value,   random_iv: true, compress: true
-  attr_encrypted :binary_string_value, random_iv: true, compress: true
-  attr_encrypted :data_yaml,           random_iv: true, compress: true, type: :yaml
-  attr_encrypted :data_json,           random_iv: true, compress: true, type: :json
+  attr_encrypted :bank_account_number,    random_iv: false
+  attr_encrypted :social_security_number, random_iv: false
+  attr_encrypted :string_value,           random_iv: true
+  attr_encrypted :long_string_value,      random_iv: true, compress: true
+  attr_encrypted :binary_string_value,    random_iv: true, compress: true
+  attr_encrypted :data_yaml,              random_iv: true, compress: true, type: :yaml
+  attr_encrypted :data_json,              random_iv: true, compress: true, type: :json
 
-  attr_encrypted :integer_value,  type: :integer
-  attr_encrypted :float_value,    type: :float
-  attr_encrypted :decimal_value,  type: :decimal
-  attr_encrypted :datetime_value, type: :datetime
-  attr_encrypted :time_value,     type: :time
-  attr_encrypted :date_value,     type: :date
-  attr_encrypted :true_value,     type: :boolean
-  attr_encrypted :false_value,    type: :boolean
+  attr_encrypted :integer_value,  type: :integer,  random_iv: true
+  attr_encrypted :float_value,    type: :float,    random_iv: true
+  attr_encrypted :decimal_value,  type: :decimal,  random_iv: true
+  attr_encrypted :datetime_value, type: :datetime, random_iv: true
+  attr_encrypted :time_value,     type: :time,     random_iv: true
+  attr_encrypted :date_value,     type: :date,     random_iv: true
+  attr_encrypted :true_value,     type: :boolean,  random_iv: true
+  attr_encrypted :false_value,    type: :boolean,  random_iv: true
 
   validates :encrypted_bank_account_number,    symmetric_encryption: true
   validates :encrypted_social_security_number, symmetric_encryption: true
 
-  attr_encrypted :text,           type: :string
-  attr_encrypted :number,         type: :integer
+  attr_encrypted :text,           type: :string,  random_iv: true
+  attr_encrypted :number,         type: :integer, random_iv: true
 
   validates      :text, format: {with: /\A[a-zA-Z ]+\z/, message: 'only allows letters'}, presence: true
   validates      :number, presence: true
 end
 
 class UniqueUser < ActiveRecord::Base
-  attr_encrypted :email
-  attr_encrypted :username
+  attr_encrypted :email, random_iv: false
+  attr_encrypted :username, random_iv: false
 
   validates_uniqueness_of :encrypted_email,    allow_blank: true, if: :encrypted_email_changed?
   validates_uniqueness_of :encrypted_username, allow_blank: true, if: :encrypted_username_changed?

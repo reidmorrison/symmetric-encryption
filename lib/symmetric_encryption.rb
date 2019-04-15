@@ -10,10 +10,15 @@ end
 begin
   require 'active_support'
   ActiveSupport.on_load(:active_record) do
-    require 'symmetric_encryption/railties/attr_encrypted'
+    require 'symmetric_encryption/active_record/attr_encrypted'
     require 'symmetric_encryption/railties/symmetric_encryption_validator'
 
-    ActiveRecord::Base.include(SymmetricEncryption::Railties::AttrEncrypted)
+    ActiveRecord::Type.register(
+      :encrypted,
+      SymmetricEncryption::ActiveRecord::EncryptedAttribute
+    )
+
+    ActiveRecord::Base.include(SymmetricEncryption::ActiveRecord::AttrEncrypted)
   end
 
   ActiveSupport.on_load(:mongoid) do

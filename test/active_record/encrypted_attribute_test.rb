@@ -12,13 +12,13 @@ ActiveRecord::Schema.define version: 0 do
 end
 
 class Person < ActiveRecord::Base
-  attribute :name, SymmetricEncryption::EncryptedStringType.new
-  attribute :age,  SymmetricEncryption::EncryptedStringType.new(encrypt_params: {type: :integer}, decrypt_params: {type: :integer})
-  attribute :address, SymmetricEncryption::EncryptedStringType.new(encrypt_params: {random_iv: true})
+  attribute :name, :encrypted, random_iv: false
+  attribute :age,  :encrypted, type: :integer, random_iv: false
+  attribute :address, :encrypted
 end
 
-class EncryptedStringTypeTest < Minitest::Test
-  describe 'SymmetricEncryption::EncryptedStringType' do
+class EncryptedAttributeTest < Minitest::Test
+  describe SymmetricEncryption::ActiveRecord::EncryptedAttribute do
     before do
       if ActiveRecord.version < Gem::Version.new('5.0.0')
         skip 'Custom attribute types support starting from Rails 5'

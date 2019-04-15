@@ -94,7 +94,7 @@ Testing Procedure:
 # that contains the encrypted bank account number. There should not be a column
 # called `bank_account_number`
 class User < ActiveRecord::Base
-  attr_encrypted :bank_account_number
+  attr_encrypted :bank_account_number, random_iv: false
   attr_encrypted :long_string, random_iv: true, compress: true
 ~~~
 

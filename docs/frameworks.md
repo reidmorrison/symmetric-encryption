@@ -9,67 +9,53 @@ The following frameworks are directly supported by Symmetric Encryption
 * Ruby on Rails
 * Mongoid
 
-### Ruby on Rails
+### Rails 5
 
-Example on how to define encrypted attributes in ActiveRecord models:
+As of Symmetric Encryption v4.3, when using Rails v5 and above the recommended approach is to use the new 
+[ActiveRecord Attributes API](https://api.rubyonrails.org/classes/ActiveRecord/Attributes/ClassMethods.html).
+
+Example: Model `Person` has an encrypted attribute called `name` of type string.
 
 ~~~ruby
-class User < ActiveRecord::Base
-  # Requires table users to have a column called encrypted_bank_account_number
-  attr_encrypted :bank_account_number
-
-  # Requires users table to have a column called encrypted_social_security_number
-  #
-  # Note: Encrypting the same value twice will result in the _same_ encrypted value
-  #       when :random_iv => false, or is not specified
-  attr_encrypted :social_security_number
-
-  # By specifying the type as :integer the value will be returned as an integer and
-  # can be set as an integer, even though it is stored in the database as an
-  # encrypted string
-  #
-  # Requires users table to have a column called encrypted_age of type string
-  attr_encrypted :age,         type: :integer
-
-  # Since string and long_string are not used in the where clause of any SQL
-  # queries it is better to ensure that the encrypted value is always different
-  # by encrypting every value with a random Initialization Vector.
-  #
-  # Note: Encrypting the same value twice will result in different encrypted
-  #       values when :random_iv is true
-  attr_encrypted :string,      random_iv: true
-
-  # Long encrypted strings can also be compressed prior to encryption to save
-  # disk space
-  attr_encrypted :long_string, random_iv: true, compress: true
-
-  # By specifying the type as :json the value will be serialized to JSON
-  # before encryption and deserialized from JSON after decryption.
-  #
-  # It is sometimes useful to use compression on large fields, so we can enable
-  # compression before the string is encrypted
-  #
-  # Requires users table to have a column called encrypted_values of type string
-  attr_encrypted :values,      type: :json, compress: true
-
-  validates :encrypted_bank_account_number, symmetric_encryption: true
-  validates :encrypted_social_security_number, symmetric_encryption: true
+class Person < ActiveRecord::Base
+  attribute :name, :encrypted
 end
-
-# Create a new user instance assigning a bank account number
-user = User.new
-user.bank_account_number = '12345'
-
-# Saves the bank_account_number in the column encrypted_bank_account_number in
-# encrypted form
-user.save!
-
-# Short example using create
-User.create(bank_account_number: '12345')
 ~~~
 
-Several types are supported for ActiveRecord models when encrypting or decrypting data.
-Each type maps to the built-in Ruby types as follows:
+In the database migration, the `name` column should be defined as type `string` and should be large enough to hold
+the base64 encoded value after encryption. If the text can be very long, use the type `text`.
+
+~~~ruby
+create_table :people, force: true do |t|
+  t.string :name
+  t.string :age
+  t.text :address
+end
+~~~ 
+
+By default when defining an attribute it will be encrypted with a new, random, initialization vectore (IV).
+The IV is also stored along with the encrypted value, which makes it a little larger.
+
+The default of `random_iv: true` is highly recommended for security reasons. However, we would never be able to
+perform a query using that field, since the random IV causes the value to change every time the same data is
+encrypted.
+
+As a result, the following query would never get a match:
+
+~~~ruby
+Person.where(name: "Jack").count
+~~~
+
+For these columns, it is necessary to add the option `random_iv: true`:
+
+~~~ruby
+class Person < ActiveRecord::Base
+  attribute :name, :encrypted, random_iv: false
+end
+~~~
+
+Since the value stored in the database is always an encrypted string, the ultimate type of the
+attribute needs to be supplied: 
 
 * :string    => String
 * :integer   => Integer
@@ -81,46 +67,130 @@ Each type maps to the built-in Ruby types as follows:
 * :json      => Uses JSON serialization, useful for hashes and arrays
 * :yaml      => Uses YAML serialization, useful for hashes and arrays
 
-#### ActiveRecord Attributes API (Rails 5+)
-
-Another possibility to use Symmetric Encryption is by using [ActiveRecord Attributes API](https://api.rubyonrails.org/classes/ActiveRecord/Attributes/ClassMethods.html). Symmetric Encryption includes a class called `SymmetricEncryption::EncryptedStringType` which can be used as a type for an attribute, for instance:
+Example: The encrypted attribute `age` can be specified as an integer:
 
 ~~~ruby
-class User < ActiveRecord::Base
-  attribute :string, SymmetricEncryption::EncryptedStringType.new(encrypt_params: {random_iv: true})
-  attribute :age, SymmetricEncryption::EncryptedStringType.new(encrypt_params: {type: :integer}, decrypt_params: {type: :integer})
+class Person < ActiveRecord::Base
+  attribute :name, :encrypted, random_iv: false
+  attribute :age,  :encrypted, type: :integer
+  attribute :address, :encrypted, compress: true
 end
 ~~~
 
-You can also register your type and reference the type as a symbol:
+For larger encrypted attributes it is also worthwhile to compress the value after it has been encrypted,
+by adding the option:
+`compress: true`
+
+#### Note
+
+The column name in the database matches the name of the attribute in the model. 
+This differs to using the `attr_enccypted` approach described below for use with Rails 3 and 4, 
+which requires the encrypted column name in the database to begin with `encrypted_`.
+
+### Rails 3 and 4
+
+Note: When using Rails 5, it is recommended to use the Active Record attribute type approach detailed above. 
+However, the approach below using `attr_encrypted` is still fully supported.
+
+Example: Model `Person` has an encrypted attribute called `name` of type string.
 
 ~~~ruby
-ActiveRecord::Type.register(:encrypted_string, SymmetricEncryption::EncryptedStringType)
-
-class User < ActiveRecord::Base
-  attribute :string, :encrypted_string, encrypt_params: {random_iv: true}
+class Person < ActiveRecord::Base
+  attr_encrypted :name, random_iv: true
 end
 ~~~
 
-You can also create your own types which inherit the behavior of the `SymmetricEncryption::EncryptedStringType`:
+In the database migration, the `name` column should be defined as type `string` and should be large enough to hold
+the base64 encoded value after encryption. If the text can be very long, use the type `text`.
 
 ~~~ruby
-class MyEncryptedString < SymmetricEncryption::EncryptedStringType
-  def initialize
-    super(encrypt_params: {random_iv: true})
-  end
+create_table :people, force: true do |t|
+  t.string :encrypted_name
+  t.string :encrypted_age
+  t.text :encrypted_address
 end
+~~~ 
 
-ActiveRecord::Type.register(:encrypted_string, MyEncryptedString)
+To perform a query using an encrypted field, use the encrypted form of the field name that starts with `encrypted_`:
 
-class User < ActiveRecord::Base
-  attribute :string, :encrypted_string
+For example: 
+
+~~~ruby
+Person.where(encrypted_name: SymmetricEncryption.encrypt("Jack")).count
+~~~
+
+By default when defining an attribute with `attr_encrypted` it will _not_ be encrypted with a 
+random initialization vectore (IV). This is _not_ recommended, and `random_iv: true` should be
+added whenever possible for security resaons.
+
+However, we would never be able to perform a query using that field, since the random IV causes the 
+value to change every time the same data is encrypted. As a result, the above query would never get a match.
+
+For these columns, it is necessary to use the option `random_iv: false`:
+
+~~~ruby
+class Person < ActiveRecord::Base
+  attr_encrypted :name, random_iv: false
 end
 ~~~
 
-`SymmetricEncryption::EncryptedStringType` passes `encrypt_params` hash to `SymmetricEncryption.encrypt` method and `decrypt_params` hash to `SymmetricEncryption.decrypt` so you may tweak your encryption settings this way.
+Now the following query will find the expected record:
 
-Also note that unlike using `attr_encrypted` when you use `SymmetricEncryption::EncryptedStringType` your database column name is not prefixed with the `encrypted_` string. It is expected to match the name which you use in the attribute definition.
+~~~ruby
+Person.where(encrypted_name: SymmetricEncryption.encrypt("Jack")).count
+~~~
+
+Since the value stored in the database is always an encrypted string, the ultimate type of the
+attribute needs to be supplied: 
+
+* :string    => String
+* :integer   => Integer
+* :float     => Float
+* :decimal   => BigDecimal
+* :datetime  => DateTime
+* :time      => Time
+* :date      => Date
+* :json      => Uses JSON serialization, useful for hashes and arrays
+* :yaml      => Uses YAML serialization, useful for hashes and arrays
+
+Example: The encrypted attribute `age` can be specified as an integer:
+
+~~~ruby
+class Person < ActiveRecord::Base
+  attr_encrypted :name, random_iv: false
+  attr_encrypted :age, random_iv: true, type: :integer 
+  attr_encrypted :address, random_iv: true, compress: true 
+end
+~~~
+
+For larger encrypted attributes it is also worthwhile to compress the value after it has been encrypted,
+by adding the option:
+`compress: true`
+
+#### Note
+
+The column name in the database differs from the name of the attribute in the model. 
+The encrypted column name in the database must begin with `encrypted_`.
+
+#### Validations
+
+To ensure that the encrypted attribute value is encrypted, a validation can be used.
+
+Note that the validation is only applicable when using the `attr_encrypted` approach. Using the
+attribute type approach with Rails 5 or above does not need a validation to ensure the field is encrypted
+before saving.
+
+~~~ruby
+class Person < ActiveRecord::Base
+  attr_encrypted :name, random_iv: false
+  attr_encrypted :age, random_iv: true, type: :integer 
+  attr_encrypted :address, random_iv: true, compress: true
+   
+  validates :encrypted_name, symmetric_encryption: true
+  validates :encrypted_age, symmetric_encryption: true
+  validates :encrypted_address, symmetric_encryption: true
+end
+~~~
 
 ### Mongoid
 
@@ -153,21 +223,6 @@ user = User.where(encrypted_bank_account_number: SymmetricEncryption.encrypt('12
 
 # Fields can be accessed using their unencrypted names
 puts user.bank_account_number
-~~~
-
-#### Validation Example
-
-~~~ruby
-class MyModel < ActiveRecord::Base
-  validates :encrypted_ssn, symmetric_encryption: true
-end
-
-m = MyModel.new
-m.valid?
-#  => false
-m.encrypted_ssn = SymmetricEncryption.encrypt('123456789')
-m.valid?
-#  => true
 ~~~
 
 ### Next => [Configuration](configuration.html)
