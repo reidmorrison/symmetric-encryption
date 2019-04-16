@@ -81,7 +81,7 @@ module SymmetricEncryption
     @randomize_iv
   end
 
-  def self.randomize_iv(randomize_iv)
+  def self.randomize_iv=(randomize_iv)
     @randomize_iv = randomize_iv
   end
 
