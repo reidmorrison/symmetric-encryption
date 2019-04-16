@@ -13,10 +13,9 @@ begin
     require 'symmetric_encryption/active_record/attr_encrypted'
     require 'symmetric_encryption/railties/symmetric_encryption_validator'
 
-    ActiveRecord::Type.register(
-      :encrypted,
-      SymmetricEncryption::ActiveRecord::EncryptedAttribute
-    )
+    if ActiveRecord.version < Gem::Version.new('5.0.0')
+      ActiveRecord::Type.register(:encrypted, SymmetricEncryption::ActiveRecord::EncryptedAttribute)
+    end
 
     ActiveRecord::Base.include(SymmetricEncryption::ActiveRecord::AttrEncrypted)
   end
