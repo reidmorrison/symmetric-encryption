@@ -27,7 +27,7 @@ puts SymmetricEncryption.decrypt(encrypted)
 Encrypt the supplied string using Symmetric Encryption.
 
 ~~~ruby
-SymmetricEncryption.encrypt(str, random_iv=false, compress=false, type=:string)
+SymmetricEncryption.encrypt(str, random_iv: true, compress: false, type: :string)
 ~~~
 
 - Returns a Base64 encoded string.
