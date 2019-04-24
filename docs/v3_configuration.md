@@ -4,9 +4,9 @@ layout: default
 
 ## Rails Configuration with Symmetric Encryption v3:
 
-If deploying to Heroku, see: [Heroku Configuration](heroku.html)
+If deploying to Heroku, see: [Heroku Configuration](heroku.md)
 
-For a standalone environment without Rails, see: [Standalone Configuration](standalone.html)
+For a standalone environment without Rails, see: [Standalone Configuration](standalone.md)
 
 ### Add to Gemfile
 
