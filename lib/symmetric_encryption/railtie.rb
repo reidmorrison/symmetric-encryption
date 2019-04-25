@@ -45,9 +45,6 @@ module SymmetricEncryption #:nodoc:
             puts "To generate a new config file and key files: symmetric-encryption --generate --app-name #{app_name}\n\n"
             raise(exc)
           end
-        else
-          puts "\nSymmetric Encryption config not found."
-          puts "To generate a new config file and key files: symmetric-encryption --generate --app-name #{app_name}\n\n"
         end
       end
     end

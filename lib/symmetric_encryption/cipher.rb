@@ -58,7 +58,7 @@ module SymmetricEncryption
     #       Return as raw binary data string. Note: String can contain embedded nulls
     #     Default: :base64strict
     #
-    #   version [Fixnum]
+    #   version [Integer]
     #     Optional. The version number of this encryption key
     #     Used by SymmetricEncryption to select the correct key when decrypting data
     #     Valid Range: 0..255
