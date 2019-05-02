@@ -34,7 +34,7 @@ class Person < ActiveRecord::Base
 end
 
 class EncryptedAttributeTest < Minitest::Test
-  describe SymmetricEncryption::ActiveRecord::EncryptedAttribute do
+  describe "SymmetricEncryption::ActiveRecord::EncryptedAttribute" do
     before do
       if ActiveRecord.version < Gem::Version.new('5.0.0')
         skip 'Custom attribute types support starting from Rails 5'

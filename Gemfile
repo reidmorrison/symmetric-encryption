@@ -2,7 +2,7 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem 'activerecord', '6.0.0.beta1'
+gem 'activerecord', '~> 4.2'
 
 gem 'appraisal'
 gem 'awesome_print'
@@ -21,7 +21,7 @@ gem 'sqlite3', '~> 1.3.0', platform: :ruby
 gem 'aws-sdk-kms'
 
 gem 'google-cloud-kms'
-gem 'google-protobuf', '>= 3.7.0.rc.2' # doesn't have to be loaded explicitly after 3.7.0 is released
+gem 'google-protobuf', '~> 3.7', platform: :ruby
 
 group :development do
   gem 'rubocop'
