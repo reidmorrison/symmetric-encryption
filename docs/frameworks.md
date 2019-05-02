@@ -64,6 +64,7 @@ attribute needs to be supplied:
 * :datetime  => DateTime
 * :time      => Time
 * :date      => Date
+* :boolean   => true or false
 * :json      => Uses JSON serialization, useful for hashes and arrays
 * :yaml      => Uses YAML serialization, useful for hashes and arrays
 
