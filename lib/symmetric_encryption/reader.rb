@@ -188,7 +188,7 @@ module SymmetricEncryption
       data             = outbuf.to_s.clear
       remaining_length = length
 
-      until remaining_length.zero? || eof?
+      until remaining_length == 0 || eof?
         read_block(remaining_length) if @read_buffer.empty?
 
         if remaining_length && remaining_length < @read_buffer.length
