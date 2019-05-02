@@ -202,7 +202,7 @@ module SymmetricEncryption
     def self.camelize(term)
       string = term.to_s
       string = string.sub(/^[a-z\d]*/, &:capitalize)
-      string.gsub!(/(?:_|(\/))([a-z\d]*)/i) { "#{Regexp.last_match(1)}#{Regexp.last_match(2).capitalize}" }
+      string.gsub!(%r{(?:_|(/))([a-z\d]*)}i) { "#{Regexp.last_match(1)}#{Regexp.last_match(2).capitalize}" }
       string.gsub!('/'.freeze, '::'.freeze)
       string
     end

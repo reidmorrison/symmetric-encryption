@@ -98,8 +98,6 @@ module SymmetricEncryption
 
       private
 
-      attr_reader :client
-
       def whoami
         @whoami ||= `whoami`.strip
       rescue StandardError

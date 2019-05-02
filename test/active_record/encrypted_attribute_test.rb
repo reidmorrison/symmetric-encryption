@@ -34,21 +34,19 @@ class Person < ActiveRecord::Base
 end
 
 class EncryptedAttributeTest < Minitest::Test
-  describe "SymmetricEncryption::ActiveRecord::EncryptedAttribute" do
+  describe 'SymmetricEncryption::ActiveRecord::EncryptedAttribute' do
     before do
-      if ActiveRecord.version < Gem::Version.new('5.0.0')
-        skip 'Custom attribute types support starting from Rails 5'
-      end
+      skip 'Custom attribute types support starting from Rails 5' if ActiveRecord.version < Gem::Version.new('5.0.0')
       Person.delete_all
     end
 
     let(:person_name) { 'Abcd Efgh' }
-    let(:encrypted_name) { "QEVuQwIAsvPWRoF61GxkAr5+f+eTfg==" }
+    let(:encrypted_name) { 'QEVuQwIAsvPWRoF61GxkAr5+f+eTfg==' }
     let(:age) { 23 }
-    let(:encrypted_age) { "QEVuQwIA/YvnMQ8QAoDpiOaIAmrUkg==" }
+    let(:encrypted_age) { 'QEVuQwIA/YvnMQ8QAoDpiOaIAmrUkg==' }
     let(:address) { 'Some test value' }
 
-    let(:integer_value) { 13456 }
+    let(:integer_value) { 13_456 }
     let(:float_value) { 88.12345 }
     let(:decimal_value) { BigDecimal('22.51') }
     let(:datetime_value) { DateTime.new(2001, 11, 26, 20, 55, 54, '-5') }
@@ -67,7 +65,7 @@ class EncryptedAttributeTest < Minitest::Test
         time_value:     time_value,
         date_value:     date_value,
         true_value:     true,
-        false_value:    false,
+        false_value:    false
       )
     end
 

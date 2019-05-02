@@ -78,7 +78,7 @@ module SymmetricEncryption
         end
 
         after do
-          FileUtils.chmod 0600, Dir.glob("#{the_test_path}/*")
+          FileUtils.chmod 0o600, Dir.glob("#{the_test_path}/*")
         end
 
         it 'stores the key' do
@@ -88,7 +88,7 @@ module SymmetricEncryption
 
         it 'raises an exception when the file can be read/written by others' do
           keystore.write('TEST')
-          FileUtils.chmod 0666, Dir.glob("#{the_test_path}/*")
+          FileUtils.chmod 0o666, Dir.glob("#{the_test_path}/*")
           assert_raises { keystore.read }
         end
       end

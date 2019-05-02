@@ -8,7 +8,7 @@ module SymmetricEncryption
       # Returns [Hash] a new keystore configuration after generating the data key.
       #
       # Increments the supplied version number by 1.
-      def self.generate_data_key(key_path:, cipher_name:, app_name:, environment:, version: 0, dek: nil, **args)
+      def self.generate_data_key(key_path:, cipher_name:, app_name:, environment:, version: 0, dek: nil, **_args)
         version >= 255 ? (version = 1) : (version += 1)
 
         dek ||= SymmetricEncryption::Key.new(cipher_name: cipher_name)
@@ -47,11 +47,15 @@ module SymmetricEncryption
 
       # Returns the Encryption key in the clear.
       def read
-        raise(SymmetricEncryption::ConfigError,
-              "Symmetric Encryption key file: '#{file_name}' not found") unless ::File.exists?(file_name)
-        raise(SymmetricEncryption::ConfigError,
-              "Symmetric Encryption key file '#{file_name}' has the wrong "\
-              "permissions: #{::File.stat(file_name).mode.to_s(8)}. Expected 100600 or 100400.") unless correct_permissions?
+        unless ::File.exist?(file_name)
+          raise(SymmetricEncryption::ConfigError,
+                "Symmetric Encryption key file: '#{file_name}' not found")
+        end
+        unless correct_permissions?
+          raise(SymmetricEncryption::ConfigError,
+                "Symmetric Encryption key file '#{file_name}' has the wrong "\
+                "permissions: #{::File.stat(file_name).mode.to_s(8)}. Expected 100600 or 100400.")
+        end
 
         data = read_from_file(file_name)
         key_encrypting_key ? key_encrypting_key.decrypt(data) : data
@@ -71,7 +75,7 @@ module SymmetricEncryption
       def correct_permissions?
         stat = ::File.stat(file_name)
 
-        stat.owned? && %w(100600 100400).include?(stat.mode.to_s(8))
+        stat.owned? && %w[100600 100400].include?(stat.mode.to_s(8))
       end
     end
   end

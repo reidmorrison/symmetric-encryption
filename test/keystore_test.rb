@@ -173,7 +173,7 @@ module SymmetricEncryption
 
         describe 'key_filename' do
           let :config do
-            File.open(dek_file_name, 'wb', 0600) { |f| f.write(key2.encrypt(stored_key)) }
+            File.open(dek_file_name, 'wb', 0o600) { |f| f.write(key2.encrypt(stored_key)) }
             {key_filename: dek_file_name, iv: stored_iv, key_encrypting_key: {key: stored_key2, iv: stored_iv2}}
           end
 
@@ -219,9 +219,9 @@ module SymmetricEncryption
           end
 
           let :config do
-            File.open(dek_file_name, 'wb', 0600) { |f| f.write(key2.encrypt(stored_key)) }
+            File.open(dek_file_name, 'wb', 0o600) { |f| f.write(key2.encrypt(stored_key)) }
             encrypted_key = key3.encrypt(stored_key2)
-            File.open(kekek_file_name, 'wb', 0600) { |f| f.write(stored_key3) }
+            File.open(kekek_file_name, 'wb', 0o600) { |f| f.write(stored_key3) }
             {
               key_filename:       dek_file_name,
               iv:                 stored_iv,

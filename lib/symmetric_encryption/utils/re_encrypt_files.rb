@@ -117,8 +117,8 @@ module SymmetricEncryption
             begin
               count = re_encrypt_contents(file_name)
               puts "Re-encrypted #{count} encrypted value(s) in: #{file_name}" if count.positive?
-            rescue StandardError => exc
-              puts "Failed re-encrypting the file contents of: #{file_name}. #{exc.class.name}: #{exc.message}"
+            rescue StandardError => e
+              puts "Failed re-encrypting the file contents of: #{file_name}. #{e.class.name}: #{e.message}"
             end
           end
         end
@@ -127,7 +127,7 @@ module SymmetricEncryption
       private
 
       def regexp
-        @regexp ||= /#{SymmetricEncryption.cipher.encoded_magic_header}([A-Za-z0-9+\/]+[=\\n]*)/
+        @regexp ||= %r{#{SymmetricEncryption.cipher.encoded_magic_header}([A-Za-z0-9+/]+[=\\n]*)}
       end
 
       # Returns [Integer] encrypted file key version.

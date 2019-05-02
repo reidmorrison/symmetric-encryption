@@ -51,7 +51,7 @@ module SymmetricEncryption
           random_iv = true if random_iv.nil? && SymmetricEncryption.randomize_iv?
 
           if random_iv.nil?
-            warn("attr_encrypted() no longer allows a default value for option `random_iv`. Add `random_iv: false` if it is required.")
+            warn('attr_encrypted() no longer allows a default value for option `random_iv`. Add `random_iv: false` if it is required.')
           end
 
           attributes.each do |attribute|

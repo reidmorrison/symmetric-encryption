@@ -446,7 +446,7 @@ class ActiveRecordTest < Minitest::Test
           {attribute: :false_value,         klass: FalseClass, value: false,               new_value: true},
           {attribute: :string_value,        klass: String,     value: STRING_VALUE,        new_value: 'Hello World'},
           {attribute: :long_string_value,   klass: String,     value: LONG_STRING_VALUE,   new_value: 'A Really long Hello World'},
-          {attribute: :binary_string_value, klass: String,     value: BINARY_STRING_VALUE, new_value: "A new Non-UTF8 Binary \x92 string".force_encoding('BINARY')},
+          {attribute: :binary_string_value, klass: String,     value: BINARY_STRING_VALUE, new_value: "A new Non-UTF8 Binary \x92 string".force_encoding('BINARY')}
           # @formatter:on
         ].each do |value_test|
           describe "#{value_test[:klass]} values" do
@@ -591,7 +591,7 @@ class ActiveRecordTest < Minitest::Test
         UniqueUser.destroy_all
         @email      = 'whatever@not-unique.com'
         @username   = 'gibby007'
-        user        = UniqueUser.create!(email: @email)
+        UniqueUser.create!(email: @email)
         @email_user = UniqueUser.create!(username: @username)
       end
 

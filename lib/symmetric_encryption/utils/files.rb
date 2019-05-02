@@ -31,7 +31,7 @@ module SymmetricEncryption
         key_path = ::File.dirname(file_name)
         ::FileUtils.mkdir_p(key_path) unless ::File.directory?(key_path)
         ::File.rename(file_name, "#{file_name}.#{Time.now.to_i}") if ::File.exist?(file_name)
-        ::File.open(file_name, 'wb', 0600) { |file| file.write(data) }
+        ::File.open(file_name, 'wb', 0o600) { |file| file.write(data) }
       end
 
       # Read from the file, raising an exception if it is not found

@@ -41,11 +41,11 @@ module SymmetricEncryption #:nodoc:
         if config_file.file?
           begin
             ::SymmetricEncryption::Config.load!(file_name: config_file, env: ENV['SYMMETRIC_ENCRYPTION_ENV'] || Rails.env)
-          rescue ArgumentError => exc
+          rescue ArgumentError => e
             puts "\nSymmetric Encryption not able to read keys."
-            puts "#{exc.class.name} #{exc.message}"
+            puts "#{e.class.name} #{e.message}"
             puts "To generate a new config file and key files: symmetric-encryption --generate --app-name #{app_name}\n\n"
-            raise(exc)
+            raise(e)
           end
         end
 

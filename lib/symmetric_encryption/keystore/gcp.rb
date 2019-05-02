@@ -1,4 +1,4 @@
-require "google/cloud/kms/v1"
+require 'google/cloud/kms/v1'
 
 module SymmetricEncryption
   module Keystore
@@ -8,9 +8,9 @@ module SymmetricEncryption
       def self.generate_data_key(version: 0, cipher_name:, app_name:, environment:, key_path:)
         version >= 255 ? (version = 1) : (version += 1)
 
-        dek      = SymmetricEncryption::Key.new(cipher_name: cipher_name)
+        dek       = SymmetricEncryption::Key.new(cipher_name: cipher_name)
         file_name = "#{key_path}/#{app_name}_#{environment}_v#{version}.encrypted_key"
-        keystore = new(
+        keystore  = new(
           key_file:    file_name,
           app_name:    app_name,
           environment: environment
@@ -18,21 +18,21 @@ module SymmetricEncryption
         keystore.write(dek.key)
 
         {
-          keystore:         :gcp,
-          cipher_name:      dek.cipher_name,
-          version:          version,
-          key_file:         file_name,
-          iv:               dek.iv,
-          crypto_key:       keystore.crypto_key
+          keystore:    :gcp,
+          cipher_name: dek.cipher_name,
+          version:     version,
+          key_file:    file_name,
+          iv:          dek.iv,
+          crypto_key:  keystore.crypto_key
         }
       end
 
       def initialize(key_file:, app_name: nil, environment: nil, key_encrypting_key: nil, crypto_key: nil, project_id: nil, credentials: nil, location_id: nil)
-        @crypto_key = crypto_key
-        @app_name = app_name
+        @crypto_key  = crypto_key
+        @app_name    = app_name
         @environment = environment
-        @file_name = key_file
-        @project_id = project_id
+        @file_name   = key_file
+        @project_id  = project_id
         @credentials = credentials
         @location_id = location_id
       end
@@ -68,19 +68,21 @@ module SymmetricEncryption
       end
 
       def project_id
-        @project_id ||= ENV["GOOGLE_CLOUD_PROJECT"]
+        @project_id ||= ENV['GOOGLE_CLOUD_PROJECT']
         raise 'GOOGLE_CLOUD_PROJECT must be set' if @project_id.nil?
+
         @project_id
       end
 
       def credentials
         @credentials ||= ENV['GOOGLE_CLOUD_KEYFILE']
         raise 'GOOGLE_CLOUD_KEYFILE must be set' if @credentials.nil?
+
         @credentials
       end
 
       def location_id
-        @location_id ||= ENV["GOOGLE_CLOUD_LOCATION"] || 'global'
+        @location_id ||= ENV['GOOGLE_CLOUD_LOCATION'] || 'global'
       end
     end
   end
