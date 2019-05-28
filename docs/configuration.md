@@ -129,7 +129,7 @@ chmod -R 0400 ~/.symmetric-encryption
 
 Specify Heroku as the keystore so that the encrypted encryption keys can be stored in Heroku instead of in files.
 
-    symmetric-encryption --generate --keystore heroku --app-name my_app --envs "development,test,production"
+    symmetric-encryption --generate --keystore heroku --app-name my_app --environments "development,test,production"
 
 ### AWS KMS keystore
 
