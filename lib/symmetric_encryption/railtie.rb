@@ -29,7 +29,8 @@ module SymmetricEncryption #:nodoc:
     config.before_configuration do
       # Check if already configured
       unless ::SymmetricEncryption.cipher?
-        app_name    = Rails::Application.subclasses.first.parent.to_s.underscore
+        parent_method = Module.method_defined?(:module_parent) ? 'module_parent' : 'parent'
+        app_name    = Rails::Application.subclasses.first.send(parent_method).to_s.underscore
         env_var     = ENV['SYMMETRIC_ENCRYPTION_CONFIG']
         config_file =
           if env_var
