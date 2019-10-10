@@ -7,31 +7,31 @@ matrix:
       rvm: 2.3.8
       gemfile: gemfiles/rails_4.2.gemfile
 
-    - name: "Rails 5.0 on Ruby 2.4.6"
-      rvm: 2.4.6
+    - name: "Rails 5.0 on Ruby 2.4.9"
+      rvm: 2.4.9
       gemfile: gemfiles/rails_5.0.gemfile
-    - name: "Rails 5.1 on Ruby 2.4.6"
-      rvm: 2.4.6
+    - name: "Rails 5.1 on Ruby 2.4.9"
+      rvm: 2.4.9
       gemfile: gemfiles/rails_5.1.gemfile
-    - name: "Rails 5.2 on Ruby 2.4.6"
-      rvm: 2.4.6
+    - name: "Rails 5.2 on Ruby 2.4.9"
+      rvm: 2.4.9
       gemfile: gemfiles/rails_5.2.gemfile
 
-    - name: "Rails 5.0 on Ruby 2.5.5"
-      rvm: 2.5.5
+    - name: "Rails 5.0 on Ruby 2.5.7"
+      rvm: 2.5.7
       gemfile: gemfiles/rails_5.0.gemfile
-    - name: "Rails 5.1 on Ruby 2.5.5"
-      rvm: 2.5.5
+    - name: "Rails 5.1 on Ruby 2.5.7"
+      rvm: 2.5.7
       gemfile: gemfiles/rails_5.1.gemfile
-    - name: "Rails 5.2 on Ruby 2.5.5"
-      rvm: 2.5.5
+    - name: "Rails 5.2 on Ruby 2.5.7"
+      rvm: 2.5.7
       gemfile: gemfiles/rails_5.2.gemfile
 
-    - name: "Rails 5.2 on Ruby 2.6.3"
-      rvm: 2.6.3
+    - name: "Rails 5.2 on Ruby 2.6.5"
+      rvm: 2.6.5
       gemfile: gemfiles/rails_5.2.gemfile
-    - name: "Rails 6.0 on Ruby 2.6.3"
-      rvm: 2.6.3
+    - name: "Rails 6.0 on Ruby 2.6.5"
+      rvm: 2.6.5
       gemfile: gemfiles/rails_6.0.gemfile
 
     - name: "Rails 6.0 on Ruby Head"
@@ -42,16 +42,16 @@ matrix:
       rvm: jruby-9.1.17.0
       gemfile: gemfiles/rails_4.2.gemfile
 
-    - name: "Rails 5.1 on JRuby 9.2.7.0"
-      rvm: jruby-9.2.7.0
+    - name: "Rails 5.1 on JRuby 9.2.8.0"
+      rvm: jruby-9.2.8.0
       gemfile: gemfiles/rails_5.1.gemfile
-    - name: "Rails 5.2 on JRuby 9.2.7.0"
-      rvm: jruby-9.2.7.0
+    - name: "Rails 5.2 on JRuby 9.2.8.0"
+      rvm: jruby-9.2.8.0
       gemfile: gemfiles/rails_5.2.gemfile
 
   allow_failures:
     - rvm: jruby-9.1.17.0
-    - rvm: jruby-9.2.7.0
+    - rvm: jruby-9.2.8.0
     - rvm: ruby-head
     - gemfile: gemfiles/rails_6.0.gemfile
 

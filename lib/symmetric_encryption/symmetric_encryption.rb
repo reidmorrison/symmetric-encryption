@@ -301,5 +301,5 @@ module SymmetricEncryption
   @cipher            = nil
   @secondary_ciphers = []
   @select_cipher     = nil
-  @random_iv         = false
+  @randomize_iv      = false
 end
