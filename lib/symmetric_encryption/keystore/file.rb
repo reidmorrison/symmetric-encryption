@@ -2,6 +2,7 @@ module SymmetricEncryption
   module Keystore
     class File
       include Utils::Files
+      ALLOWED_PERMISSIONS = %w[100600 100400]
 
       attr_accessor :file_name, :key_encrypting_key
 
@@ -56,6 +57,13 @@ module SymmetricEncryption
                 "Symmetric Encryption key file '#{file_name}' has the wrong "\
                 "permissions: #{::File.stat(file_name).mode.to_s(8)}. Expected 100600 or 100400.")
         end
+        unless owned?
+          raise(SymmetricEncryption::ConfigError,
+                "Symmetric Encryption key file '#{file_name}' has the wrong "\
+                "owner (#{stat.uid}) or group (#{stat.gid}). "\
+                "Expected it to be owned by current user "\
+                "#{ENV['USER'] || ENV['USERNAME']}.")
+        end
 
         data = read_from_file(file_name)
         key_encrypting_key ? key_encrypting_key.decrypt(data) : data
@@ -73,9 +81,15 @@ module SymmetricEncryption
       # has the correct mode - readable and writable by its owner and no one
       # else, much like the keys one has in ~/.ssh
       def correct_permissions?
-        stat = ::File.stat(file_name)
+        ALLOWED_PERMISSIONS.include?(stat.mode.to_s(8))
+      end
 
-        stat.owned? && %w[100600 100400].include?(stat.mode.to_s(8))
+      def owned?
+        stat.owned?
+      end
+
+      def stat
+        ::File.stat(file_name)
       end
     end
   end
