@@ -85,8 +85,17 @@ Create the directory where the output files will be created and secure it so tha
 
 ~~~
 mkdir ~/.symmetric-encryption
+~~~
+
+Once you have generated the configuration files, you will want to change the permissions on this directory; however,
+do not do this until **after** you've run the `symmetric-encryption` command:
+
+~~~
 chmod -R 0400 ~/.symmetric-encryption
 ~~~
+
+If you see a "Permission denied" error when running `symmetric-encryption`, confirm that you have the ability to read, 
+write, and access (i.e. execute) the directory.
 
 Generate file keystore, using an application name of `my_app`. Create keystores for each of the environments
 `development`, `test`, `preprod`, `acceptance`, and `production`.
@@ -109,6 +118,8 @@ config/symmetric-encryption.yml
 
 Move the file for each environment to all of the servers for that environment that will be running Symmetric Encryption.
 Do not copy all files to every environment since each environment should only be able decrypt data from its own environment.
+If you generated your keys on a development machine, you may need to edit the `symmetric-encryption.yml` file to
+change the `file_name` path to reflect where the key files reside on each server.
 
 When running multiple Rails servers in a particular environment copy the same key files to every server in that environment.
 I.e. All Rails servers in each environment must run the same encryption keys.
