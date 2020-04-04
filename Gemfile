@@ -21,9 +21,6 @@ gem 'jdbc-sqlite3', platform: :jruby
 # Soft dependency, only required when storing encryption keys in AWS KMS
 gem 'aws-sdk-kms'
 
-gem 'google-cloud-kms'
-gem 'google-protobuf', '~> 3.7', platform: :ruby
-
 group :development do
   gem 'rubocop'
 end

@@ -3,7 +3,7 @@ require_relative '../test_helper'
 module SymmetricEncryption
   module Keystore
     class GcpTest < Minitest::Test
-      describe SymmetricEncryption::Keystore::Gcp do
+      describe "SymmetricEncryption::Keystore::Gcp" do
         before do
           skip 'Set GOOGLE_CLOUD_KEYFILE to run Google Cloud Platform KMS tests' unless ENV['GOOGLE_CLOUD_KEYFILE']
         end
