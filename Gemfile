@@ -2,7 +2,10 @@ source 'https://rubygems.org'
 
 gemspec
 
-gem 'activerecord', '~> 4.2'
+gem 'activerecord', '~> 6.0.0'
+gem 'activerecord-jdbcsqlite3-adapter', '~> 60.0', platform: :jruby
+gem 'mongoid', '~> 7.1.0'
+gem 'sqlite3', '~> 1.4.0', platform: :ruby
 
 gem 'appraisal'
 gem 'awesome_print'
@@ -13,9 +16,7 @@ gem 'rake'
 # Optional gem used by rake task for user to enter text to be encrypted
 gem 'highline'
 
-gem 'activerecord-jdbcsqlite3-adapter', platform: :jruby
 gem 'jdbc-sqlite3', platform: :jruby
-gem 'sqlite3', '~> 1.3.0', platform: :ruby
 
 # Soft dependency, only required when storing encryption keys in AWS KMS
 gem 'aws-sdk-kms'
