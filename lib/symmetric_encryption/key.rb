@@ -3,7 +3,7 @@ module SymmetricEncryption
   class Key
     attr_reader :key, :iv, :cipher_name
 
-    def initialize(key: :random, iv: :random, cipher_name: 'aes-256-cbc')
+    def initialize(key: :random, iv: :random, cipher_name: "aes-256-cbc")
       @key         = key == :random ? ::OpenSSL::Cipher.new(cipher_name).random_key : key
       @iv          = iv == :random ? ::OpenSSL::Cipher.new(cipher_name).random_iv : iv
       @cipher_name = cipher_name

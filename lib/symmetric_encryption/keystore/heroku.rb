@@ -15,7 +15,7 @@ module SymmetricEncryption
         puts "\n\n********************************************************************************"
         puts "Add the environment key to Heroku:\n\n"
         puts "  heroku config:add #{key_env_var}=#{encoder.encode(encrypted_key)}"
-        puts '********************************************************************************'
+        puts "********************************************************************************"
       end
     end
   end

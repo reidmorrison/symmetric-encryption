@@ -1,4 +1,4 @@
-require 'openssl'
+require "openssl"
 
 module SymmetricEncryption
   # Write to encrypted files and other IO streams.
@@ -49,7 +49,7 @@ module SymmetricEncryption
     #  end
     def self.open(file_name_or_stream, compress: nil, **args)
       if file_name_or_stream.is_a?(String)
-        file_name_or_stream = ::File.open(file_name_or_stream, 'wb')
+        file_name_or_stream = ::File.open(file_name_or_stream, "wb")
         compress            = !(/\.(zip|gz|gzip|xls.|)\z/i === file_name_or_stream) if compress.nil?
       else
         compress = true if compress.nil?
@@ -97,15 +97,21 @@ module SymmetricEncryption
     def initialize(ios, version: nil, cipher_name: nil, header: true, random_key: true, random_iv: true, compress: false)
       # Compress is only used at this point for setting the flag in the header
       @ios = ios
-      raise(ArgumentError, 'When :random_key is true, :random_iv must also be true') if random_key && !random_iv
-      raise(ArgumentError, 'Cannot supply a :cipher_name unless both :random_key and :random_iv are true') if cipher_name && !random_key && !random_iv
+      raise(ArgumentError, "When :random_key is true, :random_iv must also be true") if random_key && !random_iv
+      if cipher_name && !random_key && !random_iv
+        raise(ArgumentError, "Cannot supply a :cipher_name unless both :random_key and :random_iv are true")
+      end
 
       # Cipher to encrypt the random_key, or the entire file
       cipher = SymmetricEncryption.cipher(version)
-      raise(SymmetricEncryption::CipherError, "Cipher with version:#{version} not found in any of the configured SymmetricEncryption ciphers") unless cipher
+      unless cipher
+        raise(SymmetricEncryption::CipherError, "Cipher with version:#{version} not found in any of the configured SymmetricEncryption ciphers")
+      end
 
       # Force header if compressed or using random iv, key
-      header = Header.new(version: cipher.version, compress: compress, cipher_name: cipher_name) if (header == true) || compress || random_key || random_iv
+      if (header == true) || compress || random_key || random_iv
+        header = Header.new(version: cipher.version, compress: compress, cipher_name: cipher_name)
+      end
 
       @stream_cipher = ::OpenSSL::Cipher.new(cipher_name || cipher.cipher_name)
       @stream_cipher.encrypt
@@ -158,8 +164,8 @@ module SymmetricEncryption
       def write(data)
         return unless data
 
-        bytes   = data.to_s
-        @size  += bytes.size
+        bytes = data.to_s
+        @size += bytes.size
         partial = @stream_cipher.update(bytes)
         @ios.write(partial) unless partial.empty?
         data.length
@@ -168,9 +174,9 @@ module SymmetricEncryption
       def write(data)
         return unless data
 
-        bytes   = data.to_s
-        @size  += bytes.size
-        partial = @stream_cipher.update(bytes, @cipher_buffer ||= ''.b)
+        bytes = data.to_s
+        @size += bytes.size
+        partial = @stream_cipher.update(bytes, @cipher_buffer ||= "".b)
         @ios.write(partial) unless partial.empty?
         data.length
       end

@@ -10,10 +10,10 @@ module SymmetricEncryption
       def self.generate_data_key(cipher_name:, app_name:, environment:, version: 0, dek: nil, **_args)
         version >= 255 ? (version = 1) : (version += 1)
 
-        kek   = SymmetricEncryption::Key.new(cipher_name: cipher_name)
+        kek = SymmetricEncryption::Key.new(cipher_name: cipher_name)
         dek ||= SymmetricEncryption::Key.new(cipher_name: cipher_name)
 
-        key_env_var = "#{app_name}_#{environment}_v#{version}".upcase.tr('-', '_')
+        key_env_var = "#{app_name}_#{environment}_v#{version}".upcase.tr("-", "_")
         new(key_env_var: key_env_var, key_encrypting_key: kek).write(dek.key)
 
         {
@@ -50,9 +50,9 @@ module SymmetricEncryption
       def write(key)
         encrypted_key = key_encrypting_key.encrypt(key)
         puts "\n\n********************************************************************************"
-        puts 'Set the environment variable as follows:'
+        puts "Set the environment variable as follows:"
         puts "  export #{key_env_var}=\"#{encoder.encode(encrypted_key)}\""
-        puts '********************************************************************************'
+        puts "********************************************************************************"
       end
 
       private

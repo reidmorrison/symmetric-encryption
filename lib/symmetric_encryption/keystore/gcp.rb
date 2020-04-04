@@ -1,4 +1,4 @@
-require 'google/cloud/kms/v1'
+require "google/cloud/kms/v1"
 
 module SymmetricEncryption
   module Keystore
@@ -68,21 +68,21 @@ module SymmetricEncryption
       end
 
       def project_id
-        @project_id ||= ENV['GOOGLE_CLOUD_PROJECT']
-        raise 'GOOGLE_CLOUD_PROJECT must be set' if @project_id.nil?
+        @project_id ||= ENV["GOOGLE_CLOUD_PROJECT"]
+        raise "GOOGLE_CLOUD_PROJECT must be set" if @project_id.nil?
 
         @project_id
       end
 
       def credentials
-        @credentials ||= ENV['GOOGLE_CLOUD_KEYFILE']
-        raise 'GOOGLE_CLOUD_KEYFILE must be set' if @credentials.nil?
+        @credentials ||= ENV["GOOGLE_CLOUD_KEYFILE"]
+        raise "GOOGLE_CLOUD_KEYFILE must be set" if @credentials.nil?
 
         @credentials
       end
 
       def location_id
-        @location_id ||= ENV['GOOGLE_CLOUD_LOCATION'] || 'global'
+        @location_id ||= ENV["GOOGLE_CLOUD_LOCATION"] || "global"
       end
     end
   end

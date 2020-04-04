@@ -14,7 +14,7 @@ module SymmetricEncryption
     # Coerce given value into given type
     # Does not coerce json or yaml values
     def self.coerce(value, type, from_type = nil)
-      return value if value.nil? || (value == '')
+      return value if value.nil? || (value == "")
 
       from_type ||= value.class
       case type
@@ -32,7 +32,7 @@ module SymmetricEncryption
     # Note: if the type is :string, then the value is returned as is, and the
     #   coercible gem is not used at all.
     def self.coerce_from_string(value, type)
-      return value if value.nil? || (value == '')
+      return value if value.nil? || (value == "")
 
       case type
       when :string
@@ -50,7 +50,7 @@ module SymmetricEncryption
     # Note: if the type is :string, and value is not nil, then #to_s is called
     #   on the value and the coercible gem is not used at all.
     def self.coerce_to_string(value, type)
-      return value if value.nil? || (value == '')
+      return value if value.nil? || (value == "")
 
       case type
       when :string

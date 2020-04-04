@@ -6,7 +6,7 @@ module SymmetricEncryption
       attr_reader :file_name
 
       def read_file_and_decode(file_name)
-        raise(SymmetricEncryption::ConfigError, 'file_name is mandatory for each key_file entry') unless file_name
+        raise(SymmetricEncryption::ConfigError, "file_name is mandatory for each key_file entry") unless file_name
 
         raise(SymmetricEncryption::ConfigError, "File #{file_name} could not be found") unless ::File.exist?(file_name)
 
@@ -31,12 +31,12 @@ module SymmetricEncryption
         key_path = ::File.dirname(file_name)
         ::FileUtils.mkdir_p(key_path) unless ::File.directory?(key_path)
         ::File.rename(file_name, "#{file_name}.#{Time.now.to_i}") if ::File.exist?(file_name)
-        ::File.open(file_name, 'wb', 0o600) { |file| file.write(data) }
+        ::File.open(file_name, "wb", 0o600) { |file| file.write(data) }
       end
 
       # Read from the file, raising an exception if it is not found
       def read_from_file(file_name)
-        ::File.open(file_name, 'rb', &:read)
+        ::File.open(file_name, "rb", &:read)
       rescue Errno::ENOENT
         raise(SymmetricEncryption::ConfigError, "Symmetric Encryption key file: '#{file_name}' not found or readable")
       end

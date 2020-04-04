@@ -2,12 +2,12 @@ module SymmetricEncryption
   # Encryption keys are secured in Keystores
   module Keystore
     # @formatter:off
-    autoload :Aws,         'symmetric_encryption/keystore/aws'
-    autoload :Environment, 'symmetric_encryption/keystore/environment'
-    autoload :Gcp,         'symmetric_encryption/keystore/gcp'
-    autoload :File,        'symmetric_encryption/keystore/file'
-    autoload :Heroku,      'symmetric_encryption/keystore/heroku'
-    autoload :Memory,      'symmetric_encryption/keystore/memory'
+    autoload :Aws,         "symmetric_encryption/keystore/aws"
+    autoload :Environment, "symmetric_encryption/keystore/environment"
+    autoload :Gcp,         "symmetric_encryption/keystore/gcp"
+    autoload :File,        "symmetric_encryption/keystore/file"
+    autoload :Heroku,      "symmetric_encryption/keystore/heroku"
+    autoload :Memory,      "symmetric_encryption/keystore/memory"
     # @formatter:on
 
     # Returns [Hash] a new keystore configuration after generating data keys for each environment.
@@ -69,7 +69,7 @@ module SymmetricEncryption
         # Only generate new keys for keystore's that have a key encrypting key
         next unless config[:key_encrypting_key] || config[:private_rsa_key]
 
-        cipher_name = config[:cipher_name] || 'aes-256-cbc'
+        cipher_name = config[:cipher_name] || "aes-256-cbc"
 
         keystore_class = keystore ? constantize_symbol(keystore) : keystore_for(config)
 
@@ -105,7 +105,7 @@ module SymmetricEncryption
         # Only generate new keys for keystore's that have a key encrypting key
         next unless config[:key_encrypting_key]
 
-        version  = config.delete(:version) || 1
+        version = config.delete(:version) || 1
         version -= 1
 
         always_add_header = config.delete(:always_add_header)
@@ -144,9 +144,9 @@ module SymmetricEncryption
         ciphers:
                  [
                    {
-                     key:         '1234567890ABCDEF',
-                     iv:          '1234567890ABCDEF',
-                     cipher_name: 'aes-128-cbc',
+                     key:         "1234567890ABCDEF",
+                     iv:          "1234567890ABCDEF",
+                     cipher_name: "aes-128-cbc",
                      version:     1
                    }
                  ]
@@ -156,7 +156,7 @@ module SymmetricEncryption
     # Returns [Key] by recursively navigating the config tree.
     #
     # Supports N level deep key encrypting keys.
-    def self.read_key(key: nil, iv:, key_encrypting_key: nil, cipher_name: 'aes-256-cbc', keystore: nil, version: 0, **args)
+    def self.read_key(key: nil, iv:, key_encrypting_key: nil, cipher_name: "aes-256-cbc", keystore: nil, version: 0, **args)
       if key_encrypting_key.is_a?(Hash)
         # Recurse up the chain returning the parent key_encrypting_key
         key_encrypting_key = read_key(cipher_name: cipher_name, **key_encrypting_key)
@@ -185,11 +185,11 @@ module SymmetricEncryption
       elsif config[:key_env_var]
         Keystore::Environment
       else
-        raise(ArgumentError, 'Unknown keystore supplied in config')
+        raise(ArgumentError, "Unknown keystore supplied in config")
       end
     end
 
-    def self.constantize_symbol(symbol, namespace = 'SymmetricEncryption::Keystore')
+    def self.constantize_symbol(symbol, namespace = "SymmetricEncryption::Keystore")
       klass = "#{namespace}::#{camelize(symbol.to_s)}"
       begin
         Object.const_get(klass)
@@ -203,7 +203,7 @@ module SymmetricEncryption
       string = term.to_s
       string = string.sub(/^[a-z\d]*/, &:capitalize)
       string.gsub!(%r{(?:_|(/))([a-z\d]*)}i) { "#{Regexp.last_match(1)}#{Regexp.last_match(2).capitalize}" }
-      string.gsub!('/'.freeze, '::'.freeze)
+      string.gsub!("/".freeze, "::".freeze)
       string
     end
 
@@ -220,12 +220,12 @@ module SymmetricEncryption
 
       # Migrate old encrypted_iv
       if (encrypted_iv = config.delete(:encrypted_iv)) && private_rsa_key
-        encrypted_iv   = RSAKey.new(private_rsa_key).decrypt(encrypted_iv)
-        config[:iv]    = ::Base64.decode64(encrypted_iv)
+        encrypted_iv = RSAKey.new(private_rsa_key).decrypt(encrypted_iv)
+        config[:iv]  = ::Base64.decode64(encrypted_iv)
       end
 
       # Migrate old iv_filename
-      if (file_name  = config.delete(:iv_filename)) && private_rsa_key
+      if (file_name = config.delete(:iv_filename)) && private_rsa_key
         encrypted_iv = ::File.read(file_name)
         config[:iv]  = RSAKey.new(private_rsa_key).decrypt(encrypted_iv)
       end
@@ -234,7 +234,7 @@ module SymmetricEncryption
       config[:key_encrypting_key] = RSAKey.new(private_rsa_key) if private_rsa_key
 
       # Migrate old encrypted_key to new binary format
-      if (encrypted_key        = config[:encrypted_key]) && private_rsa_key
+      if (encrypted_key = config[:encrypted_key]) && private_rsa_key
         config[:encrypted_key] = ::Base64.decode64(encrypted_key)
       end
     end

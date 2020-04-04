@@ -1,4 +1,4 @@
-require 'mongoid'
+require "mongoid"
 # Add :encrypted option for Mongoid models
 #
 # Example:
@@ -95,8 +95,8 @@ Mongoid::Fields.option :encrypted do |model, field, options|
 
     # Support overriding the name of the decrypted attribute
     decrypted_field_name = options.delete(:decrypt_as)
-    if decrypted_field_name.nil? && encrypted_field_name.to_s.start_with?('encrypted_')
-      decrypted_field_name = encrypted_field_name.to_s['encrypted_'.length..-1]
+    if decrypted_field_name.nil? && encrypted_field_name.to_s.start_with?("encrypted_")
+      decrypted_field_name = encrypted_field_name.to_s["encrypted_".length..-1]
     end
 
     if decrypted_field_name.nil?

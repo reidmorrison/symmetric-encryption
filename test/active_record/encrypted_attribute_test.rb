@@ -1,6 +1,6 @@
-require_relative '../test_helper'
+require_relative "../test_helper"
 
-ActiveRecord::Base.configurations = YAML.safe_load(ERB.new(IO.read('test/config/database.yml')).result)
+ActiveRecord::Base.configurations = YAML.safe_load(ERB.new(IO.read("test/config/database.yml")).result)
 ActiveRecord::Base.establish_connection(:test)
 
 ActiveRecord::Schema.define version: 0 do
@@ -34,23 +34,23 @@ class Person < ActiveRecord::Base
 end
 
 class EncryptedAttributeTest < Minitest::Test
-  describe 'SymmetricEncryption::ActiveRecord::EncryptedAttribute' do
+  describe "SymmetricEncryption::ActiveRecord::EncryptedAttribute" do
     before do
-      skip 'Custom attribute types support starting from Rails 5' if ActiveRecord.version < Gem::Version.new('5.0.0')
+      skip "Custom attribute types support starting from Rails 5" if ActiveRecord.version < Gem::Version.new("5.0.0")
       Person.delete_all
     end
 
-    let(:person_name) { 'Abcd Efgh' }
-    let(:encrypted_name) { 'QEVuQwIAsvPWRoF61GxkAr5+f+eTfg==' }
+    let(:person_name) { "Abcd Efgh" }
+    let(:encrypted_name) { "QEVuQwIAsvPWRoF61GxkAr5+f+eTfg==" }
     let(:age) { 23 }
-    let(:encrypted_age) { 'QEVuQwIA/YvnMQ8QAoDpiOaIAmrUkg==' }
-    let(:address) { 'Some test value' }
+    let(:encrypted_age) { "QEVuQwIA/YvnMQ8QAoDpiOaIAmrUkg==" }
+    let(:address) { "Some test value" }
 
     let(:integer_value) { 13_456 }
     let(:float_value) { 88.12345 }
-    let(:decimal_value) { BigDecimal('22.51') }
-    let(:datetime_value) { DateTime.new(2001, 11, 26, 20, 55, 54, '-5') }
-    let(:time_value) { Time.new(2013, 1, 1, 22, 30, 0, '-04:00') }
+    let(:decimal_value) { BigDecimal("22.51") }
+    let(:datetime_value) { DateTime.new(2001, 11, 26, 20, 55, 54, "-5") }
+    let(:time_value) { Time.new(2013, 1, 1, 22, 30, 0, "-04:00") }
     let(:date_value) { Date.new(1927, 4, 2) }
 
     let :person do
@@ -69,35 +69,35 @@ class EncryptedAttributeTest < Minitest::Test
       )
     end
 
-    it 'stores encrypted string value' do
+    it "stores encrypted string value" do
       assert_equal encrypted_name, person.read_attribute_before_type_cast(:name)
     end
 
-    it 'reads unencrypted string value' do
+    it "reads unencrypted string value" do
       assert_equal person_name, person.reload.name
     end
 
-    it 'stores encrypted age value' do
+    it "stores encrypted age value" do
       assert_equal encrypted_age, person.read_attribute_before_type_cast(:age)
     end
 
-    it 'reads unencrypted integer value' do
+    it "reads unencrypted integer value" do
       assert_equal age, person.reload.age
     end
 
-    it 'stores nil value' do
+    it "stores nil value" do
       person = Person.create(name: nil)
       assert_nil person.reload.name
       assert_nil person.read_attribute_before_type_cast(:name)
     end
 
-    it 'stores a value which can later be decrypted' do
+    it "stores a value which can later be decrypted" do
       person            = Person.create(address: address)
       encrypted_address = person.read_attribute_before_type_cast(:address)
       assert_equal address, SymmetricEncryption.decrypt(encrypted_address)
     end
 
-    it 'uses different iv each time' do
+    it "uses different iv each time" do
       person.update(address: address)
       address1 = person.read_attribute_before_type_cast(:address)
       person.update(address: address)
@@ -107,8 +107,8 @@ class EncryptedAttributeTest < Minitest::Test
       refute_equal iv1, iv2
     end
 
-    describe 'types' do
-      it 'serializes' do
+    describe "types" do
+      it "serializes" do
         assert_equal person_name, person.name
         assert_equal age, person.age
         assert_equal address, person.address

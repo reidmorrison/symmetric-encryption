@@ -29,19 +29,19 @@ module SymmetricEncryption #:nodoc:
     config.before_configuration do
       # Check if already configured
       unless ::SymmetricEncryption.cipher?
-        parent_method = Module.method_defined?(:module_parent) ? 'module_parent' : 'parent'
-        app_name    = Rails::Application.subclasses.first.send(parent_method).to_s.underscore
-        env_var     = ENV['SYMMETRIC_ENCRYPTION_CONFIG']
-        config_file =
+        parent_method = Module.method_defined?(:module_parent) ? "module_parent" : "parent"
+        app_name      = Rails::Application.subclasses.first.send(parent_method).to_s.underscore
+        env_var       = ENV["SYMMETRIC_ENCRYPTION_CONFIG"]
+        config_file   =
           if env_var
             Pathname.new(File.expand_path(env_var))
           else
-            Rails.root.join('config', 'symmetric-encryption.yml')
+            Rails.root.join("config", "symmetric-encryption.yml")
           end
 
         if config_file.file?
           begin
-            ::SymmetricEncryption::Config.load!(file_name: config_file, env: ENV['SYMMETRIC_ENCRYPTION_ENV'] || Rails.env)
+            ::SymmetricEncryption::Config.load!(file_name: config_file, env: ENV["SYMMETRIC_ENCRYPTION_ENV"] || Rails.env)
           rescue ArgumentError => e
             puts "\nSymmetric Encryption not able to read keys."
             puts "#{e.class.name} #{e.message}"

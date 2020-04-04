@@ -1,4 +1,4 @@
-require 'openssl'
+require "openssl"
 module SymmetricEncryption
   # Hold all information related to encryption keys
   # as well as encrypt and decrypt data using those keys.
@@ -12,7 +12,7 @@ module SymmetricEncryption
     attr_writer :key
 
     # Returns [Cipher] from a cipher config instance.
-    def self.from_config(cipher_name: 'aes-256-cbc',
+    def self.from_config(cipher_name: "aes-256-cbc",
                          version: 0,
                          always_add_header: true,
                          encoding: :base64strict,
@@ -72,7 +72,7 @@ module SymmetricEncryption
     #     Default: true
     def initialize(key:,
                    iv: nil,
-                   cipher_name: 'aes-256-cbc',
+                   cipher_name: "aes-256-cbc",
                    version: 0,
                    always_add_header: true,
                    encoding: :base64strict)
@@ -84,7 +84,9 @@ module SymmetricEncryption
       @version           = version.to_i
       @always_add_header = always_add_header
 
-      raise(ArgumentError, "Cipher version has a valid range of 0 to 255. #{@version} is too high, or negative") if (@version > 255) || @version.negative?
+      if (@version > 255) || @version.negative?
+        raise(ArgumentError, "Cipher version has a valid range of 0 to 255. #{@version} is too high, or negative")
+      end
     end
 
     # Change the encoding
@@ -167,7 +169,9 @@ module SymmetricEncryption
       decrypted = binary_decrypt(decoded)
 
       # Try to force result to UTF-8 encoding, but if it is not valid, force it back to Binary
-      decrypted.force_encoding(SymmetricEncryption::BINARY_ENCODING) unless decrypted.force_encoding(SymmetricEncryption::UTF8_ENCODING).valid_encoding?
+      unless decrypted.force_encoding(SymmetricEncryption::UTF8_ENCODING).valid_encoding?
+        decrypted.force_encoding(SymmetricEncryption::BINARY_ENCODING)
+      end
 
       decrypted
     end
@@ -180,7 +184,7 @@ module SymmetricEncryption
     #
     # Returned string is UTF8 encoded except for encoding :none
     def encode(binary_string)
-      return binary_string if binary_string.nil? || (binary_string == '')
+      return binary_string if binary_string.nil? || (binary_string == "")
 
       encoder.encode(binary_string)
     end
@@ -190,7 +194,7 @@ module SymmetricEncryption
     #
     # Returned string is Binary encoded
     def decode(encoded_string)
-      return encoded_string if encoded_string.nil? || (encoded_string == '')
+      return encoded_string if encoded_string.nil? || (encoded_string == "")
 
       encoder.decode(encoded_string)
     end
@@ -316,8 +320,8 @@ module SymmetricEncryption
 
       openssl_cipher = ::OpenSSL::Cipher.new(header.cipher_name || cipher_name)
       openssl_cipher.decrypt
-      openssl_cipher.key  = header.key || @key
-      if (iv              = header.iv || @iv)
+      openssl_cipher.key = header.key || @key
+      if (iv = header.iv || @iv)
         openssl_cipher.iv = iv
       end
       result = openssl_cipher.update(data)
@@ -327,7 +331,7 @@ module SymmetricEncryption
 
     # Returns the magic header after applying the encoding in this cipher
     def encoded_magic_header
-      @encoded_magic_header ||= encoder.encode(SymmetricEncryption::Header::MAGIC_HEADER).delete('=').strip
+      @encoded_magic_header ||= encoder.encode(SymmetricEncryption::Header::MAGIC_HEADER).delete("=").strip
     end
 
     # Returns [String] object represented as a string, filtering out the key

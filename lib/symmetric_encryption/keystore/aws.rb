@@ -1,4 +1,4 @@
-require 'aws-sdk-kms'
+require "aws-sdk-kms"
 module SymmetricEncryption
   module Keystore
     # Support AWS Key Management Service (KMS)
@@ -82,12 +82,12 @@ module SymmetricEncryption
         # TODO: Also support generating environment variables instead of files.
 
         version >= 255 ? (version = 1) : (version += 1)
-        regions                   = Array(regions).dup
+        regions = Array(regions).dup
 
         master_key_alias = master_key_alias(app_name, environment)
 
         # File per region for holding the encrypted data key
-        key_files   = regions.collect do |region|
+        key_files = regions.collect do |region|
           file_name = "#{app_name}_#{environment}_#{region}_v#{version}.encrypted_key"
           {region: region, file_name: ::File.join(key_path, file_name)}
         end
@@ -119,9 +119,9 @@ module SymmetricEncryption
       def initialize(region: nil, key_files:, master_key_alias:, key_encrypting_key: nil)
         @key_files        = key_files
         @master_key_alias = master_key_alias
-        @region           = region || ENV['AWS_REGION'] || ENV['AWS_DEFAULT_REGION'] || ::Aws.config[:region]
+        @region           = region || ENV["AWS_REGION"] || ENV["AWS_DEFAULT_REGION"] || ::Aws.config[:region]
         if key_encrypting_key
-          raise(SymmetricEncryption::ConfigError, 'AWS KMS keystore encrypts the key itself, so does not support supplying a key_encrypting_key')
+          raise(SymmetricEncryption::ConfigError, "AWS KMS keystore encrypts the key itself, so does not support supplying a key_encrypting_key")
         end
       end
 
@@ -143,7 +143,7 @@ module SymmetricEncryption
           region    = key_file[:region]
           file_name = key_file[:file_name]
 
-          raise(ArgumentError, 'region and file_name are mandatory for each key_file entry') unless region && file_name
+          raise(ArgumentError, "region and file_name are mandatory for each key_file entry") unless region && file_name
 
           encrypted_data_key = aws(region).encrypt(data_key)
           write_encoded_to_file(file_name, encrypted_data_key)

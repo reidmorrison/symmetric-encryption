@@ -55,21 +55,21 @@ module SymmetricEncryption
         lines              = File.read(file_name)
         hits, output_lines = re_encrypt_lines(lines)
 
-        File.open(file_name, 'wb') { |file| file.write(output_lines) } if hits.positive?
+        File.open(file_name, "wb") { |file| file.write(output_lines) } if hits.positive?
         hits
       end
 
       # Replaces instances of encrypted data within lines of text with re-encrypted values
       def re_encrypt_lines(lines)
         hits         = 0
-        output_lines = ''
+        output_lines = ""
         r            = regexp
         lines.each_line do |line|
           line.force_encoding(SymmetricEncryption::UTF8_ENCODING)
           output_lines <<
             if line.valid_encoding? && (result = line.match(r))
-              encrypted                        = result[0]
-              new_value                        = re_encrypt(encrypted)
+              encrypted = result[0]
+              new_value = re_encrypt(encrypted)
               if new_value != encrypted
                 hits += 1
                 line.gsub(encrypted, new_value)
@@ -133,7 +133,7 @@ module SymmetricEncryption
       # Returns [Integer] encrypted file key version.
       # Returns [nil] if the file is not encrypted or does not have a header.
       def encrypted_file_version(file_name)
-        ::File.open(file_name, 'rb') do |file|
+        ::File.open(file_name, "rb") do |file|
           reader = SymmetricEncryption::Reader.new(file)
           reader.version if reader.header_present?
         end

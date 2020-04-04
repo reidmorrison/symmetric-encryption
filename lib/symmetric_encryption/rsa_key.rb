@@ -1,4 +1,4 @@
-require 'openssl'
+require "openssl"
 module SymmetricEncryption
   # DEPRECATED - Internal use only
   class RSAKey

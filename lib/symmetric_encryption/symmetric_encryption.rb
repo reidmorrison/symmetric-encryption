@@ -1,8 +1,8 @@
-require 'base64'
-require 'openssl'
-require 'zlib'
-require 'yaml'
-require 'erb'
+require "base64"
+require "openssl"
+require "zlib"
+require "yaml"
+require "erb"
 
 # Encrypt using 256 Bit AES CBC symmetric key and initialization vector
 # The symmetric key is protected using the private key below and must
@@ -32,7 +32,9 @@ module SymmetricEncryption
   #     cipher: 'aes-128-cbc'
   #   )
   def self.cipher=(cipher)
-    raise(ArgumentError, 'Cipher must respond to :encrypt and :decrypt') unless cipher.nil? || (cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt))
+    unless cipher.nil? || (cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt))
+      raise(ArgumentError, "Cipher must respond to :encrypt and :decrypt")
+    end
 
     @cipher = cipher
   end
@@ -45,7 +47,7 @@ module SymmetricEncryption
     unless cipher?
       raise(
         SymmetricEncryption::ConfigError,
-        'Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data'
+        "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data"
       )
     end
 
@@ -61,10 +63,12 @@ module SymmetricEncryption
 
   # Set the Secondary Symmetric Ciphers Array to be used
   def self.secondary_ciphers=(secondary_ciphers)
-    raise(ArgumentError, 'secondary_ciphers must be a collection') unless secondary_ciphers.respond_to? :each
+    raise(ArgumentError, "secondary_ciphers must be a collection") unless secondary_ciphers.respond_to? :each
 
     secondary_ciphers.each do |cipher|
-      raise(ArgumentError, 'secondary_ciphers can only consist of SymmetricEncryption::Ciphers') unless cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt)
+      unless cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt)
+        raise(ArgumentError, "secondary_ciphers can only consist of SymmetricEncryption::Ciphers")
+      end
     end
     @secondary_ciphers = secondary_ciphers
   end
@@ -121,7 +125,7 @@ module SymmetricEncryption
   #       the incorrect key. Clearly the data returned is garbage, but it still
   #       successfully returns a string of data
   def self.decrypt(encrypted_and_encoded_string, version: nil, type: :string)
-    return encrypted_and_encoded_string if encrypted_and_encoded_string.nil? || (encrypted_and_encoded_string == '')
+    return encrypted_and_encoded_string if encrypted_and_encoded_string.nil? || (encrypted_and_encoded_string == "")
 
     str = encrypted_and_encoded_string.to_s
 
@@ -150,14 +154,16 @@ module SymmetricEncryption
       end
 
     # Try to force result to UTF-8 encoding, but if it is not valid, force it back to Binary
-    decrypted.force_encoding(SymmetricEncryption::BINARY_ENCODING) unless decrypted.force_encoding(SymmetricEncryption::UTF8_ENCODING).valid_encoding?
+    unless decrypted.force_encoding(SymmetricEncryption::UTF8_ENCODING).valid_encoding?
+      decrypted.force_encoding(SymmetricEncryption::BINARY_ENCODING)
+    end
     Coerce.coerce_from_string(decrypted, type)
   end
 
   # Returns the header for the encrypted string
   # Returns [nil] if no header is present
   def self.header(encrypted_and_encoded_string)
-    return if encrypted_and_encoded_string.nil? || (encrypted_and_encoded_string == '')
+    return if encrypted_and_encoded_string.nil? || (encrypted_and_encoded_string == "")
 
     # Decode before decrypting supplied string
     decoded = cipher.encoder.decode(encrypted_and_encoded_string.to_s)
@@ -212,7 +218,7 @@ module SymmetricEncryption
   #       the coercible gem is available in the path.
   #     Default: :string
   def self.encrypt(str, random_iv: SymmetricEncryption.randomize_iv?, compress: false, type: :string, header: cipher.always_add_header)
-    return str if str.nil? || (str == '')
+    return str if str.nil? || (str == "")
 
     # Encrypt and then encode the supplied string
     cipher.encrypt(Coerce.coerce_to_string(str, type), random_iv: random_iv, compress: compress, header: header)
@@ -241,7 +247,7 @@ module SymmetricEncryption
   # * This method only works reliably when the encrypted data includes the symmetric encryption header.
   # * nil and '' are considered "encrypted" so that validations do not blow up on empty values.
   def self.encrypted?(encrypted_data)
-    return false if encrypted_data.nil? || (encrypted_data == '')
+    return false if encrypted_data.nil? || (encrypted_data == "")
 
     @header ||= SymmetricEncryption.cipher.encoded_magic_header
     encrypted_data.to_s.start_with?(@header)
@@ -290,12 +296,12 @@ module SymmetricEncryption
 
   # Generate a Random password
   def self.random_password(size = 22)
-    require 'securerandom' unless defined?(SecureRandom)
+    require "securerandom" unless defined?(SecureRandom)
     SecureRandom.urlsafe_base64(size)
   end
 
-  BINARY_ENCODING = Encoding.find('binary')
-  UTF8_ENCODING   = Encoding.find('UTF-8')
+  BINARY_ENCODING = Encoding.find("binary")
+  UTF8_ENCODING   = Encoding.find("UTF-8")
 
   # Defaults
   @cipher            = nil

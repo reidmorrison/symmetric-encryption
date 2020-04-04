@@ -1,10 +1,10 @@
 begin
-  require 'mongoid'
-  require_relative 'test_helper'
-  require_relative '../lib/symmetric_encryption/extensions/mongoid/encrypted'
-  ENV['RACK_ENV'] = 'test'
+  require "mongoid"
+  require_relative "test_helper"
+  require_relative "../lib/symmetric_encryption/extensions/mongoid/encrypted"
+  ENV["RACK_ENV"] = "test"
 
-  Mongoid.load!('test/config/mongoid.yml')
+  Mongoid.load!("test/config/mongoid.yml")
 
   # @formatter:off
   class MongoidUser
@@ -52,38 +52,38 @@ begin
   # Unit Tests for field encrypted and validation aspects of SymmetricEncryption
   #
   class MongoidTest < Minitest::Test
-    describe 'Mongoid' do
+    describe "Mongoid" do
       before do
-        @bank_account_number           = '1234567890'
-        @bank_account_number_encrypted = 'QEVuQwIAL94ArJeFlJrZp6SYsvoOGA=='
+        @bank_account_number           = "1234567890"
+        @bank_account_number_encrypted = "QEVuQwIAL94ArJeFlJrZp6SYsvoOGA=="
 
-        @social_security_number           = '987654321'
-        @social_security_number_encrypted = 'QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA=='
+        @social_security_number           = "987654321"
+        @social_security_number_encrypted = "QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA=="
 
         @integer           = 32_768
-        @integer_encrypted = 'FA3smFQEKqB/ITv+A0xACg=='
+        @integer_encrypted = "FA3smFQEKqB/ITv+A0xACg=="
 
         @float           = 0.9867
-        @float_encrypted = 'z7Pwt2JDp74d+u0IXFAdrQ=='
+        @float_encrypted = "z7Pwt2JDp74d+u0IXFAdrQ=="
 
-        @date           = Date.parse('20120320')
-        @date_encrypted = 'WTkSPHo5ApSSHBJMxxWt2A=='
+        @date           = Date.parse("20120320")
+        @date_encrypted = "WTkSPHo5ApSSHBJMxxWt2A=="
 
-        @string      = 'A string containing some data to be encrypted with a random initialization vector'
-        @long_string = 'A string containing some data to be encrypted with a random initialization vector and compressed since it takes up so much space in plain text form'
+        @string      = "A string containing some data to be encrypted with a random initialization vector"
+        @long_string = "A string containing some data to be encrypted with a random initialization vector and compressed since it takes up so much space in plain text form"
 
         @integer_value  = 12
         @float_value    = 88.12345
-        @decimal_value  = BigDecimal('22.51')
-        @datetime_value = DateTime.new(2001, 11, 26, 20, 55, 54, '-5')
-        @time_value     = Time.new(2013, 0o1, 0o1, 22, 30, 0o0, '-04:00')
+        @decimal_value  = BigDecimal("22.51")
+        @datetime_value = DateTime.new(2001, 11, 26, 20, 55, 54, "-5")
+        @time_value     = Time.new(2013, 0o1, 0o1, 22, 30, 0o0, "-04:00")
         @date_value     = Date.new(1927, 0o4, 0o2)
-        @h              = {a: 'A', b: 'B'}
+        @h              = {a: "A", b: "B"}
 
         @user = MongoidUser.new(
           encrypted_bank_account_number:    @bank_account_number_encrypted,
           encrypted_social_security_number: @social_security_number_encrypted,
-          name:                             'Joe Bloggs',
+          name:                             "Joe Bloggs",
           # data type specific fields
           integer_value:                    @integer_value,
           aliased_integer_value:            @integer_value,
@@ -99,7 +99,7 @@ begin
         )
       end
 
-      it 'have encrypted methods' do
+      it "have encrypted methods" do
         assert_equal true, @user.respond_to?(:encrypted_bank_account_number)
         assert_equal true, @user.respond_to?(:encrypted_social_security_number)
         assert_equal true, @user.respond_to?(:encrypted_string)
@@ -113,7 +113,7 @@ begin
         assert_equal false, @user.respond_to?(:encrypted_name=)
       end
 
-      it 'have unencrypted methods' do
+      it "have unencrypted methods" do
         assert_equal true, @user.respond_to?(:bank_account_number)
         assert_equal true, @user.respond_to?(:social_security_number)
         assert_equal true, @user.respond_to?(:string)
@@ -127,62 +127,62 @@ begin
         assert_equal true, @user.respond_to?(:name=)
       end
 
-      it 'support aliased fields' do
+      it "support aliased fields" do
         assert_equal true, @user.respond_to?(:aliased_integer_value=)
         assert_equal true, @user.respond_to?(:aliased_integer_value)
       end
 
-      it 'have unencrypted values' do
+      it "have unencrypted values" do
         assert_equal @bank_account_number, @user.bank_account_number
         assert_equal @social_security_number, @user.social_security_number
       end
 
-      it 'have encrypted values' do
+      it "have encrypted values" do
         assert_equal @bank_account_number_encrypted, @user.encrypted_bank_account_number
         assert_equal @social_security_number_encrypted, @user.encrypted_social_security_number
       end
 
-      it 'support same iv' do
+      it "support same iv" do
         @user.social_security_number = @social_security_number
-        assert first_value           = @user.social_security_number
+        assert first_value = @user.social_security_number
         # Assign the same value
         @user.social_security_number = @social_security_number
         assert_equal first_value, @user.social_security_number
       end
 
-      it 'support a random iv' do
-        @user.string       = @string
+      it "support a random iv" do
+        @user.string = @string
         assert first_value = @user.encrypted_string
-        @user.string       = 'blah'
-        @user.string       = @string.dup
+        @user.string = "blah"
+        @user.string = @string.dup
         refute_equal first_value, @user.encrypted_string
       end
 
-      it 'support a random iv and compress' do
+      it "support a random iv and compress" do
         @user.string      = @long_string
         @user.long_string = @long_string
 
         assert_equal true, (@user.encrypted_long_string.length.to_f / @user.encrypted_string.length) < 0.8
       end
 
-      it 'encrypt' do
+      it "encrypt" do
         user                     = MongoidUser.new
         user.bank_account_number = @bank_account_number
         assert_equal @bank_account_number, user.bank_account_number
         assert_equal @bank_account_number_encrypted, user.encrypted_bank_account_number
       end
 
-      it 'all paths it lead to the same result' do
+      it "all paths it lead to the same result" do
         assert_equal @bank_account_number_encrypted, (@user.encrypted_social_security_number = @bank_account_number_encrypted)
         assert_equal @bank_account_number, @user.social_security_number
       end
 
-      it 'all paths it lead to the same result 2' do
+      it "all paths it lead to the same result 2" do
         assert_equal @bank_account_number, (@user.social_security_number = @bank_account_number)
         assert_equal @bank_account_number_encrypted, @user.encrypted_social_security_number
       end
 
-      it 'all paths it lead to the same result, check uninitialized' do
+      it "all paths it lead to the same result, check uninitialized" do
         user = MongoidUser.new
         assert_nil user.social_security_number
         assert_equal @bank_account_number, (user.social_security_number = @bank_account_number)
@@ -194,7 +194,7 @@ begin
         assert_nil user.encrypted_social_security_number
       end
 
-      it 'allow unencrypted values to be passed to the constructor' do
+      it "allow unencrypted values to be passed to the constructor" do
         user = MongoidUser.new(bank_account_number: @bank_account_number, social_security_number: @social_security_number)
         assert_equal @bank_account_number, user.bank_account_number
         assert_equal @social_security_number, user.social_security_number
@@ -202,7 +202,7 @@ begin
         assert_equal @social_security_number_encrypted, user.encrypted_social_security_number
       end
 
-      it 'allow both encrypted and unencrypted values to be passed to the constructor' do
+      it "allow both encrypted and unencrypted values to be passed to the constructor" do
         user = MongoidUser.new(encrypted_bank_account_number: @bank_account_number_encrypted, social_security_number: @social_security_number)
         assert_equal @bank_account_number, user.bank_account_number
         assert_equal @social_security_number, user.social_security_number
@@ -210,7 +210,7 @@ begin
         assert_equal @social_security_number_encrypted, user.encrypted_social_security_number
       end
 
-      describe 'changed?' do
+      describe "changed?" do
         before do
           @user.save!
         end
@@ -219,19 +219,19 @@ begin
           @user&.destroy
         end
 
-        it 'return false if it was not changed' do
+        it "return false if it was not changed" do
           assert_equal false, @user.encrypted_bank_account_number_changed?
           assert_equal false, @user.bank_account_number_changed?
         end
 
-        it 'return true if it was changed' do
-          @user.bank_account_number = '15424623'
+        it "return true if it was changed" do
+          @user.bank_account_number = "15424623"
           assert_equal true, @user.encrypted_bank_account_number_changed?
           assert_equal true, @user.bank_account_number_changed?
         end
       end
 
-      describe 'data types' do
+      describe "data types" do
         before do
           @user.save!
           @user_clone = MongoidUser.find(@user.id)
@@ -241,26 +241,26 @@ begin
           @user&.destroy
         end
 
-        describe 'aliased fields' do
-          it 'return correct data type' do
-            @user_clone.aliased_integer_value = '5'
+        describe "aliased fields" do
+          it "return correct data type" do
+            @user_clone.aliased_integer_value = "5"
             assert_equal 5, @user_clone.aliased_integer_value
           end
         end
 
-        describe 'integer values' do
-          it 'return correct data type' do
+        describe "integer values" do
+          it "return correct data type" do
             assert_equal @integer_value, @user_clone.integer_value
             assert @user.clone.integer_value.is_a?(Integer)
           end
 
-          it 'coerce data type before save' do
-            u = MongoidUser.new(integer_value: '5')
+          it "coerce data type before save" do
+            u = MongoidUser.new(integer_value: "5")
             assert_equal 5, u.integer_value
             assert u.integer_value.is_a?(Integer)
           end
 
-          it 'permit replacing value with nil' do
+          it "permit replacing value with nil" do
             @user_clone.integer_value = nil
             @user_clone.save!
 
@@ -269,7 +269,7 @@ begin
             assert_nil @user.encrypted_integer_value
           end
 
-          it 'permit replacing value' do
+          it "permit replacing value" do
             new_integer_value         = 98
             @user_clone.integer_value = new_integer_value
             @user_clone.save!
@@ -279,19 +279,19 @@ begin
           end
         end
 
-        describe 'float values' do
-          it 'return correct data type' do
+        describe "float values" do
+          it "return correct data type" do
             assert_equal @float_value, @user_clone.float_value
             assert @user.clone.float_value.is_a?(Float)
           end
 
-          it 'coerce data type before save' do
-            u = MongoidUser.new(float_value: '5.6')
+          it "coerce data type before save" do
+            u = MongoidUser.new(float_value: "5.6")
             assert_equal 5.6, u.float_value
             assert u.float_value.is_a?(Float)
           end
 
-          it 'permit replacing value with nil' do
+          it "permit replacing value with nil" do
             @user_clone.float_value = nil
             @user_clone.save!
 
@@ -300,7 +300,7 @@ begin
             assert_nil @user.encrypted_float_value
           end
 
-          it 'permit replacing value' do
+          it "permit replacing value" do
             new_float_value         = 45.4321
             @user_clone.float_value = new_float_value
             @user_clone.save!
@@ -310,19 +310,19 @@ begin
           end
         end
 
-        describe 'decimal values' do
-          it 'return correct data type' do
+        describe "decimal values" do
+          it "return correct data type" do
             assert_equal @decimal_value, @user_clone.decimal_value
             assert @user.clone.decimal_value.is_a?(BigDecimal)
           end
 
-          it 'coerce data type before save' do
-            u = MongoidUser.new(decimal_value: '99.95')
-            assert_equal BigDecimal('99.95'), u.decimal_value
+          it "coerce data type before save" do
+            u = MongoidUser.new(decimal_value: "99.95")
+            assert_equal BigDecimal("99.95"), u.decimal_value
             assert u.decimal_value.is_a?(BigDecimal)
           end
 
-          it 'permit replacing value with nil' do
+          it "permit replacing value with nil" do
             @user_clone.decimal_value = nil
             @user_clone.save!
 
@@ -331,8 +331,8 @@ begin
             assert_nil @user.encrypted_decimal_value
           end
 
-          it 'permit replacing value' do
-            new_decimal_value         = BigDecimal('99.95')
+          it "permit replacing value" do
+            new_decimal_value         = BigDecimal("99.95")
             @user_clone.decimal_value = new_decimal_value
             @user_clone.save!
 
@@ -341,20 +341,20 @@ begin
           end
         end
 
-        describe 'datetime values' do
-          it 'return correct data type' do
+        describe "datetime values" do
+          it "return correct data type" do
             assert_equal @datetime_value, @user_clone.datetime_value
             assert @user.clone.datetime_value.is_a?(DateTime)
           end
 
-          it 'coerce data type before save' do
+          it "coerce data type before save" do
             now = Time.now
             u   = MongoidUser.new(datetime_value: now)
             assert_equal now, u.datetime_value
             assert u.datetime_value.is_a?(DateTime)
           end
 
-          it 'permit replacing value with nil' do
+          it "permit replacing value with nil" do
             @user_clone.datetime_value = nil
             @user_clone.save!
 
@@ -363,8 +363,8 @@ begin
             assert_nil @user.encrypted_datetime_value
           end
 
-          it 'permit replacing value' do
-            new_datetime_value         = DateTime.new(1998, 10, 21, 8, 33, 28, '+5')
+          it "permit replacing value" do
+            new_datetime_value         = DateTime.new(1998, 10, 21, 8, 33, 28, "+5")
             @user_clone.datetime_value = new_datetime_value
             @user_clone.save!
 
@@ -373,20 +373,20 @@ begin
           end
         end
 
-        describe 'time values' do
-          it 'return correct data type' do
+        describe "time values" do
+          it "return correct data type" do
             assert_equal @time_value, @user_clone.time_value.dup
             assert @user.clone.time_value.is_a?(Time)
           end
 
-          it 'coerce data type before save' do
+          it "coerce data type before save" do
             now = Time.now
             u   = MongoidUser.new(time_value: now)
             assert_equal now, u.time_value.dup
             assert u.time_value.is_a?(Time)
           end
 
-          it 'permit replacing value with nil' do
+          it "permit replacing value with nil" do
             @user_clone.time_value = nil
             @user_clone.save!
 
@@ -395,8 +395,8 @@ begin
             assert_nil @user.encrypted_time_value
           end
 
-          it 'permit replacing value' do
-            new_time_value         = Time.new(1998, 10, 21, 8, 33, 28, '+04:00')
+          it "permit replacing value" do
+            new_time_value         = Time.new(1998, 10, 21, 8, 33, 28, "+04:00")
             @user_clone.time_value = new_time_value
             @user_clone.save!
 
@@ -405,20 +405,20 @@ begin
           end
         end
 
-        describe 'date values' do
-          it 'return correct data type' do
+        describe "date values" do
+          it "return correct data type" do
             assert_equal @date_value, @user_clone.date_value
             assert @user.clone.date_value.is_a?(Date)
           end
 
-          it 'coerce data type before save' do
+          it "coerce data type before save" do
             now = Time.now
             u   = MongoidUser.new(date_value: now)
             assert_equal now.to_date, u.date_value
             assert u.date_value.is_a?(Date)
           end
 
-          it 'permit replacing value with nil' do
+          it "permit replacing value with nil" do
             @user_clone.date_value = nil
             @user_clone.save!
 
@@ -427,7 +427,7 @@ begin
             assert_nil @user.encrypted_date_value
           end
 
-          it 'permit replacing value' do
+          it "permit replacing value" do
             new_date_value         = Date.new(1998, 10, 21)
             @user_clone.date_value = new_date_value
             @user_clone.save!
@@ -437,19 +437,19 @@ begin
           end
         end
 
-        describe 'true values' do
-          it 'return correct data type' do
+        describe "true values" do
+          it "return correct data type" do
             assert_equal true, @user_clone.true_value
             assert @user.clone.true_value.is_a?(TrueClass)
           end
 
-          it 'coerce data type before save' do
-            u = MongoidUser.new(true_value: '1')
+          it "coerce data type before save" do
+            u = MongoidUser.new(true_value: "1")
             assert_equal true, u.true_value
             assert u.true_value.is_a?(TrueClass)
           end
 
-          it 'permit replacing value with nil' do
+          it "permit replacing value with nil" do
             @user_clone.true_value = nil
             @user_clone.save!
 
@@ -458,7 +458,7 @@ begin
             assert_nil @user.encrypted_true_value
           end
 
-          it 'permit replacing value' do
+          it "permit replacing value" do
             new_value              = false
             @user_clone.true_value = new_value
             @user_clone.save!
@@ -468,19 +468,19 @@ begin
           end
         end
 
-        describe 'false values' do
-          it 'return correct data type' do
+        describe "false values" do
+          it "return correct data type" do
             assert_equal false, @user_clone.false_value
             assert @user.clone.false_value.is_a?(FalseClass)
           end
 
-          it 'coerce data type before save' do
-            u = MongoidUser.new(false_value: '0')
+          it "coerce data type before save" do
+            u = MongoidUser.new(false_value: "0")
             assert_equal false, u.false_value
             assert u.false_value.is_a?(FalseClass)
           end
 
-          it 'permit replacing value with nil' do
+          it "permit replacing value with nil" do
             @user_clone.false_value = nil
             @user_clone.save!
 
@@ -489,7 +489,7 @@ begin
             assert_nil @user.encrypted_false_value
           end
 
-          it 'permit replacing value' do
+          it "permit replacing value" do
             new_value               = true
             @user_clone.false_value = new_value
             @user_clone.save!
@@ -499,7 +499,7 @@ begin
           end
         end
 
-        describe 'JSON Serialization' do
+        describe "JSON Serialization" do
           before do
             # JSON Does not support symbols, so they will come back as strings
             # Convert symbols to string in the test
@@ -509,18 +509,18 @@ begin
             end
           end
 
-          it 'return correct data type' do
+          it "return correct data type" do
             assert_equal @h, @user_clone.data_json
             assert @user.clone.data_json.is_a?(Hash)
           end
 
-          it 'not coerce data type (leaves as hash) before save' do
+          it "not coerce data type (leaves as hash) before save" do
             u = MongoidUser.new(data_json: @h)
             assert_equal @h, u.data_json
             assert u.data_json.is_a?(Hash)
           end
 
-          it 'permit replacing value with nil' do
+          it "permit replacing value with nil" do
             @user_clone.data_json = nil
             @user_clone.save!
 
@@ -529,9 +529,9 @@ begin
             assert_nil @user.encrypted_data_json
           end
 
-          it 'permit replacing value' do
+          it "permit replacing value" do
             new_value             = @h.clone
-            new_value['c']        = 'C'
+            new_value["c"]        = "C"
             @user_clone.data_json = new_value
             @user_clone.save!
 
@@ -540,19 +540,19 @@ begin
           end
         end
 
-        describe 'YAML Serialization' do
-          it 'return correct data type' do
+        describe "YAML Serialization" do
+          it "return correct data type" do
             assert_equal @h, @user_clone.data_yaml
             assert @user.clone.data_yaml.is_a?(Hash)
           end
 
-          it 'not coerce data type (leaves as hash) before save' do
+          it "not coerce data type (leaves as hash) before save" do
             u = MongoidUser.new(data_yaml: @h)
             assert_equal @h, u.data_yaml
             assert u.data_yaml.is_a?(Hash)
           end
 
-          it 'permit replacing value with nil' do
+          it "permit replacing value with nil" do
             @user_clone.data_yaml = nil
             @user_clone.save!
 
@@ -561,9 +561,9 @@ begin
             assert_nil @user.encrypted_data_yaml
           end
 
-          it 'permit replacing value' do
+          it "permit replacing value" do
             new_value             = @h.clone
-            new_value[:c]         = 'C'
+            new_value[:c]         = "C"
             @user_clone.data_yaml = new_value
             @user_clone.save!
 
@@ -573,23 +573,23 @@ begin
         end
       end
 
-      describe 'uniqueness' do
+      describe "uniqueness" do
         before do
           MongoidUniqueUser.destroy_all
-          @email      = 'whatever@not-unique.com'
-          @username   = 'gibby007'
+          @email      = "whatever@not-unique.com"
+          @username   = "gibby007"
           @user       = MongoidUniqueUser.create!(email: @email)
           @email_user = MongoidUniqueUser.create!(username: @username)
         end
 
-        it 'does not allow duplicate values' do
+        it "does not allow duplicate values" do
           duplicate = MongoidUniqueUser.new(email: @email)
           assert_equal false, duplicate.valid?
-          assert_equal 'is already taken', duplicate.errors.messages[:encrypted_email].first
+          assert_equal "is already taken", duplicate.errors.messages[:encrypted_email].first
         end
       end
     end
   end
 rescue LoadError
-  puts 'Not running Mongoid tests because mongoid gem is not installed!!!'
+  puts "Not running Mongoid tests because mongoid gem is not installed!!!"
 end

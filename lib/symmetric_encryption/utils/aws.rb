@@ -1,5 +1,5 @@
-require 'base64'
-require 'aws-sdk-kms'
+require "base64"
+require "aws-sdk-kms"
 module SymmetricEncryption
   module Utils
     # Wrap the AWS KMS client so that it automatically creates the Customer Master Key,
@@ -13,8 +13,8 @@ module SymmetricEncryption
 
       # TODO: Map to OpenSSL ciphers
       AWS_KEY_SPEC_MAP = {
-        'aes-256-cbc' => 'AES_256',
-        'aes-128-cbc' => 'AES_128'
+        "aes-256-cbc" => "AES_256",
+        "aes-128-cbc" => "AES_128"
       }.freeze
 
       # TODO: Move to Keystore::Aws
@@ -101,7 +101,7 @@ module SymmetricEncryption
       def whoami
         @whoami ||= `whoami`.strip
       rescue StandardError
-        @whoami = 'unknown'
+        @whoami = "unknown"
       end
 
       # Creates a new Customer Master Key for Symmetric Encryption use.
@@ -109,10 +109,10 @@ module SymmetricEncryption
         # TODO: Add error handling and retry
 
         resp = client.create_key(
-          description: 'Symmetric Encryption for Ruby Customer Masker Key',
+          description: "Symmetric Encryption for Ruby Customer Masker Key",
           tags:        [
-            {tag_key: 'CreatedAt', tag_value: Time.now.to_s},
-            {tag_key: 'CreatedBy', tag_value: whoami}
+            {tag_key: "CreatedAt", tag_value: Time.now.to_s},
+            {tag_key: "CreatedBy", tag_value: whoami}
           ]
         )
         resp.key_metadata.key_id

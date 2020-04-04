@@ -1,4 +1,4 @@
-require 'openssl'
+require "openssl"
 
 module SymmetricEncryption
   # Read from encrypted files and other IO streams
@@ -60,7 +60,7 @@ module SymmetricEncryption
     #   csv.close if csv
     # end
     def self.open(file_name_or_stream, buffer_size: 16_384, **args, &block)
-      ios = file_name_or_stream.is_a?(String) ? ::File.open(file_name_or_stream, 'rb') : file_name_or_stream
+      ios = file_name_or_stream.is_a?(String) ? ::File.open(file_name_or_stream, "rb") : file_name_or_stream
 
       begin
         file = new(ios, buffer_size: buffer_size, **args)
@@ -104,7 +104,7 @@ module SymmetricEncryption
 
     # Returns [true|false] whether the file contains the encryption header
     def self.header_present?(file_name)
-      ::File.open(file_name, 'rb') { |file| new(file).header_present? }
+      ::File.open(file_name, "rb") { |file| new(file).header_present? }
     end
 
     # After opening a file Returns [true|false] whether the file being
@@ -120,9 +120,9 @@ module SymmetricEncryption
       @version        = version
       @header_present = false
       @closed         = false
-      @read_buffer    = ''.b
+      @read_buffer    = "".b
 
-      raise(ArgumentError, 'Buffer size cannot be smaller than 128') unless @buffer_size >= 128
+      raise(ArgumentError, "Buffer size cannot be smaller than 128") unless @buffer_size >= 128
 
       read_header
     end
@@ -188,7 +188,7 @@ module SymmetricEncryption
       data             = outbuf.nil? ? "" : outbuf.clear
       remaining_length = length
 
-      until remaining_length == 0 || eof?
+      until remaining_length&.zero? || eof?
         read_block(remaining_length) if @read_buffer.empty?
 
         if remaining_length && remaining_length < @read_buffer.length
@@ -209,7 +209,7 @@ module SymmetricEncryption
     # Raises EOFError on eof
     # The stream must be opened for reading or an IOError will be raised.
     def readline(sep_string = "\n")
-      gets(sep_string) || raise(EOFError, 'End of file reached when trying to read a line')
+      gets(sep_string) || raise(EOFError, "End of file reached when trying to read a line")
     end
 
     # Reads a single decrypted line from the file up to and including the optional sep_string.
@@ -226,8 +226,8 @@ module SymmetricEncryption
         read_block
       end
       index ||= -1
-      data    = @read_buffer.slice!(0..index)
-      @pos   += data.length
+      data = @read_buffer.slice!(0..index)
+      @pos += data.length
       return nil if data.empty? && eof?
 
       data
@@ -310,7 +310,7 @@ module SymmetricEncryption
       @pos = 0
 
       # Read first block and check for the header
-      buf = @ios.read(@buffer_size, @output_buffer ||= ''.b)
+      buf = @ios.read(@buffer_size, @output_buffer ||= "".b)
 
       # Use cipher specified in header, or global cipher if it has no header
       iv, key, cipher_name, cipher = nil
@@ -340,7 +340,7 @@ module SymmetricEncryption
 
     # Read a block of data and append the decrypted data in the read buffer
     def read_block(length = nil)
-      buf = @ios.read(length || @buffer_size, @output_buffer ||= ''.b)
+      buf = @ios.read(length || @buffer_size, @output_buffer ||= "".b)
       decrypt(buf)
     end
 
@@ -356,7 +356,7 @@ module SymmetricEncryption
       def decrypt(buf)
         return if buf.nil? || buf.empty?
 
-        @read_buffer << @stream_cipher.update(buf, @cipher_buffer ||= ''.b)
+        @read_buffer << @stream_cipher.update(buf, @cipher_buffer ||= "".b)
         @read_buffer << @stream_cipher.final if @ios.eof?
       end
     end

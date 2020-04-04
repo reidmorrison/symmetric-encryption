@@ -2,7 +2,7 @@ module SymmetricEncryption
   module Keystore
     class File
       include Utils::Files
-      ALLOWED_PERMISSIONS = %w[100600 100400]
+      ALLOWED_PERMISSIONS = %w[100600 100400].freeze
 
       attr_accessor :file_name, :key_encrypting_key
 
@@ -13,7 +13,7 @@ module SymmetricEncryption
         version >= 255 ? (version = 1) : (version += 1)
 
         dek ||= SymmetricEncryption::Key.new(cipher_name: cipher_name)
-        kek   = SymmetricEncryption::Key.new(cipher_name: cipher_name)
+        kek = SymmetricEncryption::Key.new(cipher_name: cipher_name)
         kekek = SymmetricEncryption::Key.new(cipher_name: cipher_name)
 
         dek_file_name = ::File.join(key_path, "#{app_name}_#{environment}_v#{version}.encrypted_key")

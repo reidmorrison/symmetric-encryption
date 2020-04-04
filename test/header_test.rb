@@ -1,9 +1,9 @@
-require_relative 'test_helper'
+require_relative "test_helper"
 
 class CipherTest < Minitest::Test
   describe SymmetricEncryption::Header do
     let :clear_value do
-      'Hello World'
+      "Hello World"
     end
 
     let :random_iv do
@@ -24,8 +24,8 @@ class CipherTest < Minitest::Test
       header
     end
 
-    describe '#new' do
-      it 'sets defaults' do
+    describe "#new" do
+      it "sets defaults" do
         header = SymmetricEncryption::Header.new
         assert_equal SymmetricEncryption.cipher.version, header.version
         refute header.compressed?
@@ -36,127 +36,127 @@ class CipherTest < Minitest::Test
       end
     end
 
-    describe '.present?' do
-      it 'has a header' do
+    describe ".present?" do
+      it "has a header" do
         assert SymmetricEncryption::Header.present?(binary_encrypted_value)
       end
 
-      it 'does not have a header' do
+      it "does not have a header" do
         refute SymmetricEncryption::Header.present?(clear_value)
       end
 
-      it 'does not have a header when nil' do
+      it "does not have a header when nil" do
         refute SymmetricEncryption::Header.present?(nil)
       end
 
-      it 'does not have a header when empty string' do
-        refute SymmetricEncryption::Header.present?('')
+      it "does not have a header when empty string" do
+        refute SymmetricEncryption::Header.present?("")
       end
     end
 
-    describe '#cipher' do
-      it 'returns the global cipher used to encrypt the value' do
+    describe "#cipher" do
+      it "returns the global cipher used to encrypt the value" do
         assert_equal SymmetricEncryption.cipher, header.cipher
       end
     end
 
-    describe '#version' do
-      it 'returns the global cipher used to encrypt the value' do
+    describe "#version" do
+      it "returns the global cipher used to encrypt the value" do
         assert_equal SymmetricEncryption.cipher.version, header.version
       end
     end
 
-    describe '#cipher_name' do
-      it 'returns nil when cipher name was not overridden' do
+    describe "#cipher_name" do
+      it "returns nil when cipher name was not overridden" do
         assert_nil header.cipher_name
       end
     end
 
-    describe '#key' do
-      it 'returns nil when key was not overridden' do
+    describe "#key" do
+      it "returns nil when key was not overridden" do
         assert_nil header.key
       end
     end
 
-    describe '#compress' do
-      it 'encrypted string' do
+    describe "#compress" do
+      it "encrypted string" do
         refute header.compressed?
       end
 
-      describe 'with compression' do
+      describe "with compression" do
         let :compress do
           true
         end
 
-        it 'encrypted string' do
+        it "encrypted string" do
           assert header.compressed?
         end
       end
     end
 
-    describe '#to_s' do
+    describe "#to_s" do
     end
 
-    describe '#parse' do
-      it 'nil string' do
+    describe "#parse" do
+      it "nil string" do
         header = SymmetricEncryption::Header.new
         assert_equal 0, header.parse(nil)
       end
 
-      it 'empty string' do
+      it "empty string" do
         header = SymmetricEncryption::Header.new
-        assert_equal 0, header.parse('')
+        assert_equal 0, header.parse("")
       end
 
-      it 'unencrypted string' do
+      it "unencrypted string" do
         header = SymmetricEncryption::Header.new
-        assert_equal 0, header.parse('hello there')
+        assert_equal 0, header.parse("hello there")
       end
 
-      it 'encrypted string' do
+      it "encrypted string" do
         header = SymmetricEncryption::Header.new
         assert_equal 6, header.parse(binary_encrypted_value)
       end
 
-      describe 'with random_iv' do
+      describe "with random_iv" do
         let :random_iv do
           true
         end
 
-        it 'encrypted string' do
+        it "encrypted string" do
           header = SymmetricEncryption::Header.new
           assert_equal 24, header.parse(binary_encrypted_value)
         end
 
-        describe 'with compression' do
+        describe "with compression" do
           let :compress do
             true
           end
 
-          it 'encrypted string' do
+          it "encrypted string" do
             assert header.compressed?
           end
         end
       end
     end
 
-    describe '#parse!' do
-      it 'nil string' do
+    describe "#parse!" do
+      it "nil string" do
         header = SymmetricEncryption::Header.new
         assert_nil header.parse!(nil)
       end
 
-      it 'empty string' do
+      it "empty string" do
         header = SymmetricEncryption::Header.new
-        assert_nil header.parse!('')
+        assert_nil header.parse!("")
       end
 
-      it 'unencrypted string' do
+      it "unencrypted string" do
         header = SymmetricEncryption::Header.new
-        assert_nil header.parse!('hello there')
+        assert_nil header.parse!("hello there")
       end
 
-      it 'encrypted string' do
+      it "encrypted string" do
         header    = SymmetricEncryption::Header.new
         remainder = header.parse!(binary_encrypted_value.dup)
         assert_equal SymmetricEncryption.cipher.version, header.version
@@ -173,13 +173,13 @@ class CipherTest < Minitest::Test
         assert_equal clear_value, SymmetricEncryption.cipher.binary_decrypt(remainder, header: header)
       end
 
-      describe 'with random_iv' do
+      describe "with random_iv" do
         let :random_iv do
           true
         end
 
-        it 'encrypted string' do
-          header           = SymmetricEncryption::Header.new
+        it "encrypted string" do
+          header = SymmetricEncryption::Header.new
           assert remainder = header.parse!(binary_encrypted_value)
           assert_equal SymmetricEncryption.cipher.version, header.version
           refute header.compressed?
@@ -192,19 +192,19 @@ class CipherTest < Minitest::Test
       end
     end
 
-    describe '#iv' do
-      it 'encrypted string' do
+    describe "#iv" do
+      it "encrypted string" do
         header = SymmetricEncryption::Header.new
         header.parse(binary_encrypted_value)
         assert_nil header.iv
       end
 
-      describe 'with random_iv' do
+      describe "with random_iv" do
         let :random_iv do
           true
         end
 
-        it 'encrypted string' do
+        it "encrypted string" do
           assert header.iv
           refute_equal SymmetricEncryption.cipher.iv, header.iv
         end

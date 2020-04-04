@@ -1,4 +1,4 @@
-require_relative 'test_helper'
+require_relative "test_helper"
 
 # Unit Test for SymmetricEncryption
 #
@@ -7,58 +7,58 @@ class EncoderTest < Minitest::Test
     %i[none base64 base64strict base16].each do |encoding|
       describe "encoding: #{encoding}" do
         before do
-          @data         = '987654321'
+          @data         = "987654321"
           @data_encoded =
             case encoding
             when :base64
               "OTg3NjU0MzIx\n"
             when :base64strict
-              'OTg3NjU0MzIx'
+              "OTg3NjU0MzIx"
             when :base16
-              '393837363534333231'
+              "393837363534333231"
             when :none
               @data
             end
           @encoder      = SymmetricEncryption::Encoder[encoding]
-          @non_utf8     = "\xc2".force_encoding('binary')
+          @non_utf8     = "\xc2".force_encoding("binary")
         end
 
-        it 'correctly encodes' do
+        it "correctly encodes" do
           assert_equal @data_encoded, @encoder.encode(@data)
-          assert_equal Encoding.find('UTF-8'), @data_encoded.encoding
+          assert_equal Encoding.find("UTF-8"), @data_encoded.encoding
         end
 
-        it 'return BINARY encoding for non-UTF-8 data' do
-          assert_equal Encoding.find('binary'), @non_utf8.encoding
+        it "return BINARY encoding for non-UTF-8 data" do
+          assert_equal Encoding.find("binary"), @non_utf8.encoding
           assert @non_utf8.valid_encoding?
           assert encoded = @encoder.encode(@non_utf8)
           assert decoded = @encoder.decode(encoded)
           assert decoded.valid_encoding?
-          assert_equal Encoding.find('binary'), decoded.encoding, decoded
+          assert_equal Encoding.find("binary"), decoded.encoding, decoded
           assert_equal @non_utf8, decoded
         end
 
-        it 'return nil when encoding nil' do
+        it "return nil when encoding nil" do
           assert_nil @encoder.encode(nil)
         end
 
         it "return '' when encoding ''" do
-          assert_equal '', @encoder.encode('')
+          assert_equal "", @encoder.encode("")
         end
 
-        it 'return a new object when encoding' do
+        it "return a new object when encoding" do
           assert !@data.equal?(@encoder.encode(@data))
         end
 
-        it 'return nil when decoding nil' do
+        it "return nil when decoding nil" do
           assert_nil @encoder.decode(nil)
         end
 
         it "return '' when decoding ''" do
-          assert_equal '', @encoder.decode('')
+          assert_equal "", @encoder.decode("")
         end
 
-        it 'return a new object when decoding' do
+        it "return a new object when decoding" do
           assert !@data_encoded.equal?(@encoder.decode(@data_encoded))
         end
       end
