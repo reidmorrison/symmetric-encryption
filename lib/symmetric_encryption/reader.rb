@@ -185,7 +185,7 @@ module SymmetricEncryption
     # At end of file, it returns nil if no more data is available, or the last
     # remaining bytes
     def read(length = nil, outbuf = nil)
-      data             = outbuf.to_s.clear
+      data             = outbuf.nil? ? "" : outbuf.clear
       remaining_length = length
 
       until remaining_length == 0 || eof?

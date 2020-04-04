@@ -84,7 +84,7 @@ module SymmetricEncryption
 
     # Returns [Array(SymmetricEncrytion::Cipher)] ciphers specified in the configuration file.
     def ciphers
-      @ciphers ||= config[:ciphers].collect { |cipher_config| Cipher.from_config(cipher_config) }
+      @ciphers ||= config[:ciphers].collect { |cipher_config| Cipher.from_config(**cipher_config) }
     end
 
     # Iterate through the Hash symbolizing all keys.

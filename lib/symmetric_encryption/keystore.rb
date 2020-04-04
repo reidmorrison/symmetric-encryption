@@ -80,7 +80,7 @@ module SymmetricEncryption
           environment: environment
         }
         args[:key_path] = ::File.dirname(config[:key_filename]) if config.key?(:key_filename)
-        new_data_key    = keystore_class.generate_data_key(args)
+        new_data_key    = keystore_class.generate_data_key(**args)
 
         # Add as second key so that key can be published now and only used in a later deploy.
         if rolling_deploy

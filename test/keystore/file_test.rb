@@ -68,7 +68,7 @@ module SymmetricEncryption
 
         it 'is readable by Key.from_config' do
           key_config.delete(:version)
-          assert SymmetricEncryption::Keystore.read_key(key_config)
+          assert SymmetricEncryption::Keystore.read_key(**key_config)
         end
       end
 

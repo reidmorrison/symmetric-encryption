@@ -111,7 +111,7 @@ class ReaderTest < Minitest::Test
               @eof       = false
               @file_name = '_test'
               @header    = (options[:header] != false)
-              SymmetricEncryption::Writer.open(@file_name, options) do |file|
+              SymmetricEncryption::Writer.open(@file_name, **options) do |file|
                 @data.inject(0) { |sum, str| sum + file.write(str) }
               end
             when :empty
@@ -119,7 +119,7 @@ class ReaderTest < Minitest::Test
               @eof       = true
               @file_name = '_test_empty'
               @header    = (options[:header] != false)
-              SymmetricEncryption::Writer.open(@file_name, options) do |file|
+              SymmetricEncryption::Writer.open(@file_name, **options) do |file|
                 # Leave data portion empty
               end
             when :blank

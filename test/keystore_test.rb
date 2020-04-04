@@ -132,7 +132,7 @@ module SymmetricEncryption
         end
 
         let :config_key do
-          SymmetricEncryption::Keystore.read_key(config)
+          SymmetricEncryption::Keystore.read_key(**config)
         end
 
         let :dek_file_name do
