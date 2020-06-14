@@ -8,7 +8,7 @@ gem "mongoid", "~> 7.1.0"
 gem "sqlite3", "~> 1.4.0", platform: :ruby
 
 gem "appraisal"
-gem "awesome_print"
+gem "amazing_print"
 gem "minitest"
 gem "minitest-stub_any_instance"
 gem "rake"
