@@ -67,8 +67,8 @@ SymmetricEncryption.decrypt "JqLJOi6dNjWI9kX9lSL1XQ=="
 
 The sister-project [Rocket Job](http://rocketjob.io) uses Symmetric Encryption
 to encrypt job data to keep it secure.
-* Rocket Job Pro can also read and write encrypted files created by Symmetric Encryption.
-* Rocket Job Pro re-uses the existing Symmetric Encryption configuration and setup.
+* Rocket Job can also read and write encrypted files created by Symmetric Encryption.
+* Rocket Job re-uses the existing Symmetric Encryption configuration and setup.
 
 ### Command Line Interface
 

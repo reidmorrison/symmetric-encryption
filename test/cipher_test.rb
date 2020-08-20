@@ -3,7 +3,6 @@ require_relative "test_helper"
 # Tests for SymmetricEncryption::Cipher
 class CipherTest < Minitest::Test
   ["aes-128-cbc"].each do |cipher_name|
-    # ['aes-128-cbc', 'aes-128-gcm'].each do |cipher_name|
     describe "Cipher: #{cipher_name}" do
       describe "standalone" do
         it "allows setting the cipher_name" do
@@ -64,24 +63,6 @@ class CipherTest < Minitest::Test
                     no_header: "\xC97\x8B\x8E\xC1\xD3k\xCC\xA4\xA0\xEFy+B\x90\x9A"
                   }
                 }
-                # 'aes-128-gcm' => {
-                #   base64:       {
-                #     header:    "QEVuQwAAOcqz9UDbd1Sn\n",
-                #     no_header: "Ocqz9UDbd1Sn\n"
-                #   },
-                #   base64strict: {
-                #     header:    'QEVuQwAAOcqz9UDbd1Sn',
-                #     no_header: 'Ocqz9UDbd1Sn'
-                #   },
-                #   base16:       {
-                #     header:    '40456e43000039cab3f540db7754a7',
-                #     no_header: '39cab3f540db7754a7'
-                #   },
-                #   none:         {
-                #     header:    "@EnC\x00\x009\xCA\xB3\xF5@\xDBwT\xA7",
-                #     no_header: "9\xCA\xB3\xF5@\xDBwT\xA7"
-                #   },
-                # }
               }
 
               @non_utf8 = "\xc2".force_encoding("binary")

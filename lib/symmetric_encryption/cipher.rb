@@ -114,7 +114,7 @@ module SymmetricEncryption
     #     to convert it to a string
     #
     #   random_iv [true|false]
-    #     Whether the encypted value should use a random IV every time the
+    #     Whether the encrypted value should use a random IV every time the
     #     field is encrypted.
     #     Notes:
     #     * Setting random_iv to true will result in a different encrypted output for

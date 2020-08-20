@@ -125,8 +125,6 @@ RocketJob::Jobs::ReEncrypt::RelationalJob.throttle_running_slices = 100
 
 Custom throttles can be added to the jobs, for example to throttle based on database slave delay, etc.
 
-Note: This job is included in the Rocket Job Pro version.
-
 ### 6. Re-encrypting Files
 
 Remember to re-encrypt any files on disk that were encrypted with Symmetric Encryption
