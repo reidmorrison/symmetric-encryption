@@ -258,7 +258,7 @@ module SymmetricEncryption
       #   Exception when
       #   - offset exceeds length of buffer
       #   byteslice truncates when too long, but returns nil when start is beyond end of buffer
-      len = buffer.byteslice(offset, 2).unpack1("v")
+      len = buffer.byteslice(offset, 2).unpack("v").first
       offset += 2
       out = buffer.byteslice(offset, len)
       [out, offset + len]

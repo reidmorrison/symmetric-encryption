@@ -69,7 +69,7 @@ module SymmetricEncryption
       def encode(binary_string)
         return binary_string if binary_string.nil? || (binary_string == "")
 
-        encoded_string = binary_string.to_s.unpack1("H*")
+        encoded_string = binary_string.to_s.unpack("H*").first
         encoded_string.force_encoding(SymmetricEncryption::UTF8_ENCODING)
       end
 
