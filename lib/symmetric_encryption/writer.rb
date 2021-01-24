@@ -51,8 +51,8 @@ module SymmetricEncryption
       if file_name_or_stream.is_a?(String)
         file_name_or_stream = ::File.open(file_name_or_stream, "wb")
         compress            = !(/\.(zip|gz|gzip|xls.|)\z/i === file_name_or_stream) if compress.nil?
-      else
-        compress = true if compress.nil?
+      elsif compress.nil?
+        compress = true
       end
 
       begin
@@ -105,7 +105,8 @@ module SymmetricEncryption
       # Cipher to encrypt the random_key, or the entire file
       cipher = SymmetricEncryption.cipher(version)
       unless cipher
-        raise(SymmetricEncryption::CipherError, "Cipher with version:#{version} not found in any of the configured SymmetricEncryption ciphers")
+        raise(SymmetricEncryption::CipherError,
+              "Cipher with version:#{version} not found in any of the configured SymmetricEncryption ciphers")
       end
 
       # Force header if compressed or using random iv, key

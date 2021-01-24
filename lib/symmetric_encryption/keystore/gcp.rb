@@ -5,7 +5,7 @@ module SymmetricEncryption
     class Gcp
       include Utils::Files
 
-      def self.generate_data_key(version: 0, cipher_name:, app_name:, environment:, key_path:)
+      def self.generate_data_key(cipher_name:, app_name:, environment:, key_path:, version: 0)
         version >= 255 ? (version = 1) : (version += 1)
 
         dek       = SymmetricEncryption::Key.new(cipher_name: cipher_name)
@@ -46,7 +46,8 @@ module SymmetricEncryption
       end
 
       def crypto_key
-        @crypto_key ||= self.class::KMS::KeyManagementServiceClient.crypto_key_path(project_id, location_id, app_name, environment.to_s)
+        @crypto_key ||= self.class::KMS::KeyManagementServiceClient.crypto_key_path(project_id, location_id, app_name,
+                                                                                    environment.to_s)
       end
 
       private

@@ -1,10 +1,10 @@
 AllCops:
-  TargetRubyVersion: 2.3
+  TargetRubyVersion: 2.4
+  NewCops: enable
   Exclude:
-    - '.git/**/*'
-    - 'docs/**/*'
-    - 'gemfiles/*'
-
+    - ".git/**/*"
+    - "docs/**/*"
+    - "gemfiles/*"
 #
 # RuboCop built-in settings.
 #   For documentation on all settings see: https://docs.rubocop.org/en/stable
@@ -31,7 +31,7 @@ Layout/HashAlignment:
 Layout/LineLength:
   Max: 128
   Exclude:
-    - '**/test/**/*'
+    - "**/test/**/*"
 
 # Match existing layout
 Layout/SpaceInsideHashLiteralBraces:
@@ -44,17 +44,17 @@ Metrics/AbcSize:
 # Support long block lengths for tests
 Metrics/BlockLength:
   Exclude:
-    - 'test/**/*'
-    - '**/*/cli.rb'
-  ExcludedMethods:
-    - 'aasm'
-    - 'included'
+    - "test/**/*"
+    - "**/*/cli.rb"
+  IgnoredMethods:
+    - "aasm"
+    - "included"
 
 # Soften limits
 Metrics/ClassLength:
   Max: 250
   Exclude:
-    - 'test/**/*'
+    - "test/**/*"
 
 # TODO: Soften Limits for phase 1 only
 Metrics/CyclomaticComplexity:
@@ -85,7 +85,7 @@ Security/YAMLLoad:
 
 # Needed for testing DateTime
 Style/DateTime:
-  Exclude: ['test/**/*']
+  Exclude: ["test/**/*"]
 
 # TODO: Soften Limits for phase 1 only
 Style/Documentation:

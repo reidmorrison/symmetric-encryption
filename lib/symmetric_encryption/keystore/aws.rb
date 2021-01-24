@@ -70,13 +70,9 @@ module SymmetricEncryption
       #                ],
       #   iv:          'T80pYzD0E6e/bJCdjZ6TiQ=='
       # }
-      def self.generate_data_key(version: 0,
+      def self.generate_data_key(cipher_name:, app_name:, environment:, key_path:, version: 0,
                                  regions: Utils::Aws::AWS_US_REGIONS,
                                  dek: nil,
-                                 cipher_name:,
-                                 app_name:,
-                                 environment:,
-                                 key_path:,
                                  **_args)
 
         # TODO: Also support generating environment variables instead of files.
@@ -116,12 +112,13 @@ module SymmetricEncryption
 
       # Stores the Encryption key in a file.
       # Secures the Encryption key by encrypting it with a key encryption key.
-      def initialize(region: nil, key_files:, master_key_alias:, key_encrypting_key: nil)
+      def initialize(key_files:, master_key_alias:, region: nil, key_encrypting_key: nil)
         @key_files        = key_files
         @master_key_alias = master_key_alias
         @region           = region || ENV["AWS_REGION"] || ENV["AWS_DEFAULT_REGION"] || ::Aws.config[:region]
         if key_encrypting_key
-          raise(SymmetricEncryption::ConfigError, "AWS KMS keystore encrypts the key itself, so does not support supplying a key_encrypting_key")
+          raise(SymmetricEncryption::ConfigError,
+                "AWS KMS keystore encrypts the key itself, so does not support supplying a key_encrypting_key")
         end
       end
 

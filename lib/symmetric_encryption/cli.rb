@@ -91,7 +91,8 @@ module SymmetricEncryption
           @decrypt = file_name || STDIN
         end
 
-        opts.on "-o", "--output FILE_NAME", "Write encrypted or decrypted file to this file, otherwise output goes to stdout." do |file_name|
+        opts.on "-o", "--output FILE_NAME",
+                "Write encrypted or decrypted file to this file, otherwise output goes to stdout." do |file_name|
           @output_file_name = file_name
         end
 
@@ -107,11 +108,13 @@ module SymmetricEncryption
           @compress = false
         end
 
-        opts.on "-E", "--env ENVIRONMENT", "Environment to use in the config file. Default: SYMMETRIC_ENCRYPTION_ENV || RACK_ENV || RAILS_ENV || 'development'" do |environment|
+        opts.on "-E", "--env ENVIRONMENT",
+                "Environment to use in the config file. Default: SYMMETRIC_ENCRYPTION_ENV || RACK_ENV || RAILS_ENV || 'development'" do |environment|
           @environment = environment
         end
 
-        opts.on "-c", "--config CONFIG_FILE_PATH", "File name & path to the Symmetric Encryption configuration file. Default: config/symmetric-encryption.yml or Env var: `SYMMETRIC_ENCRYPTION_CONFIG`" do |path|
+        opts.on "-c", "--config CONFIG_FILE_PATH",
+                "File name & path to the Symmetric Encryption configuration file. Default: config/symmetric-encryption.yml or Env var: `SYMMETRIC_ENCRYPTION_CONFIG`" do |path|
           @config_file_path = path
         end
 
@@ -119,11 +122,13 @@ module SymmetricEncryption
           @migrate = true
         end
 
-        opts.on "-r", "--re-encrypt [PATTERN]", 'ReEncrypt all files matching the pattern. Default:  "**/*.{yml,rb}"' do |pattern|
+        opts.on "-r", "--re-encrypt [PATTERN]",
+                'ReEncrypt all files matching the pattern. Default:  "**/*.{yml,rb}"' do |pattern|
           @re_encrypt = pattern || "**/*.{yml,rb}"
         end
 
-        opts.on "-n", "--new-password [SIZE]", "Generate a new random password using only characters that are URL-safe base64. Default size is 22." do |size|
+        opts.on "-n", "--new-password [SIZE]",
+                "Generate a new random password using only characters that are URL-safe base64. Default size is 22." do |size|
           @random_password = (size || 22).to_i
         end
 
@@ -131,39 +136,48 @@ module SymmetricEncryption
           @generate = config
         end
 
-        opts.on "-s", "--keystore heroku|environment|file|aws|gcp", "Which keystore to use during generation or re-encryption." do |keystore|
+        opts.on "-s", "--keystore heroku|environment|file|aws|gcp",
+                "Which keystore to use during generation or re-encryption." do |keystore|
           @keystore = (keystore || "file").downcase.to_sym
         end
 
-        opts.on "-B", "--regions [us-east-1,us-east-2,us-west-1,us-west-2]", "AWS KMS Regions to encrypt data key with." do |regions|
+        opts.on "-B", "--regions [us-east-1,us-east-2,us-west-1,us-west-2]",
+                "AWS KMS Regions to encrypt data key with." do |regions|
           @regions = regions.to_s.split(",").collect(&:strip) if regions
         end
 
-        opts.on "-K", "--key-path KEY_PATH", "Output path in which to write generated key files. Default: ~/.symmetric-encryption" do |path|
+        opts.on "-K", "--key-path KEY_PATH",
+                "Output path in which to write generated key files. Default: ~/.symmetric-encryption" do |path|
           @key_path = path
         end
 
-        opts.on "-a", "--app-name NAME", "Application name to use when generating a new configuration. Default: symmetric-encryption" do |name|
+        opts.on "-a", "--app-name NAME",
+                "Application name to use when generating a new configuration. Default: symmetric-encryption" do |name|
           @app_name = name
         end
 
-        opts.on "-S", "--environments ENVIRONMENTS", "Comma separated list of environments for which to generate the config file. Default: development,test,release,production" do |environments|
+        opts.on "-S", "--environments ENVIRONMENTS",
+                "Comma separated list of environments for which to generate the config file. Default: development,test,release,production" do |environments|
           @environments = environments.split(",").collect(&:strip).collect(&:to_sym)
         end
 
-        opts.on "-C", "--cipher-name NAME", "Name of the cipher to use when generating a new config file, or when rotating keys. Default: aes-256-cbc" do |name|
+        opts.on "-C", "--cipher-name NAME",
+                "Name of the cipher to use when generating a new config file, or when rotating keys. Default: aes-256-cbc" do |name|
           @cipher_name = name
         end
 
-        opts.on "-R", "--rotate-keys", "Generates a new encryption key version, encryption key files, and updates the configuration file." do
+        opts.on "-R", "--rotate-keys",
+                "Generates a new encryption key version, encryption key files, and updates the configuration file." do
           @rotate_keys = true
         end
 
-        opts.on "-U", "--rotate-kek", "Replace the existing key encrypting keys only, the data encryption key is not changed, and updates the configuration file." do
+        opts.on "-U", "--rotate-kek",
+                "Replace the existing key encrypting keys only, the data encryption key is not changed, and updates the configuration file." do
           @rotate_kek = true
         end
 
-        opts.on "-D", "--rolling-deploy", "During key rotation, support a rolling deploy by placing the new key second in the list so that it is not activated yet." do
+        opts.on "-D", "--rolling-deploy",
+                "During key rotation, support a rolling deploy by placing the new key second in the list so that it is not activated yet." do
           @rolling_deploy = true
         end
 
@@ -171,11 +185,13 @@ module SymmetricEncryption
           @activate_key = true
         end
 
-        opts.on "-X", "--cleanup-keys", "Removes all encryption keys, except the one with the highest version from the configuration file." do
+        opts.on "-X", "--cleanup-keys",
+                "Removes all encryption keys, except the one with the highest version from the configuration file." do
           @cleanup_keys = true
         end
 
-        opts.on "-V", "--key-version NUMBER", "Encryption key version to use when encrypting or re-encrypting. Default: (Current global version)." do |number|
+        opts.on "-V", "--key-version NUMBER",
+                "Encryption key version to use when encrypting or re-encrypting. Default: (Current global version)." do |number|
           @version = number.to_i
         end
 
@@ -237,7 +253,8 @@ module SymmetricEncryption
       end
 
       config = Config.read_file(config_file_path)
-      SymmetricEncryption::Keystore.rotate_keys!(config, environments: environments || [], app_name: app_name, rolling_deploy: rolling_deploy, keystore: keystore)
+      SymmetricEncryption::Keystore.rotate_keys!(config, environments: environments || [], app_name: app_name,
+rolling_deploy: rolling_deploy, keystore: keystore)
       Config.write_file(config_file_path, config)
       puts "Existing configuration file updated with new keys: #{config_file_path}"
     end
@@ -280,7 +297,8 @@ module SymmetricEncryption
     end
 
     def encrypt_file(input_file_name)
-      SymmetricEncryption::Writer.encrypt(source: input_file_name, target: output_file_name || STDOUT, compress: compress, version: version)
+      SymmetricEncryption::Writer.encrypt(source: input_file_name, target: output_file_name || STDOUT, compress: compress,
+version: version)
     end
 
     def decrypt_file(input_file_name)

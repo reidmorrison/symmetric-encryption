@@ -81,17 +81,17 @@ end
 # Unit Test for attr_encrypted extensions in ActiveRecord
 #
 class ActiveRecordTest < Minitest::Test
-  describe "ActiveRecord" do
-    INTEGER_VALUE       = 12
-    FLOAT_VALUE         = 88.12345
-    DECIMAL_VALUE       = BigDecimal("22.51")
-    DATETIME_VALUE      = DateTime.new(2001, 11, 26, 20, 55, 54, "-5")
-    TIME_VALUE          = Time.new(2013, 1, 1, 22, 30, 0, "-04:00")
-    DATE_VALUE          = Date.new(1927, 4, 2)
-    STRING_VALUE        = "A string containing some data to be encrypted with a random initialization vector".freeze
-    LONG_STRING_VALUE   = "A string containing some data to be encrypted with a random initialization vector and compressed since it takes up so much space in plain text form".freeze
-    BINARY_STRING_VALUE = "Non-UTF8 Binary \x92 string".force_encoding("BINARY")
+  INTEGER_VALUE       = 12
+  FLOAT_VALUE         = 88.12345
+  DECIMAL_VALUE       = BigDecimal("22.51")
+  DATETIME_VALUE      = DateTime.new(2001, 11, 26, 20, 55, 54, "-5")
+  TIME_VALUE          = Time.new(2013, 1, 1, 22, 30, 0, "-04:00")
+  DATE_VALUE          = Date.new(1927, 4, 2)
+  STRING_VALUE        = "A string containing some data to be encrypted with a random initialization vector".freeze
+  LONG_STRING_VALUE   = "A string containing some data to be encrypted with a random initialization vector and compressed since it takes up so much space in plain text form".freeze
+  BINARY_STRING_VALUE = "Non-UTF8 Binary \x92 string".force_encoding("BINARY")
 
+  describe "ActiveRecord" do
     let :bank_account_number do
       "1234567890"
     end

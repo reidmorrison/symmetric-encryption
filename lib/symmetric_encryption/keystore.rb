@@ -56,7 +56,7 @@ module SymmetricEncryption
     # Notes:
     # * iv_filename is no longer supported and is removed when creating a new random cipher.
     #     * `iv` does not need to be encrypted and is included in the clear.
-    def self.rotate_keys!(full_config, environments: [], app_name:, rolling_deploy: false, keystore: nil)
+    def self.rotate_keys!(full_config, app_name:, environments: [], rolling_deploy: false, keystore: nil)
       full_config.each_pair do |environment, cfg|
         # Only rotate keys for specified environments. Default, all
         next if !environments.empty? && !environments.include?(environment.to_sym)
@@ -95,7 +95,7 @@ module SymmetricEncryption
     # Rotates just the key encrypting keys for the current cipher version.
     # The existing data encryption key is not changed, it is secured using the
     # new key encrypting keys.
-    def self.rotate_key_encrypting_keys!(full_config, environments: [], app_name:)
+    def self.rotate_key_encrypting_keys!(full_config, app_name:, environments: [])
       full_config.each_pair do |environment, cfg|
         # Only rotate keys for specified environments. Default, all
         next if !environments.empty? && !environments.include?(environment.to_sym)
@@ -156,7 +156,7 @@ module SymmetricEncryption
     # Returns [Key] by recursively navigating the config tree.
     #
     # Supports N level deep key encrypting keys.
-    def self.read_key(key: nil, iv:, key_encrypting_key: nil, cipher_name: "aes-256-cbc", keystore: nil, version: 0, **args)
+    def self.read_key(iv:, key: nil, key_encrypting_key: nil, cipher_name: "aes-256-cbc", keystore: nil, version: 0, **args)
       if key_encrypting_key.is_a?(Hash)
         # Recurse up the chain returning the parent key_encrypting_key
         key_encrypting_key = read_key(cipher_name: cipher_name, **key_encrypting_key)

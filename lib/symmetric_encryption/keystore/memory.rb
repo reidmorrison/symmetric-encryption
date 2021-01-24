@@ -35,7 +35,7 @@ module SymmetricEncryption
 
       # Stores the Encryption key in a string.
       # Secures the Encryption key by encrypting it with a key encryption key.
-      def initialize(encrypted_key: nil, key_encrypting_key:)
+      def initialize(key_encrypting_key:, encrypted_key: nil)
         @encrypted_key      = encrypted_key
         @key_encrypting_key = key_encrypting_key
       end

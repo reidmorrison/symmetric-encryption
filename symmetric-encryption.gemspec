@@ -9,8 +9,7 @@ Gem::Specification.new do |s|
   s.version               = SymmetricEncryption::VERSION
   s.platform              = Gem::Platform::RUBY
   s.authors               = ["Reid Morrison"]
-  s.email                 = ["reidmo@gmail.com"]
-  s.homepage              = "http://rocketjob.github.io/symmetric-encryption/"
+  s.homepage              = "https://encryption.rocketjob.io"
   s.summary               = "Encrypt ActiveRecord and Mongoid attributes, files and passwords in configuration files."
   s.files                 = Dir["{lib,examples}/**/*", "LICENSE.txt", "Rakefile", "README.md"]
   s.license               = "Apache-2.0"

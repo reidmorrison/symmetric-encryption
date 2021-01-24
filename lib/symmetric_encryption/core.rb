@@ -25,6 +25,7 @@ module SymmetricEncryption
   module ActiveRecord
     autoload :EncryptedAttribute,   "symmetric_encryption/active_record/encrypted_attribute"
   end
+
   module Utils
     autoload :Aws,                  "symmetric_encryption/utils/aws"
     autoload :Files,                "symmetric_encryption/utils/files"

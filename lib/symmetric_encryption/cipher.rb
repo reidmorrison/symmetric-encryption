@@ -84,9 +84,9 @@ module SymmetricEncryption
       @version           = version.to_i
       @always_add_header = always_add_header
 
-      if (@version > 255) || @version.negative?
-        raise(ArgumentError, "Cipher version has a valid range of 0 to 255. #{@version} is too high, or negative")
-      end
+      return unless (@version > 255) || @version.negative?
+
+      raise(ArgumentError, "Cipher version has a valid range of 0 to 255. #{@version} is too high, or negative")
     end
 
     # Change the encoding

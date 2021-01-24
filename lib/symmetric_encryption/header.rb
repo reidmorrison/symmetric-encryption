@@ -167,29 +167,29 @@ module SymmetricEncryption
 
       self.compress = (flags & FLAG_COMPRESSED) != 0
 
-      if (flags & FLAG_IV) != 0
-        self.iv, offset = read_string(buffer, offset)
-      else
+      if (flags & FLAG_IV).zero?
         self.iv = nil
+      else
+        self.iv, offset = read_string(buffer, offset)
       end
 
-      if (flags & FLAG_KEY) != 0
+      if (flags & FLAG_KEY).zero?
+        self.key = nil
+      else
         encrypted_key, offset = read_string(buffer, offset)
         self.key              = cipher.binary_decrypt(encrypted_key)
-      else
-        self.key = nil
       end
 
-      if (flags & FLAG_CIPHER_NAME) != 0
-        self.cipher_name, offset = read_string(buffer, offset)
-      else
+      if (flags & FLAG_CIPHER_NAME).zero?
         self.cipher_name = nil
+      else
+        self.cipher_name, offset = read_string(buffer, offset)
       end
 
-      if (flags & FLAG_AUTH_TAG) != 0
-        self.auth_tag, offset = read_string(buffer, offset)
-      else
+      if (flags & FLAG_AUTH_TAG).zero?
         self.auth_tag = nil
+      else
+        self.auth_tag, offset = read_string(buffer, offset)
       end
 
       offset
@@ -258,7 +258,7 @@ module SymmetricEncryption
       #   Exception when
       #   - offset exceeds length of buffer
       #   byteslice truncates when too long, but returns nil when start is beyond end of buffer
-      len = buffer.byteslice(offset, 2).unpack("v").first
+      len = buffer.byteslice(offset, 2).unpack1("v")
       offset += 2
       out = buffer.byteslice(offset, len)
       [out, offset + len]

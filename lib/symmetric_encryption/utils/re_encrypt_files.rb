@@ -70,11 +70,11 @@ module SymmetricEncryption
             if line.valid_encoding? && (result = line.match(r))
               encrypted = result[0]
               new_value = re_encrypt(encrypted)
-              if new_value != encrypted
+              if new_value == encrypted
+                line
+              else
                 hits += 1
                 line.gsub(encrypted, new_value)
-              else
-                line
               end
             else
               line
