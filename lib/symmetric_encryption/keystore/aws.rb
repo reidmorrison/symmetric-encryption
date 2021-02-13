@@ -125,12 +125,16 @@ module SymmetricEncryption
       # Reads the data key environment variable, if present, otherwise a file.
       # Decrypts the key using the master key for this region.
       def read
-        key_file = key_files.find { |i| i[:region] == region }
-        raise(SymmetricEncryption::ConfigError, "region: #{region} not available in the supplied key_files") unless key_file
+        key_env_var = "#{app_name}_#{environment}_#{region}_v#{version}".upcase.tr("-", "_")
+        if ENV[key_env_var].present?
+          encrypted_data_key = decode64(ENV[key_env_var])
+        else
+          key_file = key_files.find { |i| i[:region] == region }
+          raise(SymmetricEncryption::ConfigError, "region: #{region} not available in the supplied key_files") unless key_file
+          file_name = key_file[:file_name]
+          encrypted_data_key = read_file_and_decode(file_name)
+        end
 
-        file_name = key_file[:file_name]
-
-        encrypted_data_key = read_file_and_decode(file_name)
         aws(region).decrypt(encrypted_data_key)
       end
 
