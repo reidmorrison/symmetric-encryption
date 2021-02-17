@@ -1,0 +1,76 @@
+name: build
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  test:
+    name: "Test: Rails ${{ matrix.rails }} on Ruby ${{ matrix.ruby }}"
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo
+        ports:
+          - 27017:27017
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - rails: 4.2
+            ruby: 2.3
+
+          - rails: "5.0"
+            ruby: 2.4
+
+          - rails: 5.1
+            ruby: 2.5
+
+          - rails: 5.2
+            ruby: 2.5
+          - rails: 5.2
+            ruby: 2.6
+          - rails: 5.2
+            ruby: jruby
+          - rails: 5.2
+            ruby: truffleruby
+
+          - rails: "6.0"
+            ruby: 2.6
+          - rails: "6.0"
+            ruby: 2.7
+          - rails: "6.0"
+            ruby: "3.0"
+          - rails: "6.0"
+            ruby: jruby
+          - rails: "6.0"
+            ruby: truffleruby
+
+          - rails: "6.1"
+            ruby: "3.0"
+          - rails: "6.1"
+            ruby: jruby
+          - rails: "6.1"
+            ruby: truffleruby
+
+    env:
+      BUNDLE_GEMFILE: gemfiles/rails_${{ matrix.rails }}.gemfile
+      DISPLAY: ":99.0"
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          # runs 'bundle install' and caches installed gems automatically
+          bundler-cache: true
+
+      - name: Gemfile
+        run: echo $BUNDLE_GEMFILE
+
+      - name: Ruby Version
+        run: ruby --version
+
+      - name: Run Tests
+        run: bundle exec rake test

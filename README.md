@@ -1,5 +1,5 @@
 # Symmetric Encryption
-![](https://img.shields.io/gem/v/symmetric-encryption.svg) ![](https://img.shields.io/travis/rocketjob/symmetric-encryption.svg) ![](https://img.shields.io/gem/dt/symmetric-encryption.svg)  ![](https://img.shields.io/badge/status-production%20ready-blue.svg)
+[![Gem Version](https://img.shields.io/gem/v/symmetric-encryption.svg)](https://rubygems.org/gems/symmetric-encryption) [![Build Status](https://github.com/rocketjob/symmetric-encryption/workflows/build/badge.svg)](https://github.com/rocketjob/symmetric-encryption/actions?query=workflow%3Abuild) [![Downloads](https://img.shields.io/gem/dt/symmetric-encryption.svg)](https://rubygems.org/gems/symmetric-encryption) [![License](https://img.shields.io/badge/license-Apache%202.0-brightgreen.svg)](http://opensource.org/licenses/Apache-2.0) ![](https://img.shields.io/badge/status-Production%20Ready-blue.svg) [![Gitter chat](https://img.shields.io/badge/IRC%20(gitter)-Support-brightgreen.svg)](https://gitter.im/rocketjob/support)
 
 * http://github.com/rocketjob/symmetric-encryption
 
