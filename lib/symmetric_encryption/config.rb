@@ -83,7 +83,7 @@ module SymmetricEncryption
         end
     end
 
-    # Returns [Array(SymmetricEncrytion::Cipher)] ciphers specified in the configuration file.
+    # Returns [Array(SymmetricEncryption::Cipher)] ciphers specified in the configuration file.
     def ciphers
       @ciphers ||= config[:ciphers].collect { |cipher_config| Cipher.from_config(**cipher_config) }
     end
