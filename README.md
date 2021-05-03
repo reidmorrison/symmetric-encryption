@@ -3,7 +3,7 @@
 
 * https://encryption.rocketjob.io/
 
-Transparently encrypt ActiveRecord, Mongoid, and MongoMapper attributes. Encrypt passwords in configuration files. Encrypt entire files at rest.
+Transparently encrypt ActiveRecord, and Mongoid attributes. Encrypt passwords in configuration files. Encrypt entire files at rest.
 
 ## Introduction
 
