@@ -175,9 +175,7 @@ require 'symmetric_encryption/core'
 
 ## Support
 
-* Questions?
-    * Join the community chat room on Gitter for [Rocket Job Support](https://gitter.im/rocketjob/support)
-* [Report bugs](https://github.com/rocketjob/symmetric-encryption/issues)
+* [Report bugs](https://github.com/reidmorrison/symmetric-encryption/issues)
 
 ## Security
 

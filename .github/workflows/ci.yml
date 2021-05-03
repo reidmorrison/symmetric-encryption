@@ -32,8 +32,6 @@ jobs:
             ruby: 2.6
           - rails: 5.2
             ruby: jruby
-          - rails: 5.2
-            ruby: truffleruby
 
           - rails: "6.0"
             ruby: 2.6
@@ -43,15 +41,11 @@ jobs:
             ruby: "3.0"
           - rails: "6.0"
             ruby: jruby
-          - rails: "6.0"
-            ruby: truffleruby
 
           - rails: "6.1"
             ruby: "3.0"
           - rails: "6.1"
             ruby: jruby
-          - rails: "6.1"
-            ruby: truffleruby
 
     env:
       BUNDLE_GEMFILE: gemfiles/rails_${{ matrix.rails }}.gemfile
