@@ -50,6 +50,8 @@ module SymmetricEncryption
     #       This is the recommended format since newlines in the values to
     #       SQL queries are cumbersome. Also the newline reformatting is unnecessary
     #       It is not the default for backward compatibility
+    #     :base64urlsafe
+    #       Same as base64strict except that base64urlsafe uses '-' instead of '+' and '_' instead of '/'.
     #     :base64
     #       Return as a base64 encoded string
     #     :base16
