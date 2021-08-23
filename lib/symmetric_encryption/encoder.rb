@@ -6,6 +6,8 @@ module SymmetricEncryption
         Base64.new
       when :base64strict
         Base64Strict.new
+      when :base64urlsafe
+        Base64UrlSafe.new
       when :base16
         Base16.new
       when :none
@@ -61,6 +63,22 @@ module SymmetricEncryption
         return encoded_string if encoded_string.nil? || (encoded_string == "")
 
         decoded_string = ::Base64.decode64(encoded_string)
+        decoded_string.force_encoding(SymmetricEncryption::BINARY_ENCODING)
+      end
+    end
+
+    class Base64UrlSafe
+      def encode(binary_string)
+        return binary_string if binary_string.nil? || (binary_string == "")
+
+        encoded_string = ::Base64.urlsafe_encode64(binary_string)
+        encoded_string.force_encoding(SymmetricEncryption::UTF8_ENCODING)
+      end
+
+      def decode(encoded_string)
+        return encoded_string if encoded_string.nil? || (encoded_string == "")
+
+        decoded_string = ::Base64.urlsafe_decode64(encoded_string)
         decoded_string.force_encoding(SymmetricEncryption::BINARY_ENCODING)
       end
     end
