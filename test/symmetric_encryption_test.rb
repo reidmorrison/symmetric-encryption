@@ -44,7 +44,7 @@ class SymmetricEncryptionTest < Minitest::Test
       end
     end
 
-    %i[none base64 base64strict base16].each do |encoding|
+    %i[none base64 base64strict base64urlsafe base16].each do |encoding|
       describe "encoding: #{encoding}" do
         before do
           @social_security_number             = "987654321"
@@ -54,6 +54,8 @@ class SymmetricEncryptionTest < Minitest::Test
               "QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA==\n"
             when :base64strict
               "QEVuQwIAS+8X1NRrqdfEIQyFHVPuVA=="
+            when :base64urlsafe
+              "QEVuQwIAS-8X1NRrqdfEIQyFHVPuVA=="
             when :base16
               "40456e4302004bef17d4d46ba9d7c4210c851d53ee54"
             when :none
@@ -107,7 +109,7 @@ class SymmetricEncryptionTest < Minitest::Test
         end
 
         it "determine if string is encrypted" do
-          if %i[base64strict base64].include?(encoding)
+          if %i[base64strict base64urlsafe base64].include?(encoding)
             assert SymmetricEncryption.encrypted?(@social_security_number_encrypted)
             refute SymmetricEncryption.encrypted?(@social_security_number)
 

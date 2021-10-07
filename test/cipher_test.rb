@@ -40,7 +40,7 @@ class CipherTest < Minitest::Test
       end
 
       [false, true].each do |always_add_header|
-        %i[none base64 base64strict base16].each do |encoding|
+        %i[none base64 base64strict base64urlsafe base16].each do |encoding|
           describe "encoding: #{encoding} with#{'out' unless always_add_header} header" do
             before do
               @social_security_number = "987654321"
@@ -51,6 +51,10 @@ class CipherTest < Minitest::Test
                     no_header: "yTeLjsHTa8ykoO95K0KQmg==\n"
                   },
                   base64strict: {
+                    header:    "QEVuQwAAyTeLjsHTa8ykoO95K0KQmg==",
+                    no_header: "yTeLjsHTa8ykoO95K0KQmg=="
+                  },
+                  base64urlsafe: {
                     header:    "QEVuQwAAyTeLjsHTa8ykoO95K0KQmg==",
                     no_header: "yTeLjsHTa8ykoO95K0KQmg=="
                   },

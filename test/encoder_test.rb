@@ -4,18 +4,20 @@ require_relative "test_helper"
 #
 class EncoderTest < Minitest::Test
   describe SymmetricEncryption::Encoder do
-    %i[none base64 base64strict base16].each do |encoding|
+    %i[none base64 base64strict base64urlsafe base16].each do |encoding|
       describe "encoding: #{encoding}" do
         before do
-          @data         = "987654321"
+          @data         = "987654321ts?>>>"
           @data_encoded =
             case encoding
             when :base64
-              "OTg3NjU0MzIx\n"
+              "OTg3NjU0MzIxdHM/Pj4+\n"
             when :base64strict
-              "OTg3NjU0MzIx"
+              "OTg3NjU0MzIxdHM/Pj4+"
+            when :base64urlsafe
+              "OTg3NjU0MzIxdHM_Pj4-"
             when :base16
-              "393837363534333231"
+              "39383736353433323174733f3e3e3e"
             when :none
               @data
             end
