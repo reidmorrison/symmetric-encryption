@@ -21,8 +21,6 @@ expose all the encryption algorithms supported by OpenSSL.
 
 [Symmetric Encryption Guide](https://encryption.rocketjob.io/)
 
-[Reference Documentation](http://www.rubydoc.info/gems/symmetric-encryption/)
-
 ## Rocket Job
 
 Checkout the sister project [Rocket Job](http://rocketjob.io): Ruby's missing batch system.
