@@ -1,0 +1,18 @@
+version: 2.1
+
+orbs:
+  gem: goldstar/publish-gem@1.3.0
+
+workflows:
+  main:
+    jobs:
+      - gem/test
+      - gem/build-and-deploy:
+          context: packagecloud
+          requires:
+            - gem/test
+          filters:
+            branches:
+              only: master
+          packagecloud-repo: goldstar/production
+
