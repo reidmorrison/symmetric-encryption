@@ -27,7 +27,7 @@ module SymmetricEncryption
 
     # Reads the entire configuration for all environments from the supplied file name.
     def self.read_file(file_name)
-      config = YAML.load(ERB.new(File.new(file_name).read).result)
+      config = load_yaml(file_name)
       config = deep_symbolize_keys(config)
       config.each_pair { |_env, cfg| SymmetricEncryption::Config.send(:migrate_old_formats!, cfg) }
       config
@@ -75,7 +75,7 @@ module SymmetricEncryption
         begin
           raise(ConfigError, "Cannot find config file: #{file_name}") unless File.exist?(file_name)
 
-          env_config = YAML.load(ERB.new(File.new(file_name).read).result)[env]
+          env_config = self.class.send(:load_yaml, file_name)[env]
           raise(ConfigError, "Cannot find environment: #{env} in config file: #{file_name}") unless env_config
 
           env_config = self.class.send(:deep_symbolize_keys, env_config)
@@ -163,5 +163,12 @@ module SymmetricEncryption
     end
 
     private_class_method :migrate_old_formats!
+
+    def self.load_yaml(file_name)
+      options = RUBY_VERSION >= "3.1.0" ? { aliases: true } : {}
+      YAML.load(ERB.new(File.new(file_name).read).result, **options)
+    end
+
+    private_class_method :load_yaml
   end
 end
