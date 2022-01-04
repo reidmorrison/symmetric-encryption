@@ -63,7 +63,7 @@ module SymmetricEncryption
               type:      type,
               compress:  compress
             )
-            encrypted_attributes[attribute.to_sym] = "encrypted_#{attribute}".to_sym
+            symmetric_encrypted_attributes[attribute.to_sym] = "encrypted_#{attribute}".to_sym
           end
         end
 
@@ -76,21 +76,21 @@ module SymmetricEncryption
         #     attr_encrypted :email
         #   end
         #
-        #   User.encrypted_attributes  =>  { email: encrypted_email }
-        def encrypted_attributes
-          @encrypted_attributes ||= superclass.respond_to?(:encrypted_attributes) ? superclass.encrypted_attributes.dup : {}
+        #   User.symmetric_encrypted_attributes  =>  { email: encrypted_email }
+        def symmetric_encrypted_attributes
+          @symmetric_encrypted_attributes ||= superclass.respond_to?(:symmetric_encrypted_attributes) ? superclass.symmetric_encrypted_attributes.dup : {}
         end
 
         # Return the name of all encrypted virtual attributes as an Array of symbols
         # Example: [:email, :password]
         def encrypted_keys
-          @encrypted_keys ||= encrypted_attributes.keys
+          @encrypted_keys ||= symmetric_encrypted_attributes.keys
         end
 
         # Return the name of all encrypted columns as an Array of symbols
         # Example: [:encrypted_email, :encrypted_password]
         def encrypted_columns
-          @encrypted_columns ||= encrypted_attributes.values
+          @encrypted_columns ||= symmetric_encrypted_attributes.values
         end
 
         # Returns whether an attribute has been configured to be encrypted
