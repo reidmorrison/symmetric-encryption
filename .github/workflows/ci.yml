@@ -17,12 +17,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - rails: 4.2
-            ruby: 2.3
-
-          - rails: "5.0"
-            ruby: 2.4
-
           - rails: 5.1
             ruby: 2.5
 

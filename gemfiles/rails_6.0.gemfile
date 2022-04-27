@@ -3,8 +3,9 @@
 source "https://rubygems.org"
 
 gem "activerecord", "~> 6.0.0"
-gem "activerecord-jdbcsqlite3-adapter", "~> 60.0", platform: :jruby
+gem "mongoid", "~> 7.2.0"
 gem "sqlite3", "~> 1.4.0", platform: :ruby
+gem "google-cloud-kms", platform: :ruby
 gem "amazing_print"
 gem "appraisal"
 gem "minitest"
@@ -12,7 +13,7 @@ gem "minitest-stub_any_instance"
 gem "rake"
 gem "highline"
 gem "aws-sdk-kms"
-gem "mongoid", "~> 7.2.0"
+gem "activerecord-jdbcsqlite3-adapter", "~> 60.0", platform: :jruby
 
 group :development do
   gem "rubocop"
