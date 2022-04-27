@@ -93,6 +93,8 @@ which requires the encrypted column name in the database to begin with `encrypte
 Note: When using Rails 5, it is recommended to use the Active Record attribute type approach detailed above. 
 However, the approach below using `attr_encrypted` is still fully supported.
 
+Note: As of Rails 7 this approach is no longer supported, see the Active Record attribute type approach detailed above.
+
 Example: Model `Person` has an encrypted attribute called `name` of type string.
 
 ~~~ruby

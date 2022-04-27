@@ -47,6 +47,11 @@ jobs:
           - rails: "6.1"
             ruby: jruby
 
+          - rails: "6.1"
+            ruby: "3.1"
+          - rails: "7.0"
+            ruby: "3.1"
+
     env:
       BUNDLE_GEMFILE: gemfiles/rails_${{ matrix.rails }}.gemfile
       DISPLAY: ":99.0"
