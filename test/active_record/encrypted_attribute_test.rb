@@ -107,6 +107,24 @@ class EncryptedAttributeTest < Minitest::Test
       refute_equal iv1, iv2
     end
 
+    it "reports whether it has changed" do
+      person.name # Call field so decryption happens
+      assert !person.name_changed?
+
+      person.name = "Abcde fghij"
+      assert person.name_changed?
+    end
+
+    it "reports whether it has changed since last save" do
+      person.reload
+      person.name # Call field so decryption happens
+      assert !person.saved_change_to_name?
+
+      person.update!(address: "Some other test value")
+      assert !person.saved_change_to_name?
+      assert person.saved_change_to_address?
+    end
+
     describe "types" do
       it "serializes" do
         assert_equal person_name, person.name
