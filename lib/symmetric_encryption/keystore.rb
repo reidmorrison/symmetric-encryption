@@ -220,8 +220,7 @@ module SymmetricEncryption
 
       # Migrate old encrypted_iv
       if (encrypted_iv = config.delete(:encrypted_iv)) && private_rsa_key
-        encrypted_iv = RSAKey.new(private_rsa_key).decrypt(encrypted_iv)
-        config[:iv]  = ::Base64.decode64(encrypted_iv)
+        config[:iv] = RSAKey.new(private_rsa_key).decrypt(::Base64.decode64(encrypted_iv))
       end
 
       # Migrate old iv_filename
