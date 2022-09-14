@@ -1,6 +1,6 @@
 require_relative "test_helper"
 
-if ActiveRecord.version <= Gem::Version.new("7.0.0")
+if ActiveRecord.version <= Gem::Version.new("7.0.4")
 
   ActiveRecord::Base.configurations = YAML.safe_load(ERB.new(IO.read("test/config/database.yml")).result)
   ActiveRecord::Base.establish_connection(:test)
