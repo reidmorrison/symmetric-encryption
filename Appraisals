@@ -30,8 +30,8 @@ appraise "rails_6.1" do
   gem "google-cloud-kms", platform: :ruby
 end
 
-appraise "rails_7.0" do
-  gem "activerecord", "~> 7.0"
+appraise "rails_7.0.4" do
+  gem "activerecord", "~> 7.0.4"
   gem "mongoid", "~> 7.4.0"
   gem "sqlite3", "~> 1.4.0", platform: :ruby
   gem "google-cloud-kms", platform: :ruby

@@ -2,7 +2,7 @@ source "https://rubygems.org"
 
 gemspec
 
-gem "activerecord", "~> 7.0"
+gem "activerecord", "~> 7.0.4"
 gem "mongoid", "~> 7.4.0"
 gem "sqlite3", "~> 1.4.0", platform: :ruby
 gem "google-cloud-kms", platform: :ruby

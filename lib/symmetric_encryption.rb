@@ -18,7 +18,7 @@ begin
     end
 
     # Remove old way of defining attributes with Rails 7 since it conflicts with the method names.
-    if ActiveRecord.version <= Gem::Version.new("7.0.0")
+    if ActiveRecord.version <= Gem::Version.new("7.0.4")
       ActiveRecord::Base.include(SymmetricEncryption::ActiveRecord::AttrEncrypted)
     end
   end
