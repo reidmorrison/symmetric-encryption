@@ -2,82 +2,82 @@ require_relative "test_helper"
 
 if ActiveRecord.version <= Gem::Version.new("7.0.0")
 
-  ActiveRecord::Base.configurations = YAML.safe_load(ERB.new(IO.read("test/config/database.yml")).result)
+  ActiveRecord::Base.configurations = YAML.safe_load(ERB.new(File.read("test/config/database.yml")).result)
   ActiveRecord::Base.establish_connection(:test)
 
   # @formatter:off
-ActiveRecord::Schema.define version: 0 do
-  create_table :users, force: true do |t|
-    t.string :encrypted_bank_account_number
-    t.string :encrypted_social_security_number
-    t.string :encrypted_string_value
-    t.text   :encrypted_long_string_value
-    t.text   :encrypted_binary_string_value
-    t.text   :encrypted_data_yaml
-    t.text   :encrypted_data_json
-    t.string :name
-    t.string :encrypted_unsupported_option
+  ActiveRecord::Schema.define version: 0 do
+    create_table :users, force: true do |t|
+      t.string :encrypted_bank_account_number
+      t.string :encrypted_social_security_number
+      t.string :encrypted_string_value
+      t.text   :encrypted_long_string_value
+      t.text   :encrypted_binary_string_value
+      t.text   :encrypted_data_yaml
+      t.text   :encrypted_data_json
+      t.string :name
+      t.string :encrypted_unsupported_option
 
-    t.string :encrypted_integer_value
-    t.string :encrypted_float_value
-    t.string :encrypted_decimal_value
-    t.string :encrypted_datetime_value
-    t.string :encrypted_time_value
-    t.string :encrypted_date_value
-    t.string :encrypted_true_value
-    t.string :encrypted_false_value
+      t.string :encrypted_integer_value
+      t.string :encrypted_float_value
+      t.string :encrypted_decimal_value
+      t.string :encrypted_datetime_value
+      t.string :encrypted_time_value
+      t.string :encrypted_date_value
+      t.string :encrypted_true_value
+      t.string :encrypted_false_value
 
-    t.string :encrypted_text
-    t.string :encrypted_number
+      t.string :encrypted_text
+      t.string :encrypted_number
+    end
+
+    create_table :unique_users, force: true do |t|
+      t.string :encrypted_email
+      t.string :encrypted_username
+    end
   end
 
-  create_table :unique_users, force: true do |t|
-    t.string :encrypted_email
-    t.string :encrypted_username
+  class User < ActiveRecord::Base
+    attr_encrypted :bank_account_number,    random_iv: false
+    attr_encrypted :social_security_number, random_iv: false
+    attr_encrypted :string_value,           random_iv: true
+    attr_encrypted :long_string_value,      random_iv: true, compress: true
+    attr_encrypted :binary_string_value,    random_iv: true, compress: true
+    attr_encrypted :data_yaml,              random_iv: true, compress: true, type: :yaml
+    attr_encrypted :data_json,              random_iv: true, compress: true, type: :json
+
+    attr_encrypted :integer_value,  type: :integer,  random_iv: true
+    attr_encrypted :float_value,    type: :float,    random_iv: true
+    attr_encrypted :decimal_value,  type: :decimal,  random_iv: true
+    attr_encrypted :datetime_value, type: :datetime, random_iv: true
+    attr_encrypted :time_value,     type: :time,     random_iv: true
+    attr_encrypted :date_value,     type: :date,     random_iv: true
+    attr_encrypted :true_value,     type: :boolean,  random_iv: true
+    attr_encrypted :false_value,    type: :boolean,  random_iv: true
+
+    validates :encrypted_bank_account_number,    symmetric_encryption: true
+    validates :encrypted_social_security_number, symmetric_encryption: true
+
+    attr_encrypted :text,           type: :string,  random_iv: true
+    attr_encrypted :number,         type: :integer, random_iv: true
+
+    validates      :text, format: {with: /\A[a-zA-Z ]+\z/, message: "only allows letters"}, presence: true
+    validates      :number, presence: true
   end
-end
 
-class User < ActiveRecord::Base
-  attr_encrypted :bank_account_number,    random_iv: false
-  attr_encrypted :social_security_number, random_iv: false
-  attr_encrypted :string_value,           random_iv: true
-  attr_encrypted :long_string_value,      random_iv: true, compress: true
-  attr_encrypted :binary_string_value,    random_iv: true, compress: true
-  attr_encrypted :data_yaml,              random_iv: true, compress: true, type: :yaml
-  attr_encrypted :data_json,              random_iv: true, compress: true, type: :json
+  class UniqueUser < ActiveRecord::Base
+    attr_encrypted :email, random_iv: false
+    attr_encrypted :username, random_iv: false
 
-  attr_encrypted :integer_value,  type: :integer,  random_iv: true
-  attr_encrypted :float_value,    type: :float,    random_iv: true
-  attr_encrypted :decimal_value,  type: :decimal,  random_iv: true
-  attr_encrypted :datetime_value, type: :datetime, random_iv: true
-  attr_encrypted :time_value,     type: :time,     random_iv: true
-  attr_encrypted :date_value,     type: :date,     random_iv: true
-  attr_encrypted :true_value,     type: :boolean,  random_iv: true
-  attr_encrypted :false_value,    type: :boolean,  random_iv: true
+    validates_uniqueness_of :encrypted_email,    allow_blank: true, if: :encrypted_email_changed?
+    validates_uniqueness_of :encrypted_username, allow_blank: true, if: :encrypted_username_changed?
 
-  validates :encrypted_bank_account_number,    symmetric_encryption: true
-  validates :encrypted_social_security_number, symmetric_encryption: true
-
-  attr_encrypted :text,           type: :string,  random_iv: true
-  attr_encrypted :number,         type: :integer, random_iv: true
-
-  validates      :text, format: {with: /\A[a-zA-Z ]+\z/, message: "only allows letters"}, presence: true
-  validates      :number, presence: true
-end
-
-class UniqueUser < ActiveRecord::Base
-  attr_encrypted :email, random_iv: false
-  attr_encrypted :username, random_iv: false
-
-  validates_uniqueness_of :encrypted_email,    allow_blank: true, if: :encrypted_email_changed?
-  validates_uniqueness_of :encrypted_username, allow_blank: true, if: :encrypted_username_changed?
-
-  validates :username,
-            length:      {in: 3..20},
-            format:      {with: /\A[\w\-]+\z/},
-            allow_blank: true
-end
-# @formatter:on
+    validates :username,
+              length:      {in: 3..20},
+              format:      {with: /\A[\w\-]+\z/},
+              allow_blank: true
+  end
+  # @formatter:on
 
   #
   # Unit Test for attr_encrypted extensions in ActiveRecord
@@ -121,26 +121,26 @@ end
       let :user do
         User.new(
           # Encrypted Attribute
-          bank_account_number: bank_account_number,
+          bank_account_number:    bank_account_number,
           # Encrypted Attribute
           social_security_number: social_security_number,
           name:                   person_name,
           # data type specific fields
-          string_value:        STRING_VALUE,
-          long_string_value:   LONG_STRING_VALUE,
-          binary_string_value: BINARY_STRING_VALUE,
-          integer_value:       INTEGER_VALUE,
-          float_value:         FLOAT_VALUE,
-          decimal_value:       DECIMAL_VALUE,
-          datetime_value:      DATETIME_VALUE,
-          time_value:          TIME_VALUE,
-          date_value:          DATE_VALUE,
-          true_value:          true,
-          false_value:         false,
-          data_yaml:           hash_data.dup,
-          data_json:           hash_data.dup,
-          text:                "hello",
-          number:              "21"
+          string_value:           STRING_VALUE,
+          long_string_value:      LONG_STRING_VALUE,
+          binary_string_value:    BINARY_STRING_VALUE,
+          integer_value:          INTEGER_VALUE,
+          float_value:            FLOAT_VALUE,
+          decimal_value:          DECIMAL_VALUE,
+          datetime_value:         DATETIME_VALUE,
+          time_value:             TIME_VALUE,
+          date_value:             DATE_VALUE,
+          true_value:             true,
+          false_value:            false,
+          data_yaml:              hash_data.dup,
+          data_json:              hash_data.dup,
+          text:                   "hello",
+          number:                 "21"
         )
       end
 
@@ -438,18 +438,18 @@ end
 
           [
             # @formatter:off
-          {attribute: :integer_value,       klass: Integer,    value: INTEGER_VALUE,       new_value: 98},
-          {attribute: :float_value,         klass: Float,      value: FLOAT_VALUE,         new_value: 45.4321},
-          {attribute: :decimal_value,       klass: BigDecimal, value: DECIMAL_VALUE,       new_value: BigDecimal("99.95"), coercible: "22.51"},
-          {attribute: :datetime_value,      klass: DateTime,   value: DATETIME_VALUE,      new_value: DateTime.new(1998, 10, 21, 8, 33, 28, "+5"), coercible: DATETIME_VALUE.to_time},
-          {attribute: :time_value,          klass: Time,       value: TIME_VALUE,          new_value: Time.new(2000, 1, 1, 22, 30, 0, "-04:00")},
-          {attribute: :date_value,          klass: Date,       value: DATE_VALUE,          new_value: Date.new(2027, 4, 2), coercible: DATE_VALUE.to_time},
-          {attribute: :true_value,          klass: TrueClass,  value: true,                new_value: false},
-          {attribute: :false_value,         klass: FalseClass, value: false,               new_value: true},
-          {attribute: :string_value,        klass: String,     value: STRING_VALUE,        new_value: "Hello World"},
-          {attribute: :long_string_value,   klass: String,     value: LONG_STRING_VALUE,   new_value: "A Really long Hello World"},
-          {attribute: :binary_string_value, klass: String,     value: BINARY_STRING_VALUE, new_value: "A new Non-UTF8 Binary \x92 string".force_encoding("BINARY")}
-          # @formatter:on
+            {attribute: :integer_value, klass: Integer, value: INTEGER_VALUE, new_value: 98},
+            {attribute: :float_value,         klass: Float,      value: FLOAT_VALUE,         new_value: 45.4321},
+            {attribute: :decimal_value,       klass: BigDecimal, value: DECIMAL_VALUE,       new_value: BigDecimal("99.95"), coercible: "22.51"},
+            {attribute: :datetime_value,      klass: DateTime,   value: DATETIME_VALUE,      new_value: DateTime.new(1998, 10, 21, 8, 33, 28, "+5"), coercible: DATETIME_VALUE.to_time},
+            {attribute: :time_value,          klass: Time,       value: TIME_VALUE,          new_value: Time.new(2000, 1, 1, 22, 30, 0, "-04:00")},
+            {attribute: :date_value,          klass: Date,       value: DATE_VALUE,          new_value: Date.new(2027, 4, 2), coercible: DATE_VALUE.to_time},
+            {attribute: :true_value,          klass: TrueClass,  value: true,                new_value: false},
+            {attribute: :false_value,         klass: FalseClass, value: false,               new_value: true},
+            {attribute: :string_value,        klass: String,     value: STRING_VALUE,        new_value: "Hello World"},
+            {attribute: :long_string_value,   klass: String,     value: LONG_STRING_VALUE,   new_value: "A Really long Hello World"},
+            {attribute: :binary_string_value, klass: String,     value: BINARY_STRING_VALUE, new_value: "A new Non-UTF8 Binary \x92 string".force_encoding("BINARY")}
+            # @formatter:on
           ].each do |value_test|
             describe "#{value_test[:klass]} values" do
               before do

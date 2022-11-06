@@ -27,7 +27,8 @@ module SymmetricEncryption
         }
       end
 
-      def initialize(key_file:, app_name: nil, environment: nil, key_encrypting_key: nil, crypto_key: nil, project_id: nil, credentials: nil, location_id: nil)
+      def initialize(key_file:, app_name: nil, environment: nil, key_encrypting_key: nil, crypto_key: nil, project_id: nil,
+                     credentials: nil, location_id: nil)
         @crypto_key  = crypto_key
         @app_name    = app_name
         @environment = environment
@@ -69,14 +70,14 @@ module SymmetricEncryption
       end
 
       def project_id
-        @project_id ||= ENV["GOOGLE_CLOUD_PROJECT"]
+        @project_id ||= ENV.fetch("GOOGLE_CLOUD_PROJECT", nil)
         raise "GOOGLE_CLOUD_PROJECT must be set" if @project_id.nil?
 
         @project_id
       end
 
       def credentials
-        @credentials ||= ENV["GOOGLE_CLOUD_KEYFILE"]
+        @credentials ||= ENV.fetch("GOOGLE_CLOUD_KEYFILE", nil)
         raise "GOOGLE_CLOUD_KEYFILE must be set" if @credentials.nil?
 
         @credentials

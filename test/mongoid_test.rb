@@ -503,7 +503,7 @@ begin
           before do
             # JSON Does not support symbols, so they will come back as strings
             # Convert symbols to string in the test
-            @h.keys.each do |k|
+            @h.each_key do |k|
               @h[k.to_s] = @h[k]
               @h.delete(k)
             end

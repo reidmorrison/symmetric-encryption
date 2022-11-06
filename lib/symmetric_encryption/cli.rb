@@ -19,7 +19,7 @@ module SymmetricEncryption
       @environment      = ENV["SYMMETRIC_ENCRYPTION_ENV"] || ENV["RACK_ENV"] || ENV["RAILS_ENV"] || "development"
       @config_file_path = File.expand_path(ENV["SYMMETRIC_ENCRYPTION_CONFIG"] || "config/symmetric-encryption.yml")
       @app_name         = "symmetric-encryption"
-      @key_path         = "#{ENV['HOME']}/.symmetric-encryption"
+      @key_path         = "#{Dir.home}/.symmetric-encryption"
       @cipher_name      = "aes-256-cbc"
       @rolling_deploy   = false
       @prompt           = false
@@ -84,11 +84,11 @@ module SymmetricEncryption
         BANNER
 
         opts.on "-e", "--encrypt [FILE_NAME]", "Encrypt a file, or read from stdin if no file name is supplied." do |file_name|
-          @encrypt = file_name || STDIN
+          @encrypt = file_name || $stdin
         end
 
         opts.on "-d", "--decrypt [FILE_NAME]", "Decrypt a file, or read from stdin if no file name is supplied." do |file_name|
-          @decrypt = file_name || STDIN
+          @decrypt = file_name || $stdin
         end
 
         opts.on "-o", "--output FILE_NAME",
@@ -228,7 +228,7 @@ module SymmetricEncryption
 
       config_file_does_not_exist!
       self.environments ||= %i[development test release production]
-      args = {
+      args              = {
         app_name:     app_name,
         environments: environments,
         cipher_name:  cipher_name
@@ -253,15 +253,24 @@ module SymmetricEncryption
       end
 
       config = Config.read_file(config_file_path)
-      SymmetricEncryption::Keystore.rotate_keys!(config, environments: environments || [], app_name: app_name,
-rolling_deploy: rolling_deploy, keystore: keystore)
+      SymmetricEncryption::Keystore.rotate_keys!(
+        config,
+        environments:   environments || [],
+        app_name:       app_name,
+        rolling_deploy: rolling_deploy,
+        keystore:       keystore
+      )
       Config.write_file(config_file_path, config)
       puts "Existing configuration file updated with new keys: #{config_file_path}"
     end
 
     def run_rotate_kek
       config = Config.read_file(config_file_path)
-      SymmetricEncryption::Keystore.rotate_key_encrypting_keys!(config, environments: environments || [], app_name: app_name)
+      SymmetricEncryption::Keystore.rotate_key_encrypting_keys!(
+        config,
+        environments: environments || [],
+        app_name:     app_name
+      )
       Config.write_file(config_file_path, config)
       puts "Existing configuration file updated with new key encrypting keys: #{config_file_path}"
     end
@@ -297,12 +306,20 @@ rolling_deploy: rolling_deploy, keystore: keystore)
     end
 
     def encrypt_file(input_file_name)
-      SymmetricEncryption::Writer.encrypt(source: input_file_name, target: output_file_name || STDOUT, compress: compress,
-version: version)
+      SymmetricEncryption::Writer.encrypt(
+        source:   input_file_name,
+        target:   output_file_name || $stdout,
+        compress: compress,
+        version:  version
+      )
     end
 
     def decrypt_file(input_file_name)
-      SymmetricEncryption::Reader.decrypt(source: input_file_name, target: output_file_name || STDOUT, version: version)
+      SymmetricEncryption::Reader.decrypt(
+        source:  input_file_name,
+        target:  output_file_name || $stdout,
+        version: version
+      )
     end
 
     def decrypt_string
@@ -327,8 +344,8 @@ version: version)
         puts("\nPlease install gem highline before using the command line task to encrypt an entered string.\n   gem install \"highline\"\n\n")
         exit(-2)
       end
-      value1 = nil
-      value2 = 0
+      value1    = nil
+      value2    = 0
 
       while value1 != value2
         value1 = HighLine.new.ask("Enter the value to encrypt:") { |q| q.echo = "*" }

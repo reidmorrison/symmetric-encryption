@@ -362,7 +362,7 @@ module SymmetricEncryption
     end
 
     def closed?
-      @closed || @ios.respond_to?(:closed?) && @ios.closed?
+      @closed || (@ios.respond_to?(:closed?) && @ios.closed?)
     end
   end
 end

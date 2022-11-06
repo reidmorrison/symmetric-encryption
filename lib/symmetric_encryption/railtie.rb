@@ -1,5 +1,5 @@
-module SymmetricEncryption #:nodoc:
-  class Railtie < Rails::Railtie #:nodoc:
+module SymmetricEncryption # :nodoc:
+  class Railtie < Rails::Railtie # :nodoc:
     # Exposes Symmetric Encryption's configuration to the Rails application configuration.
     #
     # @example Set up configuration in the Rails app.
@@ -31,7 +31,7 @@ module SymmetricEncryption #:nodoc:
       unless ::SymmetricEncryption.cipher?
         parent_method = Module.method_defined?(:module_parent) ? "module_parent" : "parent"
         app_name      = Rails::Application.subclasses.first.send(parent_method).to_s.underscore
-        env_var       = ENV["SYMMETRIC_ENCRYPTION_CONFIG"]
+        env_var       = ENV.fetch("SYMMETRIC_ENCRYPTION_CONFIG", nil)
         config_file   =
           if env_var
             Pathname.new(File.expand_path(env_var))

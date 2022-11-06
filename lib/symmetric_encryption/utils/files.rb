@@ -36,7 +36,7 @@ module SymmetricEncryption
 
       # Read from the file, raising an exception if it is not found
       def read_from_file(file_name)
-        ::File.open(file_name, "rb", &:read)
+        ::File.binread(file_name)
       rescue Errno::ENOENT
         raise(SymmetricEncryption::ConfigError, "Symmetric Encryption key file: '#{file_name}' not found or readable")
       end

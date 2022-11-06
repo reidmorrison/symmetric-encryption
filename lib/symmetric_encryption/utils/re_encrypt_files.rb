@@ -55,7 +55,7 @@ module SymmetricEncryption
         lines              = File.read(file_name)
         hits, output_lines = re_encrypt_lines(lines)
 
-        File.open(file_name, "wb") { |file| file.write(output_lines) } if hits.positive?
+        File.binwrite(file_name, output_lines) if hits.positive?
         hits
       end
 

@@ -6,7 +6,7 @@ module SymmetricEncryption
     class AwsTest < Minitest::Test
       describe SymmetricEncryption::Keystore::File do
         before do
-          unless (ENV["AWS_ACCESS_KEY_ID"] && ENV["AWS_SECRET_ACCESS_KEY"]) || ENV["AWS_CONFIG_FILE"]
+          unless (ENV.fetch("AWS_ACCESS_KEY_ID", nil) && ENV.fetch("AWS_SECRET_ACCESS_KEY", nil)) || ENV["AWS_CONFIG_FILE"]
             # For example: export AWS_CONFIG_FILE=~/.aws/credentials
             skip "Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, or AWS_CONFIG_FILE to run AWS KMS tests"
           end

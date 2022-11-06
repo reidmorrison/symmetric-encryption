@@ -46,11 +46,11 @@ class CipherTest < Minitest::Test
               @social_security_number = "987654321"
               @encrypted_values       = {
                 "aes-128-cbc" => {
-                  base64:       {
+                  base64:        {
                     header:    "QEVuQwAAyTeLjsHTa8ykoO95K0KQmg==\n",
                     no_header: "yTeLjsHTa8ykoO95K0KQmg==\n"
                   },
-                  base64strict: {
+                  base64strict:  {
                     header:    "QEVuQwAAyTeLjsHTa8ykoO95K0KQmg==",
                     no_header: "yTeLjsHTa8ykoO95K0KQmg=="
                   },
@@ -58,11 +58,11 @@ class CipherTest < Minitest::Test
                     header:    "QEVuQwAAyTeLjsHTa8ykoO95K0KQmg==",
                     no_header: "yTeLjsHTa8ykoO95K0KQmg=="
                   },
-                  base16:       {
+                  base16:        {
                     header:    "40456e430000c9378b8ec1d36bcca4a0ef792b42909a",
                     no_header: "c9378b8ec1d36bcca4a0ef792b42909a"
                   },
-                  none:         {
+                  none:          {
                     header:    "@EnC\x00\x00\xC97\x8B\x8E\xC1\xD3k\xCC\xA4\xA0\xEFy+B\x90\x9A",
                     no_header: "\xC97\x8B\x8E\xC1\xD3k\xCC\xA4\xA0\xEFy+B\x90\x9A"
                   }

@@ -204,7 +204,7 @@ module SymmetricEncryption
 
     # Returns [true|false] whether this stream is closed.
     def closed?
-      @closed || @ios.respond_to?(:closed?) && @ios.closed?
+      @closed || (@ios.respond_to?(:closed?) && @ios.closed?)
     end
 
     # Returns [Integer] the number of unencrypted and uncompressed bytes

@@ -18,8 +18,8 @@ class WriterTest < Minitest::Test
     end
 
     after do
-      File.delete(@file_name) if File.exist?(@file_name)
-      File.delete(@source_file_name) if File.exist?(@source_file_name)
+      FileUtils.rm_f(@file_name)
+      FileUtils.rm_f(@source_file_name)
     end
 
     [true, false, nil].each do |compress|
@@ -67,7 +67,7 @@ class WriterTest < Minitest::Test
           end
 
           it "file" do
-            File.open(@source_file_name, "wb") { |f| f.write(@data_str) }
+            File.binwrite(@source_file_name, @data_str)
             source_bytes = SymmetricEncryption::Writer.encrypt(source: @source_file_name, target: @file_name, compress: compress)
             assert_equal @data_len, source_bytes
             assert_equal @data_str, SymmetricEncryption::Reader.read(@file_name)

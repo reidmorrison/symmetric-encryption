@@ -54,15 +54,15 @@ module SymmetricEncryption
         end
         unless correct_permissions?
           raise(SymmetricEncryption::ConfigError,
-                "Symmetric Encryption key file '#{file_name}' has the wrong "\
+                "Symmetric Encryption key file '#{file_name}' has the wrong " \
                 "permissions: #{::File.stat(file_name).mode.to_s(8)}. Expected 100600 or 100400.")
         end
         unless owned?
           raise(SymmetricEncryption::ConfigError,
-                "Symmetric Encryption key file '#{file_name}' has the wrong "\
-                "owner (#{stat.uid}) or group (#{stat.gid}). "\
-                "Expected it to be owned by current user "\
-                "#{ENV['USER'] || ENV['USERNAME']}.")
+                "Symmetric Encryption key file '#{file_name}' has the wrong " \
+                "owner (#{stat.uid}) or group (#{stat.gid}). " \
+                "Expected it to be owned by current user " \
+                "#{ENV['USER'] || ENV.fetch('USERNAME', nil)}.")
         end
 
         data = read_from_file(file_name)

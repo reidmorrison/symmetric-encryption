@@ -271,7 +271,7 @@ class ReaderTest < Minitest::Test
       end
 
       after do
-        File.delete(@file_name) if File.exist?(@file_name)
+        FileUtils.rm_f(@file_name)
       end
 
       it "decrypt from file in a single read" do
@@ -309,12 +309,10 @@ class ReaderTest < Minitest::Test
       end
 
       after do
-        begin
-          File.delete(@file_name) if File.exist?(@file_name)
-        rescue Errno::EACCES
-          # Required for Windows
-          nil
-        end
+        FileUtils.rm_f(@file_name)
+      rescue Errno::EACCES
+        # Required for Windows
+        nil
       end
 
       it "decrypt from file in a single read" do

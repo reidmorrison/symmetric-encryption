@@ -233,9 +233,9 @@ module SymmetricEncryption
       config[:key_encrypting_key] = RSAKey.new(private_rsa_key) if private_rsa_key
 
       # Migrate old encrypted_key to new binary format
-      if (encrypted_key = config[:encrypted_key]) && private_rsa_key
-        config[:encrypted_key] = ::Base64.decode64(encrypted_key)
-      end
+      return unless (encrypted_key = config[:encrypted_key]) && private_rsa_key
+
+      config[:encrypted_key] = ::Base64.decode64(encrypted_key)
     end
   end
 end

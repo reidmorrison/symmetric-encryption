@@ -38,7 +38,7 @@ module SymmetricEncryption
       when :string
         value
       when :json
-        JSON.load(value)
+        JSON.parse(value)
       when :yaml
         YAML.load(value)
       else

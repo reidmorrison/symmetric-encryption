@@ -57,7 +57,7 @@ module SymmetricEncryption
       unless file_name
         root      = defined?(Rails) ? Rails.root : "."
         file_name =
-          if (env_var = ENV["SYMMETRIC_ENCRYPTION_CONFIG"])
+          if (env_var = ENV.fetch("SYMMETRIC_ENCRYPTION_CONFIG", nil))
             File.expand_path(env_var)
           else
             File.join(root, "config", "symmetric-encryption.yml")
@@ -131,7 +131,7 @@ module SymmetricEncryption
       # Inline single cipher before :ciphers
       unless config.key?(:ciphers)
         inline_cipher = {}
-        config.keys.each { |key| inline_cipher[key] = config.delete(key) }
+        config.each_key { |key| inline_cipher[key] = config.delete(key) }
         config[:ciphers] = [inline_cipher]
       end
 

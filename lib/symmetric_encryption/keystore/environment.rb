@@ -39,7 +39,7 @@ module SymmetricEncryption
 
       # Returns the Encryption key in the clear.
       def read
-        encrypted = ENV[key_env_var]
+        encrypted = ENV.fetch(key_env_var, nil)
         raise "The Environment Variable #{key_env_var} must be set with the encrypted encryption key." unless encrypted
 
         binary = encoder.decode(encrypted)

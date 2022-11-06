@@ -116,10 +116,10 @@ module SymmetricEncryption
         @key_files        = key_files
         @master_key_alias = master_key_alias
         @region           = region || ENV["AWS_REGION"] || ENV["AWS_DEFAULT_REGION"] || ::Aws.config[:region]
-        if key_encrypting_key
-          raise(SymmetricEncryption::ConfigError,
-                "AWS KMS keystore encrypts the key itself, so does not support supplying a key_encrypting_key")
-        end
+        return unless key_encrypting_key
+
+        raise(SymmetricEncryption::ConfigError,
+              "AWS KMS keystore encrypts the key itself, so does not support supplying a key_encrypting_key")
       end
 
       # Reads the data key environment variable, if present, otherwise a file.
