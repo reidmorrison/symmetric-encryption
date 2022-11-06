@@ -85,7 +85,7 @@ by adding the option:
 #### Note
 
 The column name in the database matches the name of the attribute in the model. 
-This differs to using the `attr_enccypted` approach described below for use with Rails 3 and 4, 
+This differs to using the `attr_encrypted` approach described below for use with Rails 3 and 4, 
 which requires the encrypted column name in the database to begin with `encrypted_`.
 
 ### Rails 3 and 4
