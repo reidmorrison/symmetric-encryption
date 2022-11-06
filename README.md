@@ -27,6 +27,13 @@ Checkout the sister project [Rocket Job](http://rocketjob.io): Ruby's missing ba
 
 Fully supports Symmetric Encryption to encrypt data in flight and at rest while running jobs in the background.
 
+## Upgrading to Rails V7
+
+There is a method naming conflict with Rails 7, which has its own `encrypted_attributes` method.
+
+As a result the older `attr_encrypted` mechanism is no longer available with Rails 7. 
+Migrate the use of `attr_encrypted` to `attribute` as described in the [Frameworks Guide](https://encryption.rocketjob.io/frameworks.html).
+
 ## Upgrading to SymmetricEncryption V4
 
 Version 4 of Symmetric Encryption has completely adopted the Ruby keyword arguments on most API's where
