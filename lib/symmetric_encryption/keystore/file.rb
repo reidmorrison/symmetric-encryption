@@ -1,3 +1,5 @@
+require 'etc'
+
 module SymmetricEncryption
   module Keystore
     class File
@@ -85,7 +87,11 @@ module SymmetricEncryption
       end
 
       def owned?
-        stat.owned?
+        stat.owned? || custom_owned?
+      end
+
+      def custom_owned?
+        ENV['SYMMETRIC_ENCRYPTION_ALLOWED_FILE_OWNER_USERNAME'] == Etc.getlogin
       end
 
       def stat
