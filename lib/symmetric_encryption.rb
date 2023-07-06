@@ -15,6 +15,7 @@ begin
 
     if ActiveRecord.version >= Gem::Version.new("5.0.0")
       ActiveRecord::Type.register(:encrypted, SymmetricEncryption::ActiveRecord::EncryptedAttribute)
+      ActiveRecord::Type.register(:encrypted_json, SymmetricEncryption::ActiveRecord::EncryptedJsonAttribute)
     end
 
     # Remove old way of defining attributes with Rails 7 since it conflicts with the method names.
