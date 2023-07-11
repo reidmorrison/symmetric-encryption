@@ -23,8 +23,9 @@ module SymmetricEncryption
   autoload :CLI,                    "symmetric_encryption/cli"
   autoload :Keystore,               "symmetric_encryption/keystore"
   module ActiveRecord
-    autoload :EncryptedAttribute,   "symmetric_encryption/active_record/encrypted_attribute"
+    autoload :EncryptedAttribute,       "symmetric_encryption/active_record/encrypted_attribute"
     autoload :EncryptedJsonAttribute,   "symmetric_encryption/active_record/encrypted_json_attribute"
+    autoload :CustomEncryption,         "symmetric_encryption/active_record/custom_encryption"
   end
 
   module Utils
