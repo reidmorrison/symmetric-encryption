@@ -52,12 +52,12 @@ module SymmetricEncryption
           raise(SymmetricEncryption::ConfigError,
                 "Symmetric Encryption key file: '#{file_name}' not found")
         end
-        unless correct_permissions?
+        unless SymmetricEncryption.skip_keystore_file_permissions? || correct_permissions?
           raise(SymmetricEncryption::ConfigError,
                 "Symmetric Encryption key file '#{file_name}' has the wrong " \
                 "permissions: #{::File.stat(file_name).mode.to_s(8)}. Expected 100600 or 100400.")
         end
-        unless owned?
+        unless SymmetricEncryption.skip_keystore_file_owner? || owned?
           raise(SymmetricEncryption::ConfigError,
                 "Symmetric Encryption key file '#{file_name}' has the wrong " \
                 "owner (#{stat.uid}) or group (#{stat.gid}). " \

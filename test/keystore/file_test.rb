@@ -79,6 +79,7 @@ module SymmetricEncryption
 
         after do
           FileUtils.chmod 0o600, Dir.glob("#{the_test_path}/*")
+          SymmetricEncryption.skip_keystore_file_permissions = false
         end
 
         it "stores the key" do
@@ -90,6 +91,13 @@ module SymmetricEncryption
           keystore.write("TEST")
           FileUtils.chmod 0o666, Dir.glob("#{the_test_path}/*")
           assert_raises { keystore.read }
+        end
+
+        it "does not raise an exception when the permission validation is disabled" do
+          keystore.write("TEST")
+          FileUtils.chmod 0o666, Dir.glob("#{the_test_path}/*")
+          SymmetricEncryption.skip_keystore_file_permissions!
+          assert_equal "TEST", keystore.read
         end
       end
     end

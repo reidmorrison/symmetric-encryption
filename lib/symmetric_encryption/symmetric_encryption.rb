@@ -300,6 +300,20 @@ module SymmetricEncryption
     SecureRandom.urlsafe_base64(size)
   end
 
+  class << self
+    attr_accessor :skip_keystore_file_permissions, :skip_keystore_file_owner
+    alias_method :skip_keystore_file_permissions?, :skip_keystore_file_permissions
+    alias_method :skip_keystore_file_owner?, :skip_keystore_file_owner
+  end
+
+  def self.skip_keystore_file_permissions!
+    @skip_keystore_file_permissions = true
+  end
+
+  def self.skip_keystore_file_owner!
+    @skip_keystore_file_owner = true
+  end
+
   BINARY_ENCODING = Encoding.find("binary")
   UTF8_ENCODING   = Encoding.find("UTF-8")
 
@@ -308,4 +322,6 @@ module SymmetricEncryption
   @secondary_ciphers = []
   @select_cipher     = nil
   @randomize_iv      = false
+  @skip_keystore_file_permissions = false
+  @skip_keystore_file_owner = false
 end
