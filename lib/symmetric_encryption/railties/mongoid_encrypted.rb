@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "mongoid"
 # Add :encrypted option for Mongoid models
 #

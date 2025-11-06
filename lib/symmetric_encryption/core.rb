@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Used for compression
 require "zlib"
 # Used to coerce data types between string and their actual types

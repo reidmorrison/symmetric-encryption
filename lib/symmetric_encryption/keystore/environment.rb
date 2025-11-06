@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module SymmetricEncryption
   module Keystore
     # Store the encrypted encryption key in an environment variable

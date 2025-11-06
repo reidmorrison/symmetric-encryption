@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module SymmetricEncryption
   # Encryption keys are secured in Keystores
   module Keystore

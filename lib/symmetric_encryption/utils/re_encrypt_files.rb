@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Used for re-encrypting encrypted passwords stored in configuration files.
 #
 # Search for any encrypted value and re-encrypt it using the latest encryption key.

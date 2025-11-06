@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 begin
   require "mongoid"
   require_relative "test_helper"

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module SymmetricEncryption
   module Utils
     module Files

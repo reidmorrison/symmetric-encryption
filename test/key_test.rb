@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "test_helper"
 
 class KeyTest < Minitest::Test
@@ -23,7 +25,7 @@ class KeyTest < Minitest::Test
     end
 
     let :encrypted_ssn do
-      essn = "cR\x9C,\x91\xA4{\b`\x9Fls\xA4\f\xD1\xBF"
+      essn = +"cR\x9C,\x91\xA4{\b`\x9Fls\xA4\f\xD1\xBF"
       essn.force_encoding("binary")
       essn
     end
@@ -44,7 +46,7 @@ class KeyTest < Minitest::Test
 
     describe "decrypt" do
       it "empty string" do
-        assert_equal "", key.decrypt("")
+        assert_equal "", key.decrypt(+"")
       end
 
       it "nil" do

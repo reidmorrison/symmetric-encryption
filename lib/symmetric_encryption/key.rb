@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # The key, iv and encrypted data are handled in their raw form, with no encoding.
 module SymmetricEncryption
   class Key

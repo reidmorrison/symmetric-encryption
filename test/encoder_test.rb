@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "test_helper"
 
 # Unit Test for SymmetricEncryption
@@ -22,7 +24,7 @@ class EncoderTest < Minitest::Test
               @data
             end
           @encoder      = SymmetricEncryption::Encoder[encoding]
-          @non_utf8     = "\xc2".force_encoding("binary")
+          @non_utf8     = (+"\xc2").force_encoding("binary")
         end
 
         it "correctly encodes" do

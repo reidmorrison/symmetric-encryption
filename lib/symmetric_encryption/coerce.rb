@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module SymmetricEncryption
   # For coercing data types to from strings
   module Coerce

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module SymmetricEncryption # :nodoc:
   class Railtie < Rails::Railtie # :nodoc:
     # Exposes Symmetric Encryption's configuration to the Rails application configuration.

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "symmetric_encryption/core"
 
 # Add extensions. Gems are no longer order dependent.

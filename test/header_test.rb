@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "test_helper"
 
 class CipherTest < Minitest::Test
@@ -42,7 +44,7 @@ class CipherTest < Minitest::Test
       end
 
       it "does not have a header" do
-        refute SymmetricEncryption::Header.present?(clear_value)
+        refute SymmetricEncryption::Header.present?(+clear_value)
       end
 
       it "does not have a header when nil" do
@@ -110,7 +112,7 @@ class CipherTest < Minitest::Test
 
       it "unencrypted string" do
         header = SymmetricEncryption::Header.new
-        assert_equal 0, header.parse("hello there")
+        assert_equal 0, header.parse(+"hello there")
       end
 
       it "encrypted string" do
@@ -153,7 +155,7 @@ class CipherTest < Minitest::Test
 
       it "unencrypted string" do
         header = SymmetricEncryption::Header.new
-        assert_nil header.parse!("hello there")
+        assert_nil header.parse!(+"hello there")
       end
 
       it "encrypted string" do

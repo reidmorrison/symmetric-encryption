@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "openssl"
 module SymmetricEncryption
   # Hold all information related to encryption keys

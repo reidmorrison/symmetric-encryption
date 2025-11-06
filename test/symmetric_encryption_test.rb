@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "test_helper"
 
 # Unit Test for SymmetricEncryption
@@ -59,11 +61,11 @@ class SymmetricEncryptionTest < Minitest::Test
             when :base16
               "40456e4302004bef17d4d46ba9d7c4210c851d53ee54"
             when :none
-              "@EnC\x02\x00K\xEF\x17\xD4\xD4k\xA9\xD7\xC4!\f\x85\x1DS\xEET".force_encoding(Encoding.find("binary"))
+              (+"@EnC\x02\x00K\xEF\x17\xD4\xD4k\xA9\xD7\xC4!\f\x85\x1DS\xEET").force_encoding(Encoding.find("binary"))
             else
               raise "Add test for encoding: #{encoding}"
             end
-          @non_utf8                           = "\xc2".force_encoding("binary")
+          @non_utf8                           = (+"\xc2").force_encoding("binary")
           @encoding                           = SymmetricEncryption.cipher.encoding
           SymmetricEncryption.cipher.encoding = encoding
         end

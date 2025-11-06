@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module SymmetricEncryption
   module Keystore
     # In Memory Keystore usually used for testing purposes

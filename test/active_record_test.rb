@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "test_helper"
 
 if ActiveRecord.version <= Gem::Version.new("7.0.0")

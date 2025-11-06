@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "aws-sdk-kms"
 module SymmetricEncryption
   module Keystore

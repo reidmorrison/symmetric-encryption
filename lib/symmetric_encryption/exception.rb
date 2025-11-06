@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module SymmetricEncryption
   # Exceptions created by SymmetricEncryption
   class Error < StandardError

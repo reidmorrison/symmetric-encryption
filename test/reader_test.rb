@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require_relative "test_helper"
 require "stringio"
 
@@ -11,7 +13,7 @@ class ReaderTest < Minitest::Test
         "Keep this secret\n",
         "And keep going even further and further..."
       ]
-      @data_str = @data.inject("") { |sum, str| sum << str }
+      @data_str = @data.inject(+"") { |sum, str| sum << str }
       @data_len = @data_str.length
       # Use Cipher 0 since it does not always include a header
       @cipher = SymmetricEncryption.cipher(0)
@@ -188,7 +190,7 @@ class ReaderTest < Minitest::Test
             # Not supported with compressed files
             if file.is_a?(SymmetricEncryption::Reader)
               eof           = file.eof?
-              output_buffer = "buffer"
+              output_buffer = +"buffer"
               data          = file.read(4096, output_buffer)
               file.close
 

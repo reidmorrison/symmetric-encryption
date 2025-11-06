@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module SymmetricEncryption
   module Generator
     # Common internal method for generating accessors for decrypted accessors

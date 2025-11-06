@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "optparse"
 require "fileutils"
 module SymmetricEncryption

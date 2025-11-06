@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "openssl"
 
 module SymmetricEncryption
@@ -185,7 +187,7 @@ module SymmetricEncryption
     # At end of file, it returns nil if no more data is available, or the last
     # remaining bytes
     def read(length = nil, outbuf = nil)
-      data             = outbuf.nil? ? "" : outbuf.clear
+      data             = outbuf.nil? ? +"" : outbuf.clear
       remaining_length = length
 
       until remaining_length&.zero? || eof?
