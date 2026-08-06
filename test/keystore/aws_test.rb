@@ -84,12 +84,13 @@ module SymmetricEncryption
               expected_file_name = "#{the_test_path}/tester_test_#{region}_v11.encrypted_key"
 
               assert_equal expected_file_name, file_name
-              assert ::File.exist?(file_name)
+              assert_path_exists file_name
 
               assert encoded_data_key = ::File.read(file_name)
               encrypted_data_key = Base64.strict_decode64(encoded_data_key)
 
               aws = SymmetricEncryption::Utils::Aws.new(region: region, master_key_alias: master_key_alias)
+
               assert data_key = aws.decrypt(encrypted_data_key)
 
               # Verify that the dek is the same in every region, but encrypted with the CMK for that region.
@@ -109,6 +110,7 @@ module SymmetricEncryption
 
           it "is readable by Keystore.read_key" do
             ENV["AWS_REGION"] = "us-east-1"
+
             assert SymmetricEncryption::Keystore.read_key(**key_config)
           end
         end
@@ -124,6 +126,7 @@ module SymmetricEncryption
 
           it "stores the key" do
             keystore.write("TEST")
+
             assert_equal "TEST", keystore.read
           end
         end

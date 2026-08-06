@@ -56,6 +56,7 @@ module SymmetricEncryption
 
           it "returns the original value when it cannot be decrypted" do
             garbage = "#{SymmetricEncryption.cipher.encoded_magic_header}NotEncryptedAtAll"
+
             assert_equal garbage, re_encrypt.re_encrypt(garbage)
           end
         end
@@ -106,6 +107,7 @@ module SymmetricEncryption
             assert_equal 1, re_encrypt.re_encrypt_contents(file_name)
 
             new_value = File.read(file_name).split(": ").last.strip
+
             refute_equal old_encrypted, new_value
             assert_equal "Hello World", SymmetricEncryption.decrypt(new_value)
           end

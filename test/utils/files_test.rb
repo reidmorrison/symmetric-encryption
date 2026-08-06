@@ -35,6 +35,7 @@ module SymmetricEncryption
             data = SymmetricEncryption::Key.new.key
 
             encoded = subject.encode64(data)
+
             refute_equal data, encoded
             assert_equal data, subject.decode64(encoded)
           end
@@ -84,6 +85,7 @@ module SymmetricEncryption
 
             assert_equal "replacement", subject.read_from_file(file_name)
             backups = Dir["#{file_name}.*"]
+
             assert_equal 1, backups.size
             assert_equal "original", File.binread(backups.first)
           end

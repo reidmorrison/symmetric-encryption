@@ -12,6 +12,7 @@ class CipherTest < Minitest::Test
             iv:          "1234567890ABCDEF",
             encoding:    :none
           )
+
           assert_equal cipher_name, cipher.cipher_name
         end
 
@@ -22,6 +23,7 @@ class CipherTest < Minitest::Test
             encoding:          :none,
             always_add_header: false
           )
+
           assert result = cipher.encrypt("Hello World")
           assert_equal "Hello World", cipher.decrypt(result)
         end
@@ -108,10 +110,10 @@ class CipherTest < Minitest::Test
 
             it "return BINARY encoding for non-UTF-8 encrypted data" do
               assert_equal Encoding.find("binary"), @non_utf8.encoding
-              assert_equal true, @non_utf8.valid_encoding?
+              assert_predicate @non_utf8, :valid_encoding?
               assert encrypted = @cipher.encrypt(@non_utf8)
               assert decrypted = @cipher.decrypt(encrypted)
-              assert_equal true, decrypted.valid_encoding?
+              assert_predicate decrypted, :valid_encoding?
               assert_equal Encoding.find("binary"), decrypted.encoding, decrypted
               assert_equal @non_utf8, decrypted
             end
@@ -170,7 +172,8 @@ class CipherTest < Minitest::Test
             )
             header = SymmetricEncryption::Header.new
             header.parse(binary_header)
-            assert_equal true, header.compressed?
+
+            assert_predicate header, :compressed?
             assert random_cipher = SymmetricEncryption::Cipher.new(iv: key.iv, key: key.key, cipher_name: key.cipher_name)
             assert_equal random_cipher.cipher_name, header.cipher_name, "Ciphers differ"
             assert_equal random_cipher.send(:key), header.key, "Keys differ"

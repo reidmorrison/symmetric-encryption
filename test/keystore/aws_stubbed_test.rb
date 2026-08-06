@@ -84,7 +84,7 @@ module SymmetricEncryption
             assert_equal(regions, key_config[:key_files].collect { |i| i[:region] })
 
             key_config[:key_files].each do |key_file|
-              assert ::File.exist?(key_file[:file_name]), "Missing key file for #{key_file[:region]}"
+              assert_path_exists key_file[:file_name], "Missing key file for #{key_file[:region]}"
               assert_includes key_file[:file_name], "tester_test_#{key_file[:region]}_v11.encrypted_key"
             end
           end

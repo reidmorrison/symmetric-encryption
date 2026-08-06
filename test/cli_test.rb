@@ -54,11 +54,13 @@ module SymmetricEncryption
           out, = capture_io do
             assert_raises(SystemExit) { CLI.new([]) }
           end
+
           assert_includes out, "symmetric-encryption [options]"
         end
 
         it "defaults" do
           cli = CLI.new(%w[--generate])
+
           assert_equal "symmetric-encryption", cli.app_name
           assert_equal "aes-256-cbc", cli.cipher_name
           assert_equal :file, cli.keystore
@@ -70,6 +72,7 @@ module SymmetricEncryption
 
         it "parses the file and path options" do
           cli = CLI.new(%w[--encrypt in.txt --output out.txt --config cfg.yml --key-path /tmp/keys --app-name my_app])
+
           assert_equal "in.txt", cli.encrypt
           assert_equal "out.txt", cli.output_file_name
           assert_equal "cfg.yml", cli.config_file_path
@@ -84,6 +87,7 @@ module SymmetricEncryption
 
         it "parses the key rotation options" do
           cli = CLI.new(%w[--rotate-keys --rolling-deploy --environments preprod,production --cipher-name aes-128-cbc])
+
           assert cli.rotate_keys
           assert cli.rolling_deploy
           assert_equal "aes-128-cbc", cli.cipher_name
@@ -119,12 +123,14 @@ module SymmetricEncryption
       describe "#run!" do
         it "displays the version" do
           out, = capture_io { CLI.new(%w[--version]).run! }
+
           assert_includes out, "Symmetric Encryption v#{VERSION}"
           assert_includes out, "OpenSSL v#{OpenSSL::VERSION}"
         end
 
         it "displays the help when no action is supplied" do
           out, = capture_io { CLI.new(%w[--compress]).run! }
+
           assert_includes out, "symmetric-encryption [options]"
         end
 
@@ -138,8 +144,9 @@ module SymmetricEncryption
         it "creates a config file with a key file per environment" do
           generate_config(:test, :preprod, :production)
 
-          assert File.exist?(config_file_name)
+          assert_path_exists config_file_name
           config = Config.read_file(config_file_name)
+
           assert_equal %i[test preprod production], config.keys
 
           # development and test share the well known development keys.
@@ -147,8 +154,9 @@ module SymmetricEncryption
 
           %i[preprod production].each do |env|
             cipher = config[env][:ciphers].first
+
             assert_equal 1, cipher[:version]
-            assert File.exist?(cipher[:key_filename]), "Missing key file for #{env}"
+            assert_path_exists cipher[:key_filename], "Missing key file for #{env}"
           end
         end
 
@@ -159,6 +167,7 @@ module SymmetricEncryption
               CLI.new(%W[--generate --config #{config_file_name} --key-path #{the_test_path}]).run!
             end
           end
+
           assert_includes out, "Configuration file already exists"
         end
 
@@ -168,6 +177,7 @@ module SymmetricEncryption
               CLI.new(%W[--generate --keystore bad --config #{config_file_name}]).run!
             end
           end
+
           assert_includes out, "Invalid keystore option: bad"
         end
       end
@@ -210,6 +220,7 @@ module SymmetricEncryption
               CLI.new(%W[--rotate-keys --keystore bad --config #{config_file_name}]).run!
             end
           end
+
           assert_includes out, "Invalid keystore option: bad"
         end
       end
@@ -243,9 +254,11 @@ module SymmetricEncryption
           capture_io do
             CLI.new(%W[--rotate-keys --rolling-deploy --config #{config_file_name} --app-name tester]).run!
           end
+
           assert_equal [1, 2], versions_for(:production)
 
           capture_io { CLI.new(%W[--activate-key --config #{config_file_name}]).run! }
+
           assert_equal [2, 1], versions_for(:production)
         end
       end
@@ -256,9 +269,11 @@ module SymmetricEncryption
           capture_io do
             CLI.new(%W[--rotate-keys --config #{config_file_name} --app-name tester]).run!
           end
+
           assert_equal [2, 1], versions_for(:production)
 
           capture_io { CLI.new(%W[--cleanup-keys --config #{config_file_name}]).run! }
+
           assert_equal [2], versions_for(:production)
         end
       end
@@ -273,6 +288,7 @@ module SymmetricEncryption
           CONFIG
 
           out, = capture_io { CLI.new(%W[--migrate --config #{config_file_name}]).run! }
+
           assert_includes out, "successfully migrated"
 
           config = Config.read_file(config_file_name)
@@ -288,6 +304,7 @@ module SymmetricEncryption
           out, = capture_io do
             CLI.new(%W[--new-password 8 --config #{the_config_file_name} --env test]).run!
           end
+
           assert_includes out, "Generated Password:"
           assert_includes out, "Encrypted:"
         end
@@ -298,7 +315,7 @@ module SymmetricEncryption
             CLI.new(%W[--new-password 8 --output #{output_file_name} --config #{the_config_file_name} --env test]).run!
           end
 
-          assert File.exist?(output_file_name)
+          assert_path_exists output_file_name
           refute_nil SymmetricEncryption.decrypt(File.read(output_file_name))
         end
       end
@@ -324,6 +341,7 @@ module SymmetricEncryption
               %W[--encrypt #{source_file_name} --output #{encrypted_file_name} --config #{the_config_file_name} --env test]
             ).run!
           end
+
           refute_includes File.binread(encrypted_file_name), "Hello World"
 
           capture_io do
@@ -331,6 +349,7 @@ module SymmetricEncryption
               %W[--decrypt #{encrypted_file_name} --output #{decrypted_file_name} --config #{the_config_file_name} --env test]
             ).run!
           end
+
           assert_equal "Hello World\nSecond Line\n", File.read(decrypted_file_name)
         end
       end
@@ -382,6 +401,7 @@ module SymmetricEncryption
 
           assert_includes out, "Encrypted:"
           encrypted = out.split("Encrypted:").last.strip
+
           assert_equal the_value, SymmetricEncryption.decrypt(encrypted)
         end
 
@@ -448,6 +468,7 @@ module SymmetricEncryption
           end
 
           new_value = File.read(file_name).split(": ").last.strip
+
           refute_equal encrypted, new_value
           assert_equal "Hello World", SymmetricEncryption.decrypt(new_value)
         end

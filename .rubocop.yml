@@ -84,6 +84,11 @@ Metrics/PerceivedComplexity:
 Naming/MethodParameterName:
   AllowedNames: ['iv', '_', 'io', 'ap']
 
+# Many tests verify several related properties of one round-trip, which is the
+# clearer way to write them here. Splitting them by assertion count would not help.
+Minitest/MultipleAssertions:
+  Enabled: false
+
 # The two `default` tasks are in mutually exclusive branches of an if.
 Rake/DuplicateTask:
   Exclude:

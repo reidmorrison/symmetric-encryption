@@ -27,8 +27,9 @@ class CipherTest < Minitest::Test
     describe "#new" do
       it "sets defaults" do
         header = SymmetricEncryption::Header.new
+
         assert_equal SymmetricEncryption.cipher.version, header.version
-        refute header.compressed?
+        refute_predicate header, :compressed?
         refute header.iv
         refute header.key
         refute header.cipher_name
@@ -80,7 +81,7 @@ class CipherTest < Minitest::Test
 
     describe "#compress" do
       it "encrypted string" do
-        refute header.compressed?
+        refute_predicate header, :compressed?
       end
 
       describe "with compression" do
@@ -89,7 +90,7 @@ class CipherTest < Minitest::Test
         end
 
         it "encrypted string" do
-          assert header.compressed?
+          assert_predicate header, :compressed?
         end
       end
     end
@@ -100,21 +101,25 @@ class CipherTest < Minitest::Test
     describe "#parse" do
       it "nil string" do
         header = SymmetricEncryption::Header.new
+
         assert_equal 0, header.parse(nil)
       end
 
       it "empty string" do
         header = SymmetricEncryption::Header.new
+
         assert_equal 0, header.parse("")
       end
 
       it "unencrypted string" do
         header = SymmetricEncryption::Header.new
+
         assert_equal 0, header.parse("hello there")
       end
 
       it "encrypted string" do
         header = SymmetricEncryption::Header.new
+
         assert_equal 6, header.parse(binary_encrypted_value)
       end
 
@@ -125,6 +130,7 @@ class CipherTest < Minitest::Test
 
         it "encrypted string" do
           header = SymmetricEncryption::Header.new
+
           assert_equal 24, header.parse(binary_encrypted_value)
         end
 
@@ -134,7 +140,7 @@ class CipherTest < Minitest::Test
           end
 
           it "encrypted string" do
-            assert header.compressed?
+            assert_predicate header, :compressed?
           end
         end
       end
@@ -143,24 +149,28 @@ class CipherTest < Minitest::Test
     describe "#parse!" do
       it "nil string" do
         header = SymmetricEncryption::Header.new
+
         assert_nil header.parse!(nil)
       end
 
       it "empty string" do
         header = SymmetricEncryption::Header.new
+
         assert_nil header.parse!("")
       end
 
       it "unencrypted string" do
         header = SymmetricEncryption::Header.new
+
         assert_nil header.parse!("hello there")
       end
 
       it "encrypted string" do
         header    = SymmetricEncryption::Header.new
         remainder = header.parse!(binary_encrypted_value.dup)
+
         assert_equal SymmetricEncryption.cipher.version, header.version
-        refute header.compressed?
+        refute_predicate header, :compressed?
         refute header.iv
         refute header.key
         refute header.cipher_name
@@ -168,6 +178,7 @@ class CipherTest < Minitest::Test
 
         # Decrypt with this new header
         encrypted_without_header = SymmetricEncryption.cipher.binary_encrypt(clear_value, header: false)
+
         assert_equal encrypted_without_header, remainder
 
         assert_equal clear_value, SymmetricEncryption.cipher.binary_decrypt(remainder, header: header)
@@ -180,9 +191,10 @@ class CipherTest < Minitest::Test
 
         it "encrypted string" do
           header = SymmetricEncryption::Header.new
+
           assert remainder = header.parse!(binary_encrypted_value)
           assert_equal SymmetricEncryption.cipher.version, header.version
-          refute header.compressed?
+          refute_predicate header, :compressed?
           assert header.iv
           refute header.key
           refute header.cipher_name
@@ -196,6 +208,7 @@ class CipherTest < Minitest::Test
       it "encrypted string" do
         header = SymmetricEncryption::Header.new
         header.parse(binary_encrypted_value)
+
         assert_nil header.iv
       end
 

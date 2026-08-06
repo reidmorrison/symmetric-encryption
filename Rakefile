@@ -5,10 +5,12 @@ require "bundler/setup"
 require "rake/testtask"
 require_relative "lib/symmetric_encryption/version"
 
+desc "Build the gem"
 task :gem do
   system "gem build symmetric-encryption.gemspec"
 end
 
+desc "Build the gem, tag the release, and push it to rubygems"
 task publish: :gem do
   system "git tag -a v#{SymmetricEncryption::VERSION} -m 'Tagging #{SymmetricEncryption::VERSION}'"
   system "git push --tags"

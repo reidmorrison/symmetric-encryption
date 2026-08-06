@@ -32,12 +32,10 @@ class WriterTest < Minitest::Test
               written_len = @data.inject(0) { |sum, str| sum + file.write(str) }
             end
             size = stream.string.size
-            if compress == false
-              assert @data_len, size
-            else
-              # With small files the compressed file is larger
-              assert size >= @data_len
-            end
+
+            # Always larger than the plaintext: the header carries the key and iv, and with
+            # small files the compressed file is larger too.
+            assert_operator size, :>=, @data_len
             assert_equal @data_len, written_len
           end
 
@@ -45,14 +43,14 @@ class WriterTest < Minitest::Test
             written_len = SymmetricEncryption::Writer.open(@file_name, compress: compress) do |file|
               @data.inject(0) { |sum, str| sum + file.write(str) }
             end
+
             assert_equal @data_len, written_len
             size = File.size(@file_name)
-            if compress == false
-              assert @data_len, size
-            else
-              # With small files the compressed file is larger
-              assert size >= @data_len
-            end
+
+            # Always larger than the plaintext: the header carries the key and iv, and with
+            # small files the compressed file is larger too.
+            assert_operator size, :>=, @data_len
+
             assert_equal @data_str, SymmetricEncryption::Reader.read(@file_name)
           end
         end
@@ -62,6 +60,7 @@ class WriterTest < Minitest::Test
             target_stream = StringIO.new
             source_stream = StringIO.new(@data_str)
             source_bytes  = SymmetricEncryption::Writer.encrypt(source: source_stream, target: target_stream, compress: compress)
+
             assert_equal @data_len, source_bytes
             assert_equal @data_str, SymmetricEncryption::Reader.read(StringIO.new(target_stream.string))
           end
@@ -69,6 +68,7 @@ class WriterTest < Minitest::Test
           it "file" do
             File.binwrite(@source_file_name, @data_str)
             source_bytes = SymmetricEncryption::Writer.encrypt(source: @source_file_name, target: @file_name, compress: compress)
+
             assert_equal @data_len, source_bytes
             assert_equal @data_str, SymmetricEncryption::Reader.read(@file_name)
           end
@@ -103,6 +103,7 @@ class WriterTest < Minitest::Test
       it "appends and returns self" do
         stream = StringIO.new
         writer = SymmetricEncryption::Writer.new(stream)
+
         assert_equal writer, writer << "Hello " << "World"
         writer.close(false)
 
@@ -114,6 +115,7 @@ class WriterTest < Minitest::Test
       it "returns the number of bytes written" do
         stream = StringIO.new
         writer = SymmetricEncryption::Writer.new(stream)
+
         assert_equal 11, writer.write("Hello World")
         writer.close(false)
       end
@@ -121,6 +123,7 @@ class WriterTest < Minitest::Test
       it "ignores nil" do
         stream = StringIO.new
         writer = SymmetricEncryption::Writer.new(stream)
+
         assert_nil writer.write(nil)
         assert_equal 0, writer.size
         writer.close(false)
@@ -140,6 +143,7 @@ class WriterTest < Minitest::Test
       it "delegates to the stream" do
         stream = StringIO.new
         writer = SymmetricEncryption::Writer.new(stream)
+
         refute_nil writer.flush
         writer.close(false)
       end
@@ -148,10 +152,12 @@ class WriterTest < Minitest::Test
     describe "#closed?" do
       it "is closed after close" do
         writer = SymmetricEncryption::Writer.new(StringIO.new)
-        refute writer.closed?
+
+        refute_predicate writer, :closed?
 
         writer.close(false)
-        assert writer.closed?
+
+        assert_predicate writer, :closed?
       end
 
       it "close is idempotent" do
@@ -160,7 +166,8 @@ class WriterTest < Minitest::Test
         writer.close(false)
 
         writer.close(false)
-        assert writer.closed?
+
+        assert_predicate writer, :closed?
       end
     end
   end

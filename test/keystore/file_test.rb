@@ -57,9 +57,10 @@ module SymmetricEncryption
 
         it "creates the encrypted key file with the correct permissions" do
           file_name = "#{the_test_path}/tester_test_v11.encrypted_key"
+
           assert_equal file_name, key_config[:key_filename]
-          assert File.exist?(file_name)
-          assert_equal File.stat(file_name).mode.to_s(8), "100600"
+          assert_path_exists file_name
+          assert_equal "100600", File.stat(file_name).mode.to_s(8)
         end
 
         it "retains cipher_name" do
@@ -68,6 +69,7 @@ module SymmetricEncryption
 
         it "is readable by Key.from_config" do
           key_config.delete(:version)
+
           assert SymmetricEncryption::Keystore.read_key(**key_config)
         end
       end
@@ -83,13 +85,14 @@ module SymmetricEncryption
 
         it "stores the key" do
           keystore.write("TEST")
+
           assert_equal "TEST", keystore.read
         end
 
         it "raises an exception when the file can be read/written by others" do
           keystore.write("TEST")
           FileUtils.chmod 0o666, Dir.glob("#{the_test_path}/*")
-          assert_raises { keystore.read }
+          assert_raises(SymmetricEncryption::ConfigError) { keystore.read }
         end
       end
     end

@@ -28,7 +28,8 @@ class ReaderTest < Minitest::Test
       # Verify regular decrypt can decrypt this string
       @cipher.binary_decrypt(@data_encrypted_without_header)
       @cipher.binary_decrypt(@data_encrypted_with_header)
-      assert @data_encrypted_without_header != @data_encrypted_with_header
+
+      refute_equal @data_encrypted_without_header, @data_encrypted_with_header
     end
 
     [true, false].each do |header|
@@ -41,6 +42,7 @@ class ReaderTest < Minitest::Test
           stream = StringIO.new(@data_encrypted)
           # Version 0 supplied if the file/stream does not have a header
           decrypted = SymmetricEncryption::Reader.open(stream, version: 0, &:read)
+
           assert_equal @data_str, decrypted
         end
 
@@ -51,6 +53,7 @@ class ReaderTest < Minitest::Test
             file.read(10)
             file.read
           end
+
           assert_equal @data_str[10..-1], decrypted
         end
 
@@ -126,6 +129,7 @@ class ReaderTest < Minitest::Test
               @eof       = true
               @file_name = File.join(File.dirname(__FILE__), "config/empty.csv")
               @header    = false
+
               assert_equal 0, File.size(@file_name)
             else
               raise "Unhandled usecase: #{usecase}"
@@ -164,6 +168,7 @@ class ReaderTest < Minitest::Test
               eof  = file.eof?
               data = file.read
             end
+
             assert_equal @eof, eof
             assert_equal @data_str, data
             assert_equal @data_str, result
@@ -195,7 +200,7 @@ class ReaderTest < Minitest::Test
               assert_equal @eof, eof
               if @data_size.positive?
                 assert_equal @data_str, data
-                assert_equal data.object_id, output_buffer.object_id
+                assert_same data, output_buffer
               else
                 assert_nil data
                 assert_empty output_buffer
@@ -219,6 +224,7 @@ class ReaderTest < Minitest::Test
               file.rewind
               file.read
             end
+
             assert_equal @data_str, decrypted
           end
 
@@ -233,7 +239,7 @@ class ReaderTest < Minitest::Test
               assert_equal @data_str, data
             elsif defined?(JRuby)
               # On JRuby Zlib::GzipReader.new(file) returns '' instead of nil on an empty file
-              assert data.blank?
+              assert_predicate data, :blank?
             else
               assert_nil data
             end
@@ -246,6 +252,7 @@ class ReaderTest < Minitest::Test
                 assert_equal @data[i], line
                 i += 1
               end
+
               assert_equal (@data_size.positive? ? 3 : 0), i
             end
           end
@@ -254,6 +261,7 @@ class ReaderTest < Minitest::Test
             SymmetricEncryption::Reader.open(@file_name) do |file|
               i = 0
               i += 1 while file.gets("\n", 128)
+
               assert_equal (@data_size.positive? ? 3 : 0), i
             end
           end
@@ -276,6 +284,7 @@ class ReaderTest < Minitest::Test
 
       it "decrypt from file in a single read" do
         decrypted = SymmetricEncryption::Reader.open(@file_name, &:read)
+
         assert_equal @data_str, decrypted
       end
 
@@ -295,6 +304,7 @@ class ReaderTest < Minitest::Test
           file.rewind
           file.read
         end
+
         assert_equal @data_str, decrypted
       end
     end
@@ -317,6 +327,7 @@ class ReaderTest < Minitest::Test
 
       it "decrypt from file in a single read" do
         decrypted = SymmetricEncryption::Reader.open(@file_name, version: 0, &:read)
+
         assert_equal @data_str, decrypted
       end
 
@@ -374,6 +385,7 @@ class ReaderTest < Minitest::Test
       it "#seek to an absolute position" do
         SymmetricEncryption::Reader.open(@file_name) do |file|
           file.read(5)
+
           assert_equal 0, file.seek(10, IO::SEEK_SET)
           assert_equal @data_str[10..], file.read
         end
@@ -383,6 +395,7 @@ class ReaderTest < Minitest::Test
         SymmetricEncryption::Reader.open(@file_name) do |file|
           file.read(5)
           file.seek(5, IO::SEEK_CUR)
+
           assert_equal @data_str[10..], file.read
         end
       end
@@ -391,6 +404,7 @@ class ReaderTest < Minitest::Test
         SymmetricEncryption::Reader.open(@file_name) do |file|
           file.read(15)
           file.seek(-5, IO::SEEK_CUR)
+
           assert_equal @data_str[10..], file.read
         end
       end
@@ -398,6 +412,7 @@ class ReaderTest < Minitest::Test
       it "#seek relative to the end of the file" do
         SymmetricEncryption::Reader.open(@file_name) do |file|
           file.seek(-10, IO::SEEK_END)
+
           assert_equal @data_str[-10..], file.read
         end
       end
@@ -436,6 +451,7 @@ class ReaderTest < Minitest::Test
         SymmetricEncryption::Reader.open(@file_name, buffer_size: 512) do |file|
           file.each_line { |_line| count += 1 }
         end
+
         assert_equal 5_000, count
       end
     end
