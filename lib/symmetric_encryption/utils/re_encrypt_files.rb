@@ -85,7 +85,8 @@ module SymmetricEncryption
 
       # Re Encrypt an entire file
       def re_encrypt_file(file_name)
-        temp_file_name = "__re_encrypting_#{file_name}"
+        # Write the temp file into the same directory as the file being re-encrypted.
+        temp_file_name = ::File.join(::File.dirname(file_name), "__re_encrypting_#{::File.basename(file_name)}")
         SymmetricEncryption::Reader.open(file_name) do |source|
           SymmetricEncryption::Writer.encrypt(source: source, target: temp_file_name, compress: true, version: version)
         end

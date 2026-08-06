@@ -1,3 +1,6 @@
+# Used to coerce values to and from json
+require "json"
+
 module SymmetricEncryption
   # For coercing data types to from strings
   module Coerce

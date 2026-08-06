@@ -114,7 +114,7 @@ module SymmetricEncryption
         migrate_config!(config)
 
         # The current data encrypting key without any of the key encrypting keys.
-        key            = Keystore.read_key(config)
+        key            = Keystore.read_key(**config)
         cipher_name    = key.cipher_name
         keystore_class = keystore_for(config)
 
@@ -127,9 +127,11 @@ module SymmetricEncryption
         }
         args[:key_path] = ::File.dirname(config[:key_filename]) if config.key?(:key_filename)
 
-        new_config                     = keystore_class.generate_data_key(args)
-        new_config[:always_add_header] = always_add_header
-        new_config[:encoding]          = encoding
+        new_config                     = keystore_class.generate_data_key(**args)
+        # Only carry over these settings when they were set explicitly, otherwise the
+        # rewritten config file overrides the defaults with nil.
+        new_config[:always_add_header] = always_add_header unless always_add_header.nil?
+        new_config[:encoding]          = encoding unless encoding.nil?
 
         # Replace existing config entry
         cfg[:ciphers].shift
