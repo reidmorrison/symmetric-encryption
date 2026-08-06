@@ -65,7 +65,7 @@ SymmetricEncryption.decrypt "JqLJOi6dNjWI9kX9lSL1XQ=="
 
 ### Backgound Job Processing
 
-The sister-project [Rocket Job](http://rocketjob.io) uses Symmetric Encryption
+The sister-project [Rocket Job](https://rocketjob.reidmorrison.com) uses Symmetric Encryption
 to encrypt job data to keep it secure.
 * Rocket Job can also read and write encrypted files created by Symmetric Encryption.
 * Rocket Job re-uses the existing Symmetric Encryption configuration and setup.

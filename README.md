@@ -1,7 +1,7 @@
 # Symmetric Encryption
 [![Gem Version](https://img.shields.io/gem/v/symmetric-encryption.svg)](https://rubygems.org/gems/symmetric-encryption) [![Build Status](https://github.com/reidmorrison/symmetric-encryption/workflows/build/badge.svg)](https://github.com/reidmorrison/symmetric-encryption/actions?query=workflow%3Abuild) [![Downloads](https://img.shields.io/gem/dt/symmetric-encryption.svg)](https://rubygems.org/gems/symmetric-encryption) [![License](https://img.shields.io/badge/license-Apache%202.0-brightgreen.svg)](http://opensource.org/licenses/Apache-2.0) ![](https://img.shields.io/badge/status-Production%20Ready-blue.svg) 
 
-* https://encryption.rocketjob.io/
+* https://encryption.reidmorrison.com/
 
 Transparently encrypt ActiveRecord, and Mongoid attributes. Encrypt passwords in configuration files. Encrypt entire files at rest.
 
@@ -19,11 +19,11 @@ expose all the encryption algorithms supported by OpenSSL.
 
 ## Documentation
 
-[Symmetric Encryption Guide](https://encryption.rocketjob.io/)
+[Symmetric Encryption Guide](https://encryption.reidmorrison.com/)
 
 ## Rocket Job
 
-Checkout the sister project [Rocket Job](http://rocketjob.io): Ruby's missing batch system.
+Checkout the sister project [Rocket Job](https://rocketjob.reidmorrison.com): Ruby's missing batch system.
 
 Fully supports Symmetric Encryption to encrypt data in flight and at rest while running jobs in the background.
 
@@ -32,7 +32,7 @@ Fully supports Symmetric Encryption to encrypt data in flight and at rest while 
 There is a method naming conflict with Rails 7, which has its own `encrypted_attributes` method.
 
 As a result the older `attr_encrypted` mechanism is no longer available with Rails 7. 
-Migrate the use of `attr_encrypted` to `attribute` as described in the [Frameworks Guide](https://encryption.rocketjob.io/frameworks.html).
+Migrate the use of `attr_encrypted` to `attribute` as described in the [Frameworks Guide](https://encryption.reidmorrison.com/frameworks.html).
 
 ## Upgrading to SymmetricEncryption V4
 
