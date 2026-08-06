@@ -1,38 +1,18 @@
-appraise "rails_5.1" do
-  gem "activerecord", "~> 5.1.0"
-  gem "activerecord-jdbcsqlite3-adapter", "~> 51.0", platform: :jruby
-  gem "mongoid", "~> 7.0.0"
-  gem "sqlite3", "~> 1.3.0", platform: :ruby
-  gem "google-cloud-kms", platform: :ruby
+appraise "rails_7.2" do
+  gem "activerecord", "~> 7.2.3"
+  gem "activerecord-jdbcsqlite3-adapter", "~> 72.1", platform: :jruby
+  gem "jdbc-sqlite3", platform: :jruby
+  gem "mongoid", "~> 8.1.0"
 end
 
-appraise "rails_5.2" do
-  gem "activerecord", "~> 5.2.0"
-  gem "activerecord-jdbcsqlite3-adapter", "~> 52.0", platform: :jruby
-  gem "mongoid", "~> 7.1.0"
-  gem "sqlite3", "~> 1.3.0", platform: :ruby
-  gem "google-cloud-kms", platform: :ruby
+appraise "rails_8.0" do
+  gem "activerecord", "~> 8.0.0"
+  gem "activerecord-jdbcsqlite3-adapter", "~> 80.0.pre1", platform: :jruby
+  gem "jdbc-sqlite3", platform: :jruby
+  gem "mongoid", "~> 9.0.0"
 end
 
-appraise "rails_6.0" do
-  gem "activerecord", "~> 6.0.0"
-  gem "activerecord-jdbcsqlite3-adapter", "~> 60.0", platform: :jruby
-  gem "mongoid", "~> 7.2.0"
-  gem "sqlite3", "~> 1.4.0", platform: :ruby
-  gem "google-cloud-kms", platform: :ruby
-end
-
-appraise "rails_6.1" do
-  gem "activerecord", "~> 6.1.0"
-  gem "activerecord-jdbcsqlite3-adapter", "~> 61.0", platform: :jruby
-  gem "mongoid", "~> 7.4.0"
-  gem "sqlite3", "~> 1.4.0", platform: :ruby
-  gem "google-cloud-kms", platform: :ruby
-end
-
-appraise "rails_7.0" do
-  gem "activerecord", "~> 7.0"
-  gem "mongoid", "~> 7.4.0"
-  gem "sqlite3", "~> 1.4.0", platform: :ruby
-  gem "google-cloud-kms", platform: :ruby
+appraise "rails_8.1" do
+  gem "activerecord", "~> 8.1.0"
+  gem "mongoid", "~> 9.1.0"
 end

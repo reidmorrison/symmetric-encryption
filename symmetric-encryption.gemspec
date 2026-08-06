@@ -13,7 +13,7 @@ Gem::Specification.new do |s|
   s.summary               = "Encrypt ActiveRecord and Mongoid attributes, files and passwords in configuration files."
   s.files                 = Dir["{lib,examples}/**/*", "LICENSE.txt", "Rakefile", "README.md"]
   s.license               = "Apache-2.0"
-  s.required_ruby_version = ">= 2.5"
+  s.required_ruby_version = ">= 3.2.0"
   s.bindir                = "bin"
   s.executables           = ["symmetric-encryption"]
   s.add_dependency "coercible", "~> 1.0"
