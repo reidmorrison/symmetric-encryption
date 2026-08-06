@@ -14,6 +14,8 @@ gem "minitest"
 gem "minitest-stub_any_instance"
 gem "rake"
 gem "rubocop"
+gem "simplecov", require: false
+gem "solargraph", require: false, platform: :ruby
 gem "highline"
 gem "aws-sdk-kms"
 

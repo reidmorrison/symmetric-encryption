@@ -15,6 +15,8 @@ gem "minitest"
 gem "minitest-stub_any_instance"
 gem "rake"
 gem "rubocop"
+gem "simplecov", require: false
+gem "solargraph", require: false, platform: :ruby
 
 # Optional gem used by rake task for user to enter text to be encrypted
 gem "highline"

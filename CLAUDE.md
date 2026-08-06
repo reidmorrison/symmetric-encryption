@@ -19,9 +19,14 @@ appraisal install                          # Regenerate gemfiles/*.gemfile and i
 bundle exec rake                           # Default task: runs the suite for every appraisal
 appraisal rails_8.1 rake test              # One Rails version (rails_7.2, rails_8.0, rails_8.1)
 
+COVERAGE=true bundle exec rake test   # Writes coverage/index.html (currently ~59% line coverage)
+
 bundle exec rubocop
 bundle exec rubocop -a
+bundle exec solargraph typecheck            # Optional, MRI only
 ```
+
+SimpleCov is off unless `COVERAGE` is set, and is started at the top of `test_helper.rb` before any lib file is required so that untouched files still count.
 
 Note: bare `rake` triggers `appraisal` unless `APPRAISAL_INITIALIZED` or `TRAVIS` is set, so use `rake test` for a quick single-version run.
 

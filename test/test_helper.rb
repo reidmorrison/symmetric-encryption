@@ -1,5 +1,21 @@
 $LOAD_PATH.unshift "#{File.dirname(__FILE__)}/../lib"
 
+# Must be started before any application code is required so that all lib files are tracked.
+# Enable by running the suite with COVERAGE=true (off by default to keep normal runs fast).
+if ENV["COVERAGE"]
+  require "simplecov"
+  SimpleCov.start do
+    command_name "Minitest"
+    add_filter "/test/"
+    track_files "lib/**/*.rb"
+
+    add_group "Keystores", "lib/symmetric_encryption/keystore"
+    add_group "ActiveRecord", "lib/symmetric_encryption/active_record"
+    add_group "Railties", "lib/symmetric_encryption/railties"
+    add_group "Utils", "lib/symmetric_encryption/utils"
+  end
+end
+
 require "yaml"
 require "minitest/autorun"
 require "minitest/stub_any_instance"
