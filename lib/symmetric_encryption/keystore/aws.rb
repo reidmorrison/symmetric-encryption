@@ -74,7 +74,6 @@ module SymmetricEncryption
                                  regions: Utils::Aws::AWS_US_REGIONS,
                                  dek: nil,
                                  **_args)
-
         # TODO: Also support generating environment variables instead of files.
 
         version >= 255 ? (version = 1) : (version += 1)

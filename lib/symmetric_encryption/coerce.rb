@@ -27,7 +27,7 @@ module SymmetricEncryption
         value
       else
         coercer = Coercible::Coercer.new
-        coercer[from_type].send("to_#{type}".to_sym, value)
+        coercer[from_type].send(:"to_#{type}", value)
       end
     end
 

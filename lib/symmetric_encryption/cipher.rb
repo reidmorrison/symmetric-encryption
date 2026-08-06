@@ -17,7 +17,6 @@ module SymmetricEncryption
                          always_add_header: true,
                          encoding: :base64strict,
                          **config)
-
       Keystore.migrate_config!(config)
       key = Keystore.read_key(cipher_name: cipher_name, **config)
 
@@ -78,7 +77,6 @@ module SymmetricEncryption
                    version: 0,
                    always_add_header: true,
                    encoding: :base64strict)
-
       @key               = key
       @iv                = iv
       @cipher_name       = cipher_name

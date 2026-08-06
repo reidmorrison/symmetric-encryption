@@ -67,7 +67,7 @@ module SymmetricEncryption
         file = Zlib::GzipReader.new(file) if !file.eof? && file.compressed?
         block ? block.call(file) : file
       ensure
-        file.close if block && file && (file.respond_to?(:closed?) && !file.closed?)
+        file.close if block && file && file.respond_to?(:closed?) && !file.closed?
       end
     end
 

@@ -2,6 +2,7 @@ module SymmetricEncryption
   module Keystore
     class File
       include Utils::Files
+
       ALLOWED_PERMISSIONS = %w[100600 100400].freeze
 
       attr_accessor :file_name, :key_encrypting_key

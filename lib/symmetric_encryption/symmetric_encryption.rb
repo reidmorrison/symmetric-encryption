@@ -217,7 +217,8 @@ module SymmetricEncryption
   #     Note: If type is set to something other than :string, it's expected that
   #       the coercible gem is available in the path.
   #     Default: :string
-  def self.encrypt(str, random_iv: SymmetricEncryption.randomize_iv?, compress: false, type: :string, header: cipher.always_add_header)
+  def self.encrypt(str, random_iv: SymmetricEncryption.randomize_iv?, compress: false, type: :string,
+                   header: cipher.always_add_header)
     return str if str.nil? || (str == "")
 
     # Encrypt and then encode the supplied string

@@ -4,7 +4,7 @@ module SymmetricEncryption
     class Heroku < Environment
       # Returns [Hash] a new keystore configuration after generating the data key.
       def self.generate_data_key(**args)
-        config            = super(**args)
+        config            = super
         config[:keystore] = :heroku
         config
       end

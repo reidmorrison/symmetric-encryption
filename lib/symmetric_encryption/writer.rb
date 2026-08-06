@@ -60,7 +60,7 @@ module SymmetricEncryption
         file = Zlib::GzipWriter.new(file) if compress
         block_given? ? yield(file) : file
       ensure
-        file.close if block_given? && file && (file.respond_to?(:closed?) && !file.closed?)
+        file.close if block_given? && file && file.respond_to?(:closed?) && !file.closed?
       end
     end
 
