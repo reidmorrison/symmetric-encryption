@@ -11,6 +11,7 @@ Public docs live in [docs/](docs/) and are published to https://encryption.reidm
 ## Commands
 
 ```bash
+docker compose up -d                       # Start MongoDB, needed by test/mongoid_test.rb
 bundle exec rake test                      # Run the suite against the default Gemfile
 bundle exec rake test TEST=test/cipher_test.rb
 bundle exec ruby test/cipher_test.rb -n "/permit replacing value/"   # Single test by name
@@ -32,11 +33,10 @@ Note: bare `rake` triggers `appraisal` unless `APPRAISAL_INITIALIZED` or `TRAVIS
 
 Tests are Minitest with the spec DSL (`describe`/`it`). [test/test_helper.rb](test/test_helper.rb) loads [test/config/symmetric-encryption.yml](test/config/symmetric-encryption.yml) with env `test` and chmods the test key files to 0600 (git does not preserve the mode, and `Keystore::File#read` refuses to read a key file with looser permissions).
 
-Some tests silently do nothing, so a green run exercises less than the file count suggests:
+Two groups of tests skip themselves rather than fail, so watch the run count:
 
 - AWS/GCP keystore tests skip without real credentials. Those three files ([keystore/aws.rb](lib/symmetric_encryption/keystore/aws.rb), [keystore/gcp.rb](lib/symmetric_encryption/keystore/gcp.rb), [utils/aws.rb](lib/symmetric_encryption/utils/aws.rb)) are the bulk of the remaining uncovered code.
-- [test/mongoid_test.rb](test/mongoid_test.rb) wraps everything in `begin ... rescue LoadError` and requires a stale path (`symmetric_encryption/extensions/mongoid/encrypted`, actually at [railties/mongoid_encrypted.rb](lib/symmetric_encryption/railties/mongoid_encrypted.rb)), so it always prints the "mongoid gem is not installed" message and skips even when mongoid is present.
-- [test/active_record_test.rb](test/active_record_test.rb) is entirely wrapped in `if ActiveRecord.version <= 7.0.0`. It covers the legacy `attr_encrypted` path, which Rails 7+ cannot use, so it never runs on any supported version.
+- [test/mongoid_test.rb](test/mongoid_test.rb) pings MongoDB at load time and skips the whole file with an explanatory message when the gem is missing or the server is unreachable. Start MongoDB with `docker compose up -d` ([docker-compose.yml](docker-compose.yml)) before expecting those 58 tests to run.
 
 CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs Rails 7.2/Ruby 3.2, Rails 8.0/Ruby 3.4, Rails 8.1/Ruby 4.0 with a mongo service, via `BUNDLE_GEMFILE=gemfiles/rails_X.Y.gemfile bundle exec rake test`.
 
@@ -66,9 +66,8 @@ Changing the header format or the flag bits breaks every value already encrypted
 
 ### Framework integration
 
-- **ActiveRecord (current)**: [active_record/encrypted_attribute.rb](lib/symmetric_encryption/active_record/encrypted_attribute.rb) is an `ActiveModel::Type::String` subclass registered as the `:encrypted` type, used via `attribute :ssn, :encrypted`.
-- **ActiveRecord (legacy)**: `attr_encrypted` ([active_record/attr_encrypted.rb](lib/symmetric_encryption/active_record/attr_encrypted.rb)) generates accessors through [generator.rb](lib/symmetric_encryption/generator.rb). It is only included for ActiveRecord <= 7.0 because Rails 7 defines its own `encrypted_attributes`.
-- **Mongoid**: [railties/mongoid_encrypted.rb](lib/symmetric_encryption/railties/mongoid_encrypted.rb) adds the `encrypted: true` field option.
+- **ActiveRecord**: [active_record/encrypted_attribute.rb](lib/symmetric_encryption/active_record/encrypted_attribute.rb) is an `ActiveModel::Type::String` subclass registered as the `:encrypted` type, used via `attribute :ssn, :encrypted`. The legacy `attr_encrypted` was removed in v5; it was already unusable under Rails 7, which defines its own `encrypted_attributes`.
+- **Mongoid**: [railties/mongoid_encrypted.rb](lib/symmetric_encryption/railties/mongoid_encrypted.rb) adds the `encrypted: true` field option, generating accessors through [generator.rb](lib/symmetric_encryption/generator.rb) (the only remaining caller now that `attr_encrypted` is gone).
 - **Railtie**: [railtie.rb](lib/symmetric_encryption/railtie.rb) loads config in `before_configuration`, deliberately earlier than ActiveRecord, because `database.yml` may itself contain encrypted passwords. Honors `SYMMETRIC_ENCRYPTION_CONFIG` and `SYMMETRIC_ENCRYPTION_ENV`.
 
 ### Files and streams

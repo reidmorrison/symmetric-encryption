@@ -1,10 +1,14 @@
+require_relative "test_helper"
+
 begin
   require "mongoid"
-  require_relative "test_helper"
-  require_relative "../lib/symmetric_encryption/extensions/mongoid/encrypted"
+  require "symmetric_encryption/railties/mongoid_encrypted"
   ENV["RACK_ENV"] = "test"
 
   Mongoid.load!("test/config/mongoid.yml")
+
+  # These tests need a running MongoDB, so verify up front that it is reachable.
+  Mongoid.default_client.with(server_selection_timeout: 2).command(ping: 1)
 
   # @formatter:off
   class MongoidUser
@@ -43,7 +47,7 @@ begin
 
     validates :username,
               length:      {in: 3..20},
-              format:      {with: /\A[\w\-]+\z/},
+              format:      {with: /\A[\w-]+\z/},
               allow_blank: true
   end
   # @formatter:on
@@ -503,10 +507,7 @@ begin
           before do
             # JSON Does not support symbols, so they will come back as strings
             # Convert symbols to string in the test
-            @h.each_key do |k|
-              @h[k.to_s] = @h[k]
-              @h.delete(k)
-            end
+            @h = @h.transform_keys(&:to_s)
           end
 
           it "return correct data type" do
@@ -585,11 +586,13 @@ begin
         it "does not allow duplicate values" do
           duplicate = MongoidUniqueUser.new(email: @email)
           assert_equal false, duplicate.valid?
-          assert_equal "is already taken", duplicate.errors.messages[:encrypted_email].first
+          assert_equal "has already been taken", duplicate.errors.messages[:encrypted_email].first
         end
       end
     end
   end
 rescue LoadError
-  puts "Not running Mongoid tests because mongoid gem is not installed!!!"
+  puts "Not running Mongoid tests because the mongoid gem is not installed."
+rescue Mongo::Error => e
+  puts "Not running Mongoid tests because MongoDB is not available (#{e.class.name}). Start it with: docker compose up -d"
 end
