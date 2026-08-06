@@ -1,3 +1,7 @@
+plugins:
+  - rubocop-minitest
+  - rubocop-rake
+
 AllCops:
   TargetRubyVersion: 3.2
   NewCops: enable
@@ -79,6 +83,11 @@ Metrics/PerceivedComplexity:
 # Initialization Vector abbreviation
 Naming/MethodParameterName:
   AllowedNames: ['iv', '_', 'io', 'ap']
+
+# The two `default` tasks are in mutually exclusive branches of an if.
+Rake/DuplicateTask:
+  Exclude:
+    - "Rakefile"
 
 # Does not allow Symbols to load
 Security/YAMLLoad:

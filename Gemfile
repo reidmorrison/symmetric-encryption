@@ -15,6 +15,8 @@ gem "minitest"
 gem "minitest-stub_any_instance"
 gem "rake"
 gem "rubocop"
+gem "rubocop-minitest"
+gem "rubocop-rake"
 gem "simplecov", require: false
 gem "solargraph", require: false, platform: :ruby
 
