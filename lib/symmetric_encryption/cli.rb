@@ -74,7 +74,7 @@ module SymmetricEncryption
         opts.banner = <<~BANNER
           Symmetric Encryption v#{VERSION}
 
-            For more information, see: https://encryption.rocketjob.io/
+            For more information, see: https://encryption.reidmorrison.com/
 
             Note:
               It is recommended to backup the current configuration file, or place it in version control before running

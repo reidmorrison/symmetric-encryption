@@ -99,7 +99,7 @@ Restart the application so that it will encrypt using the new encryption key.
 For PCI Compliance it is necessary to re-encrypt old data with the new key and
 then to destroy the old key so that it cannot be used again.
 
-The sister project [RocketJob](http://rocketjob.io) comes with a batch job to re-encrypt
+The sister project [RocketJob](https://rocketjob.reidmorrison.com) comes with a batch job to re-encrypt
 all the data in a relational database for you. Uses multiple workers concurrently to spread the load, 
 and is capable of re-encrypting terabytes of data. With built-in throttling mechanisms to allow
 re-encryption to continue while live traffic is being processed.
