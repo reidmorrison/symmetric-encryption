@@ -200,4 +200,87 @@ class CipherTest < Minitest::Test
       end
     end
   end
+
+  describe SymmetricEncryption::Cipher do
+    let :cipher do
+      SymmetricEncryption::Cipher.new(
+        cipher_name: "aes-128-cbc",
+        key:         "1234567890ABCDEF",
+        iv:          "1234567890ABCDEF",
+        version:     3
+      )
+    end
+
+    describe "#initialize" do
+      it "rejects a version outside of a single byte" do
+        assert_raises(ArgumentError) { SymmetricEncryption::Cipher.new(key: "1234567890ABCDEF", version: 256) }
+        assert_raises(ArgumentError) { SymmetricEncryption::Cipher.new(key: "1234567890ABCDEF", version: -1) }
+      end
+    end
+
+    describe "#random_key" do
+      it "generates a key of the correct size" do
+        assert_equal 16, cipher.random_key.size
+      end
+
+      it "generates a different key every time" do
+        refute_equal cipher.random_key, cipher.random_key
+      end
+    end
+
+    describe "#random_iv" do
+      it "generates an iv of the correct size" do
+        assert_equal 16, cipher.random_iv.size
+      end
+
+      it "generates a different iv every time" do
+        refute_equal cipher.random_iv, cipher.random_iv
+      end
+    end
+
+    describe "#block_size" do
+      it "returns the block size of the cipher" do
+        assert_equal 16, cipher.block_size
+      end
+    end
+
+    describe "#inspect" do
+      it "does not include the key" do
+        refute_includes cipher.inspect, "1234567890ABCDEF1234567890ABCDEF"
+        assert_includes cipher.inspect, "[FILTERED]"
+      end
+
+      it "includes the version" do
+        assert_includes cipher.inspect, "@version=3"
+      end
+    end
+
+    describe "deprecated header helpers" do
+      # The header holds the cipher version, which is looked up in the global ciphers when parsed.
+      let :encrypted do
+        SymmetricEncryption.cipher.binary_encrypt("Hello World", header: true)
+      end
+
+      it ".has_header?" do
+        assert SymmetricEncryption::Cipher.has_header?(encrypted)
+        refute SymmetricEncryption::Cipher.has_header?("Not encrypted")
+      end
+
+      it ".parse_header!" do
+        header = SymmetricEncryption::Cipher.parse_header!(encrypted.dup)
+
+        assert_equal SymmetricEncryption.cipher.version, header.version
+      end
+
+      it ".parse_header! returns nil when there is no header" do
+        assert_nil SymmetricEncryption::Cipher.parse_header!(+"Not encrypted")
+      end
+
+      it ".build_header" do
+        header = SymmetricEncryption::Cipher.build_header(3, false, "1234567890ABCDEF")
+
+        assert SymmetricEncryption::Header.present?(header)
+      end
+    end
+  end
 end

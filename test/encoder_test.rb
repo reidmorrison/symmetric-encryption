@@ -63,6 +63,22 @@ class EncoderTest < Minitest::Test
         it "return a new object when decoding" do
           assert !@data_encoded.equal?(@encoder.decode(@data_encoded))
         end
+
+        it "encodes via the module" do
+          assert_equal @data_encoded, SymmetricEncryption::Encoder.encode(@data, encoding)
+        end
+
+        it "decodes via the module" do
+          assert_equal @data, SymmetricEncryption::Encoder.decode(@data_encoded, encoding)
+        end
+      end
+    end
+
+    describe ".[]" do
+      it "raises for an unknown encoding" do
+        error = assert_raises(ArgumentError) { SymmetricEncryption::Encoder[:no_such_encoding] }
+
+        assert_includes error.message, "Unknown encoder"
       end
     end
   end

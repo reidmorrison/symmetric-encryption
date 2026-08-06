@@ -126,6 +126,164 @@ module SymmetricEncryption
         end
       end
 
+      describe ".rotate_key_encrypting_keys!" do
+        let :environments do
+          %i[development test preprod production]
+        end
+
+        let :config do
+          SymmetricEncryption::Keystore.generate_data_keys(
+            keystore:     :file,
+            key_path:     the_test_path,
+            app_name:     "tester",
+            environments: environments,
+            cipher_name:  "aes-128-cbc"
+          )
+        end
+
+        it "retains the data encrypting key so that existing data is still readable" do
+          before_config = Marshal.load(Marshal.dump(config[:production][:ciphers].first))
+          before_key    = SymmetricEncryption::Keystore.read_key(**before_config)
+
+          SymmetricEncryption::Keystore.rotate_key_encrypting_keys!(config, app_name: "tester", environments: environments)
+
+          after_config = config[:production][:ciphers].first
+          assert_equal before_key.key, SymmetricEncryption::Keystore.read_key(**after_config).key
+        end
+
+        it "replaces the key encrypting key" do
+          before_kek = Marshal.load(Marshal.dump(config[:production][:ciphers].first[:key_encrypting_key]))
+
+          SymmetricEncryption::Keystore.rotate_key_encrypting_keys!(config, app_name: "tester", environments: environments)
+
+          refute_equal before_kek, config[:production][:ciphers].first[:key_encrypting_key]
+        end
+
+        it "does not add a new key version" do
+          SymmetricEncryption::Keystore.rotate_key_encrypting_keys!(config, app_name: "tester", environments: environments)
+
+          ciphers = config[:production][:ciphers]
+          assert_equal 1, ciphers.size
+          assert_equal 1, ciphers.first[:version]
+        end
+
+        it "does not override the encoding defaults when they were not set" do
+          SymmetricEncryption::Keystore.rotate_key_encrypting_keys!(config, app_name: "tester", environments: environments)
+
+          cipher = config[:production][:ciphers].first
+          refute cipher.key?(:encoding), cipher.inspect
+          refute cipher.key?(:always_add_header), cipher.inspect
+        end
+
+        it "retains explicit encoding settings" do
+          config[:production][:ciphers].first[:encoding]          = :base64
+          config[:production][:ciphers].first[:always_add_header] = false
+
+          SymmetricEncryption::Keystore.rotate_key_encrypting_keys!(config, app_name: "tester", environments: environments)
+
+          cipher = config[:production][:ciphers].first
+          assert_equal :base64, cipher[:encoding]
+          refute cipher[:always_add_header]
+        end
+
+        it "skips environments without a key encrypting key" do
+          SymmetricEncryption::Keystore.rotate_key_encrypting_keys!(config, app_name: "tester", environments: environments)
+
+          assert_equal SymmetricEncryption::Keystore.dev_config, config[:test]
+        end
+      end
+
+      describe ".keystore_for" do
+        it "uses the supplied keystore" do
+          assert_equal SymmetricEncryption::Keystore::Heroku, SymmetricEncryption::Keystore.keystore_for(keystore: :heroku)
+        end
+
+        it "infers memory from an encrypted key" do
+          assert_equal SymmetricEncryption::Keystore::Memory, SymmetricEncryption::Keystore.keystore_for(encrypted_key: "key")
+        end
+
+        it "infers file from a key file name" do
+          assert_equal SymmetricEncryption::Keystore::File, SymmetricEncryption::Keystore.keystore_for(key_filename: "f.key")
+        end
+
+        it "infers environment from an env var name" do
+          assert_equal SymmetricEncryption::Keystore::Environment, SymmetricEncryption::Keystore.keystore_for(key_env_var: "VAR")
+        end
+
+        it "raises when the keystore cannot be determined" do
+          assert_raises(ArgumentError) { SymmetricEncryption::Keystore.keystore_for(iv: "1234567890ABCDEF") }
+        end
+      end
+
+      describe ".constantize_symbol" do
+        it "returns the keystore class" do
+          assert_equal SymmetricEncryption::Keystore::File, SymmetricEncryption::Keystore.constantize_symbol(:file)
+        end
+
+        it "raises for an unknown keystore" do
+          error = assert_raises(ArgumentError) { SymmetricEncryption::Keystore.constantize_symbol(:no_such_keystore) }
+          assert_includes error.message, "not found"
+        end
+      end
+
+      describe ".migrate_config!" do
+        # The RSA key used by the test configuration file.
+        let :private_rsa_key do
+          file_name = File.join(File.dirname(__FILE__), "config", "symmetric-encryption.yml")
+          SymmetricEncryption::Config.read_file(file_name)[:test][:ciphers].first[:private_rsa_key]
+        end
+
+        it "replaces the rsa key with a key encrypting key" do
+          config = {private_rsa_key: private_rsa_key, encrypted_key: "key", iv: stored_iv}
+
+          SymmetricEncryption::Keystore.migrate_config!(config)
+
+          refute config.key?(:private_rsa_key)
+          assert_kind_of SymmetricEncryption::RSAKey, config[:key_encrypting_key]
+        end
+
+        it "decrypts a prior encrypted_iv" do
+          rsa_key = SymmetricEncryption::RSAKey.new(private_rsa_key)
+          config  = {
+            private_rsa_key: private_rsa_key,
+            encrypted_iv:    ::Base64.encode64(rsa_key.encrypt(stored_iv))
+          }
+
+          SymmetricEncryption::Keystore.migrate_config!(config)
+
+          assert_equal stored_iv, config[:iv]
+          refute config.key?(:encrypted_iv)
+        end
+
+        it "decrypts a prior iv_filename" do
+          rsa_key   = SymmetricEncryption::RSAKey.new(private_rsa_key)
+          file_name = "#{the_test_path}/tester.iv"
+          File.binwrite(file_name, rsa_key.encrypt(stored_iv))
+          config = {private_rsa_key: private_rsa_key, iv_filename: file_name}
+
+          SymmetricEncryption::Keystore.migrate_config!(config)
+
+          assert_equal stored_iv, config[:iv]
+          refute config.key?(:iv_filename)
+        end
+
+        it "decodes a prior base64 encrypted key" do
+          config = {private_rsa_key: private_rsa_key, encrypted_key: ::Base64.encode64("encrypted"), iv: stored_iv}
+
+          SymmetricEncryption::Keystore.migrate_config!(config)
+
+          assert_equal "encrypted", config[:encrypted_key]
+        end
+
+        it "leaves a current config unchanged" do
+          config = {key_filename: "tester.key", iv: stored_iv}
+
+          SymmetricEncryption::Keystore.migrate_config!(config)
+
+          assert_equal({key_filename: "tester.key", iv: stored_iv}, config)
+        end
+      end
+
       describe ".read_key" do
         let :config do
           {key: stored_key, iv: stored_iv}

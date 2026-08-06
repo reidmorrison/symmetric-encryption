@@ -237,5 +237,84 @@ class SymmetricEncryptionTest < Minitest::Test
         end
       end
     end
+
+    describe ".cipher=" do
+      it "rejects an object that cannot encrypt and decrypt" do
+        assert_raises(ArgumentError) { SymmetricEncryption.cipher = "not a cipher" }
+      end
+
+      it "permits nil" do
+        previous = SymmetricEncryption.cipher
+        SymmetricEncryption.cipher = nil
+
+        refute SymmetricEncryption.cipher?
+      ensure
+        SymmetricEncryption.cipher = previous
+      end
+
+      it "raises when encrypting before a cipher is set" do
+        previous = SymmetricEncryption.cipher
+        SymmetricEncryption.cipher = nil
+
+        assert_raises(SymmetricEncryption::ConfigError) { SymmetricEncryption.encrypt("Hello World") }
+      ensure
+        SymmetricEncryption.cipher = previous
+      end
+    end
+
+    describe ".secondary_ciphers=" do
+      it "rejects a value that is not a collection" do
+        assert_raises(ArgumentError) { SymmetricEncryption.secondary_ciphers = :not_a_collection }
+      end
+
+      it "rejects a collection of non ciphers" do
+        assert_raises(ArgumentError) { SymmetricEncryption.secondary_ciphers = ["not a cipher"] }
+      end
+    end
+
+    describe ".randomize_iv=" do
+      it "changes the default for encrypt" do
+        previous = SymmetricEncryption.randomize_iv?
+        SymmetricEncryption.randomize_iv = true
+
+        assert SymmetricEncryption.randomize_iv?
+        refute_equal SymmetricEncryption.encrypt("Hello World"), SymmetricEncryption.encrypt("Hello World")
+      ensure
+        SymmetricEncryption.randomize_iv = previous
+      end
+    end
+
+    describe ".decrypt" do
+      it "uses the supplied version when there is no header" do
+        cipher    = SymmetricEncryption.cipher(6)
+        encrypted = cipher.encrypt("Hello World", header: false)
+
+        assert_equal "Hello World", SymmetricEncryption.decrypt(encrypted, version: 6)
+      end
+    end
+
+    describe ".try_decrypt" do
+      it "returns nil when the value cannot be decrypted" do
+        assert_nil SymmetricEncryption.try_decrypt("Not an encrypted value")
+      end
+
+      it "decrypts a valid value" do
+        assert_equal "Hello World", SymmetricEncryption.try_decrypt(SymmetricEncryption.encrypt("Hello World"))
+      end
+    end
+
+    describe ".random_password" do
+      it "defaults to 22 bytes of randomness" do
+        assert_equal 30, SymmetricEncryption.random_password.length
+      end
+
+      it "is url safe" do
+        assert_match(/\A[A-Za-z0-9\-_]+\z/, SymmetricEncryption.random_password)
+      end
+
+      it "generates a different password every time" do
+        refute_equal SymmetricEncryption.random_password, SymmetricEncryption.random_password
+      end
+    end
   end
 end

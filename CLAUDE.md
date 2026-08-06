@@ -19,7 +19,7 @@ appraisal install                          # Regenerate gemfiles/*.gemfile and i
 bundle exec rake                           # Default task: runs the suite for every appraisal
 appraisal rails_8.1 rake test              # One Rails version (rails_7.2, rails_8.0, rails_8.1)
 
-COVERAGE=true bundle exec rake test   # Writes coverage/index.html (currently ~59% line coverage)
+COVERAGE=true bundle exec rake test   # Writes coverage/index.html (currently ~87%, or ~94% ignoring the AWS/GCP keystores)
 
 bundle exec rubocop
 bundle exec rubocop -a
@@ -32,9 +32,9 @@ Note: bare `rake` triggers `appraisal` unless `APPRAISAL_INITIALIZED` or `TRAVIS
 
 Tests are Minitest with the spec DSL (`describe`/`it`). [test/test_helper.rb](test/test_helper.rb) loads [test/config/symmetric-encryption.yml](test/config/symmetric-encryption.yml) with env `test` and chmods the test key files to 0600 (git does not preserve the mode, and `Keystore::File#read` refuses to read a key file with looser permissions).
 
-Several test files silently do nothing, so a green run exercises far less than the file count suggests:
+Some tests silently do nothing, so a green run exercises less than the file count suggests:
 
-- AWS/GCP keystore tests skip without real credentials.
+- AWS/GCP keystore tests skip without real credentials. Those three files ([keystore/aws.rb](lib/symmetric_encryption/keystore/aws.rb), [keystore/gcp.rb](lib/symmetric_encryption/keystore/gcp.rb), [utils/aws.rb](lib/symmetric_encryption/utils/aws.rb)) are the bulk of the remaining uncovered code.
 - [test/mongoid_test.rb](test/mongoid_test.rb) wraps everything in `begin ... rescue LoadError` and requires a stale path (`symmetric_encryption/extensions/mongoid/encrypted`, actually at [railties/mongoid_encrypted.rb](lib/symmetric_encryption/railties/mongoid_encrypted.rb)), so it always prints the "mongoid gem is not installed" message and skips even when mongoid is present.
 - [test/active_record_test.rb](test/active_record_test.rb) is entirely wrapped in `if ActiveRecord.version <= 7.0.0`. It covers the legacy `attr_encrypted` path, which Rails 7+ cannot use, so it never runs on any supported version.
 
