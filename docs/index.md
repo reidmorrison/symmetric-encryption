@@ -238,7 +238,7 @@ The random IV and key are stored in the header of the output stream so that it
 is available when reading back the encrypted file/stream. The key is placed
 in the file header in encrypted form using the current global key.
 
-The ActiveRecord `attr_encrypted` method supports the `random_iv: true` option.
+The ActiveRecord `:encrypted` attribute type supports the `random_iv: true` option.
 Similarly for Mongoid the `random_iv: true` option is available.
 
 Note that encrypting the same input string with the same key and `random_iv: true`
