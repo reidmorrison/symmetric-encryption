@@ -37,6 +37,45 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   `encrypted_attribute?` and `encrypted_column?`.
 - The Google Cloud KMS keystore now requires `google-cloud-kms` v2. See below.
 
+### Added
+
+- The file keystore now accepts the permissions, owner and group its key files are allowed to have,
+  so that Symmetric Encryption can be run where something other than the application decides them.
+  A Kubernetes secret volume mounted with `readOnly: true` mounts its files as `0644` owned by
+  `root`, whatever user the container runs as, which the previous fixed expectation of `0600` or
+  `0400` owned by the current user rejected outright, leaving no way to start the application:
+
+  ~~~yaml
+  production:
+    ciphers:
+      - key_filename: /etc/keys/my_app_production_v1.encrypted_key
+        permissions: "0644"
+        owner: root
+        group: root
+  ~~~
+
+  Supply them per key file, or as a list when more than one value is acceptable. Permissions are an
+  octal file mode, and new key files are created with the first one. Owner and group are a name or a
+  numeric id. Key files are still verified, against what the configuration says rather than against
+  the default, and the defaults are unchanged when nothing is supplied: `owner` replaces the check
+  that the key file is owned by the user running the application, and `group` adds a check that was
+  not performed at all before. See the
+  [Configuration Guide](https://encryption.reidmorrison.com/configuration.html#key-file-permissions-and-ownership).
+
+- `symmetric-encryption --generate --key-permissions 0644` writes the above configuration and
+  creates the key files with those permissions. `--rotate-keys` and `--rotate-kek` carry all three
+  settings into the entries they write, so they only have to be supplied once. There is no
+  equivalent option for `owner` and `group`, since `symmetric-encryption` cannot give a file away to
+  another user.
+
+  The error message raised for a key file with the wrong permissions now reports the mode alone,
+  `0644`, instead of the mode with its file type bits, `100644`. The wrong owner or group is now
+  reported as two separate messages, each naming what it found and what it expected.
+
+  `SymmetricEncryption::Keystore::File::ALLOWED_PERMISSIONS` has been replaced by
+  `DEFAULT_PERMISSIONS`, which holds file modes as Integers rather than strings that included the
+  file type bits.
+
 ### Fixed
 
 - `symmetric-encryption --rotate-kek` raised `ArgumentError` on every supported Ruby.

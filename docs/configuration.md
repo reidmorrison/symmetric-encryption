@@ -136,6 +136,76 @@ It is recommended to lock down the key files to prevent any other user from bein
 chmod -R 0400 ~/.symmetric-encryption
 ~~~
 
+#### Key file permissions and ownership
+
+Symmetric Encryption refuses to read a key file that other users on the machine can read, since
+anyone who can read the key file can decrypt everything that was encrypted with it. By default a
+key file has to be `0600` or `0400`, and has to be owned by the user running the application.
+
+Some environments dictate the permissions and the ownership of the key file, and cannot be asked
+for `0600` owned by the application user. The most common one is a Kubernetes secret volume mounted
+with `readOnly: true`, which mounts its files as `0644` owned by `root`, whatever user the container
+itself runs as. Supply the permissions, the owner, and the group that those key files will have and
+Symmetric Encryption verifies against those instead of the defaults:
+
+~~~yaml
+production:
+  ciphers:
+    - key_filename: /etc/keys/my_app_production_v1.encrypted_key
+      permissions: "0644"
+      owner: root
+      group: root
+      iv: aFhScC9maXNHTFhBaFZjS3M=
+      key_encrypting_key:
+        encrypted_key: TWpBeE9UQXhNRE10TWpFNU1UUTVMVGM9
+        iv: WVRJNU1UUTVMVGM1TFRJd01UZz0=
+        key_encrypting_key:
+          key_filename: /etc/keys/my_app_production_v1.kekek
+          permissions: "0644"
+          owner: root
+          group: root
+          iv: TVRrMk1UUTVMVGM1TFRJd01UZz0=
+~~~
+
+Notes:
+
+* All three apply to one key file, so supply them for every `key_filename` entry, including the
+  key encrypting key files nested below it. Generate a configuration with the permissions already in
+  place, and key files already created with them, using `--key-permissions`:
+
+      symmetric-encryption --generate --app-name my_app --key-permissions 0644
+
+  `--rotate-keys` and `--rotate-kek` carry all three settings into the entries they write, so they
+  only have to be supplied once. There is no equivalent option for `owner` and `group`, because
+  `symmetric-encryption` cannot give a file away to another user. Add them to the configuration
+  file by hand: they describe the environment the key files are deployed into, not the machine the
+  keys were generated on.
+* Supply `permissions` as an octal file mode without the file type bits, either as a String,
+  `"0644"`, or as an Integer, `0644`.
+* Supply `owner` and `group` as a name, `root`, or as a numeric id, `0`. Use the numeric id when the
+  name does not resolve on every machine that loads this configuration.
+* `owner` replaces the default check that the key file is owned by the user running the application.
+  `group` adds a check that is not performed at all by default. Naming them is not the same as
+  skipping them, the key file still has to match what the configuration says.
+* Supply a list to any of them when more than one value is acceptable. New key files are created
+  with the first permission in the list, so list the most restrictive one first:
+
+  ~~~yaml
+    - key_filename: /etc/keys/my_app_production_v1.encrypted_key
+      permissions:
+        - "0600"
+        - "0644"
+      owner:
+        - deploy
+        - root
+  ~~~
+
+* The configuration file is evaluated with ERB, so a value can come from the environment when it
+  differs per deployment: `permissions: "<%= ENV['KEY_FILE_PERMISSIONS'] %>"`.
+* Only relax these where something outside of the application controls the key file and the
+  surrounding environment supplies the protection instead. On a shared machine, widening the
+  permissions lets every other user on it read the encryption key.
+
 ### Heroku Keystore
 
 Specify Heroku as the keystore so that the encrypted encryption keys can be stored in Heroku instead of in files.

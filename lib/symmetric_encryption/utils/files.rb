@@ -27,11 +27,13 @@ module SymmetricEncryption
       end
 
       # Write to the supplied file_name, backing up the existing file if present
-      def write_to_file(file_name, data)
+      def write_to_file(file_name, data, permission: 0o600)
         key_path = ::File.dirname(file_name)
         ::FileUtils.mkdir_p(key_path) unless ::File.directory?(key_path)
         ::File.rename(file_name, "#{file_name}.#{Time.now.to_i}") if ::File.exist?(file_name)
-        ::File.open(file_name, "wb", 0o600) { |file| file.write(data) }
+        ::File.open(file_name, "wb", permission) { |file| file.write(data) }
+        # The umask can clear bits from the mode above, so apply it explicitly.
+        ::FileUtils.chmod(permission, file_name)
       end
 
       # Read from the file, raising an exception if it is not found
