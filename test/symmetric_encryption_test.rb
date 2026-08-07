@@ -318,6 +318,41 @@ class SymmetricEncryptionTest < Minitest::Test
       it "accepts a frozen value" do
         assert SymmetricEncryption.encrypted?(SymmetricEncryption.encrypt("Hello World").freeze)
       end
+
+      # The magic header depends on the encoding of the primary cipher, so it must not be
+      # memoized at module level: `cipher=` and every `Config.load!` replace that cipher.
+      it "follows the primary cipher when it is replaced" do
+        original = SymmetricEncryption.cipher
+        begin
+          assert SymmetricEncryption.encrypted?(SymmetricEncryption.encrypt("Hello World"))
+
+          SymmetricEncryption.cipher = SymmetricEncryption::Cipher.new(
+            key:               "ABCDEF1234567890",
+            iv:                "ABCDEF1234567890",
+            cipher_name:       "aes-128-cbc",
+            encoding:          :base16,
+            always_add_header: true
+          )
+
+          assert SymmetricEncryption.encrypted?(SymmetricEncryption.encrypt("Hello World"))
+        ensure
+          SymmetricEncryption.cipher = original
+        end
+      end
+
+      # Same reason, reached through the cipher rather than by replacing it.
+      it "follows the encoding of the primary cipher when it changes" do
+        previous = SymmetricEncryption.cipher.encoding
+        begin
+          assert SymmetricEncryption.encrypted?(SymmetricEncryption.encrypt("Hello World"))
+
+          SymmetricEncryption.cipher.encoding = previous == :base16 ? :base64 : :base16
+
+          assert SymmetricEncryption.encrypted?(SymmetricEncryption.encrypt("Hello World"))
+        ensure
+          SymmetricEncryption.cipher.encoding = previous
+        end
+      end
     end
 
     describe ".try_decrypt" do

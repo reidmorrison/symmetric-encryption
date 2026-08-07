@@ -91,8 +91,10 @@ module SymmetricEncryption
 
     # Change the encoding
     def encoding=(encoding)
-      @encoder  = nil
-      @encoding = encoding
+      # Both are derived from the encoding, so they have to be discarded along with it.
+      @encoder              = nil
+      @encoded_magic_header = nil
+      @encoding             = encoding
     end
 
     # Returns [SymmetricEncryption::Encoder] the encoder to use for the current encoding.
