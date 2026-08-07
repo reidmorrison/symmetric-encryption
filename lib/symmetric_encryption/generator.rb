@@ -15,15 +15,41 @@ module SymmetricEncryption
         raise(ArgumentError, "Invalid type: #{type.inspect}. Valid types: #{SymmetricEncryption::COERCION_TYPES.inspect}")
       end
 
-      if model.const_defined?(:EncryptedAttributes, _search_ancestors = false)
+      # Do not search ancestors: each model needs its own EncryptedAttributes module.
+      if model.const_defined?(:EncryptedAttributes, false)
         mod = model.const_get(:EncryptedAttributes)
       else
         mod = model.const_set(:EncryptedAttributes, Module.new)
         model.send(:include, mod)
       end
 
-      # Generate getter and setter methods
+      # Generate getter and setter methods.
+      # The cop wants a comment against each interpolated def. The worked example at the top of the
+      # heredoc covers all three of them at once, which reads better than repeating it.
+      # rubocop:disable Style/DocumentDynamicEvalDefinition
       mod.module_eval(<<~ACCESSORS, __FILE__, __LINE__ + 1)
+        # For `field :encrypted_ssn, encrypted: true` on a Mongoid model this generates:
+        #
+        #   def ssn=(value)
+        #     v = SymmetricEncryption::Coerce.coerce(value, :string).freeze
+        #     return if (@ssn == v) && !v.nil? && !(v == '')
+        #     self.encrypted_ssn = @stored_encrypted_ssn =
+        #       ::SymmetricEncryption.encrypt(v, random_iv: false, compress: false, type: :string).freeze
+        #     @ssn = v
+        #   end
+        #
+        #   def ssn
+        #     if !defined?(@stored_encrypted_ssn) || (@stored_encrypted_ssn != self.encrypted_ssn)
+        #       @ssn = ::SymmetricEncryption.decrypt(self.encrypted_ssn.freeze, type: :string).freeze
+        #       @stored_encrypted_ssn = self.encrypted_ssn
+        #     end
+        #     @ssn
+        #   end
+        #
+        #   def ssn_changed?
+        #     encrypted_ssn_changed?
+        #   end
+
         # Set the un-encrypted field
         # Also updates the encrypted field with the encrypted value
         # Freeze the decrypted field value so that it is not modified directly
@@ -50,6 +76,7 @@ module SymmetricEncryption
           #{encrypted_name}_changed?
         end
       ACCESSORS
+      # rubocop:enable Style/DocumentDynamicEvalDefinition
     end
   end
 end

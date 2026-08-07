@@ -5,6 +5,8 @@ module SymmetricEncryption
     class Gcp
       include Utils::Files
 
+      KMS = Google::Cloud::Kms::V1
+
       def self.generate_data_key(cipher_name:, app_name:, environment:, key_path:, version: 0, dek: nil, **_args)
         version >= 255 ? (version = 1) : (version += 1)
 
@@ -27,8 +29,12 @@ module SymmetricEncryption
         }
       end
 
+      # `key_encrypting_key` is accepted for interface compatibility only: Cloud KMS holds the
+      # key encrypting key itself, so one can never be supplied here.
+      # rubocop:disable Lint/UnusedMethodArgument
       def initialize(key_file:, app_name: nil, environment: nil, key_encrypting_key: nil, crypto_key: nil, project_id: nil,
                      credentials: nil, location_id: nil)
+        # rubocop:enable Lint/UnusedMethodArgument
         @crypto_key  = crypto_key
         @app_name    = app_name
         @environment = environment
@@ -61,8 +67,6 @@ module SymmetricEncryption
       end
 
       private
-
-      KMS = Google::Cloud::Kms::V1
 
       attr_reader :app_name, :environment
 

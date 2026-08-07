@@ -21,13 +21,11 @@ module SymmetricEncryption
 
       from_type ||= value.class
       case type
-      when :json
-        value
-      when :yaml
+      when :json, :yaml
         value
       else
         coercer = Coercible::Coercer.new
-        coercer[from_type].send("to_#{type}".to_sym, value)
+        coercer[from_type].send(:"to_#{type}", value)
       end
     end
 

@@ -10,7 +10,7 @@ module SymmetricEncryption
 
         let(:the_test_path) do
           path = "tmp/keystore/gcp_test"
-          FileUtils.makedirs(path) unless ::File.exist?(path)
+          FileUtils.makedirs(path)
           path
         end
 
@@ -42,7 +42,7 @@ module SymmetricEncryption
             expected_file_name = "#{the_test_path}/tester_test_v11.encrypted_key"
 
             assert_equal expected_file_name, file_name
-            assert ::File.exist?(file_name)
+            assert_path_exists file_name
 
             assert encoded_data_key = ::File.read(file_name)
             encrypted_data_key = Base64.strict_decode64(encoded_data_key)
@@ -50,6 +50,7 @@ module SymmetricEncryption
             client = SymmetricEncryption::Keystore::Gcp::KMS::KeyManagementService::Client.new do |config|
               config.credentials = ENV.fetch("GOOGLE_CLOUD_KEYFILE", nil)
             end
+
             assert client.decrypt(name: key_path, ciphertext: encrypted_data_key)
           end
 
@@ -69,6 +70,7 @@ module SymmetricEncryption
 
           it "stores the key" do
             keystore.write("TEST")
+
             assert_equal "TEST", keystore.read
           end
         end

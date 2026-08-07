@@ -62,6 +62,7 @@ module SymmetricEncryption
 
         it "reads the key" do
           ENV["TESTER_ENV_VAR"] = Base64.strict_encode64(key.encrypt("TEST"))
+
           assert_equal "TEST", keystore.read
         end
       end

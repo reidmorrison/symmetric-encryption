@@ -9,7 +9,7 @@ module SymmetricEncryption
 
       let :the_test_path do
         path = "tmp/keystore_test"
-        FileUtils.makedirs(path) unless ::File.exist?(path)
+        FileUtils.makedirs(path)
         path
       end
 
@@ -114,13 +114,14 @@ module SymmetricEncryption
         it "creates an encrypted key file for all non-test environments" do
           (environments - %i[development test]).each do |env|
             assert key_rotation
-            assert key_rotation[env.to_sym], key_rotation
+            # The second argument is the failure message, not an expected value.
+            assert key_rotation[env.to_sym], key_rotation.inspect # rubocop:disable Minitest/AssertWithExpectedArgument
             assert key_rotation[env.to_sym][:ciphers]
             assert ciphers = key_rotation[env.to_sym][:ciphers], "Environment #{env} is missing ciphers: #{key_rotation[env.to_sym].inspect}"
             assert_equal 2, ciphers.size, "Environment #{env}: #{ciphers.inspect}"
             assert new_config = ciphers.first
             assert file_name = new_config[:key_filename], "Environment #{env} is missing key_filename: #{ciphers.inspect}"
-            assert File.exist?(file_name)
+            assert_path_exists file_name
             assert_equal 2, new_config[:version]
           end
         end
@@ -148,6 +149,7 @@ module SymmetricEncryption
           SymmetricEncryption::Keystore.rotate_key_encrypting_keys!(config, app_name: "tester", environments: environments)
 
           after_config = config[:production][:ciphers].first
+
           assert_equal before_key.key, SymmetricEncryption::Keystore.read_key(**after_config).key
         end
 
@@ -163,6 +165,7 @@ module SymmetricEncryption
           SymmetricEncryption::Keystore.rotate_key_encrypting_keys!(config, app_name: "tester", environments: environments)
 
           ciphers = config[:production][:ciphers]
+
           assert_equal 1, ciphers.size
           assert_equal 1, ciphers.first[:version]
         end
@@ -171,6 +174,7 @@ module SymmetricEncryption
           SymmetricEncryption::Keystore.rotate_key_encrypting_keys!(config, app_name: "tester", environments: environments)
 
           cipher = config[:production][:ciphers].first
+
           refute cipher.key?(:encoding), cipher.inspect
           refute cipher.key?(:always_add_header), cipher.inspect
         end
@@ -182,6 +186,7 @@ module SymmetricEncryption
           SymmetricEncryption::Keystore.rotate_key_encrypting_keys!(config, app_name: "tester", environments: environments)
 
           cipher = config[:production][:ciphers].first
+
           assert_equal :base64, cipher[:encoding]
           refute cipher[:always_add_header]
         end

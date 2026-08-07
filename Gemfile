@@ -2,12 +2,12 @@ source "https://rubygems.org"
 
 gemspec
 
-gem "google-cloud-kms"
-gem "sqlite3", platform: :ruby
 gem "activerecord", "~> 7.2.3"
 gem "activerecord-jdbcsqlite3-adapter", "~> 72.1", platform: :jruby
+gem "google-cloud-kms"
 gem "jdbc-sqlite3", platform: :jruby
 gem "mongoid", "~> 8.1.0"
+gem "sqlite3", platform: :ruby
 
 gem "amazing_print"
 gem "appraisal"
@@ -15,6 +15,8 @@ gem "minitest"
 gem "minitest-stub_any_instance"
 gem "rake"
 gem "rubocop"
+gem "rubocop-minitest"
+gem "rubocop-rake"
 gem "simplecov", require: false
 gem "solargraph", require: false, platform: :ruby
 

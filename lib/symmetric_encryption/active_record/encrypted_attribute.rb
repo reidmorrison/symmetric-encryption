@@ -2,6 +2,7 @@ module SymmetricEncryption
   module ActiveRecord
     class EncryptedAttribute < ::ActiveModel::Type::String
       def initialize(random_iv: true, compress: false, type: :string)
+        super()
         @random_iv      = random_iv
         @compress       = compress
         @encrypted_type = type

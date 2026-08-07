@@ -87,6 +87,7 @@ class EncryptedAttributeTest < Minitest::Test
 
     it "stores nil value" do
       person = Person.create(name: nil)
+
       assert_nil person.reload.name
       assert_nil person.read_attribute_before_type_cast(:name)
     end
@@ -94,6 +95,7 @@ class EncryptedAttributeTest < Minitest::Test
     it "stores a value which can later be decrypted" do
       person            = Person.create(address: address)
       encrypted_address = person.read_attribute_before_type_cast(:address)
+
       assert_equal address, SymmetricEncryption.decrypt(encrypted_address)
     end
 
@@ -104,25 +106,30 @@ class EncryptedAttributeTest < Minitest::Test
       address2 = person.read_attribute_before_type_cast(:address)
       iv1      = SymmetricEncryption.header(address1).iv
       iv2      = SymmetricEncryption.header(address2).iv
+
       refute_equal iv1, iv2
     end
 
     it "reports whether it has changed" do
       person.name # Call field so decryption happens
-      assert !person.name_changed?
+
+      refute_predicate person, :name_changed?
 
       person.name = "Abcde fghij"
-      assert person.name_changed?
+
+      assert_predicate person, :name_changed?
     end
 
     it "reports whether it has changed since last save" do
       person.reload
       person.name # Call field so decryption happens
-      assert !person.saved_change_to_name?
+
+      refute_predicate person, :saved_change_to_name?
 
       person.update!(address: "Some other test value")
-      assert !person.saved_change_to_name?
-      assert person.saved_change_to_address?
+
+      refute_predicate person, :saved_change_to_name?
+      assert_predicate person, :saved_change_to_address?
     end
 
     describe "types" do
@@ -137,8 +144,11 @@ class EncryptedAttributeTest < Minitest::Test
         assert_equal datetime_value, person.datetime_value
         assert_equal time_value, person.time_value
         assert_equal date_value, person.date_value
+        # rubocop:disable Minitest/AssertTruthy, Minitest/RefuteFalse
+        # The point of these two is the exact value, not truthiness: :boolean must coerce back to true and false.
         assert_equal true, person.true_value
         assert_equal false, person.false_value
+        # rubocop:enable Minitest/AssertTruthy, Minitest/RefuteFalse
       end
     end
   end

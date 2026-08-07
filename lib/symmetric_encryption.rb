@@ -5,6 +5,7 @@ begin
   require "rails"
   require "symmetric_encryption/railtie"
 rescue LoadError
+  # Rails is an optional dependency. Standalone Ruby apps do not need the Railtie.
 end
 
 begin
@@ -20,4 +21,6 @@ begin
     require "symmetric_encryption/railties/symmetric_encryption_validator"
   end
 rescue LoadError
+  # Active Support is an optional dependency. Without it there is no Active Record or
+  # Mongoid to hook into.
 end

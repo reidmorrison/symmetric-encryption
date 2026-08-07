@@ -44,9 +44,11 @@ module SymmetricEncryption
           generate
 
           record.ssn = "123456789"
+
           assert_equal "123456789", record.ssn
 
           record.encrypted_ssn = SymmetricEncryption.encrypt("987654321")
+
           assert_equal "987654321", record.ssn
         end
 
@@ -55,7 +57,7 @@ module SymmetricEncryption
 
           record.ssn = +"123456789"
 
-          assert record.ssn.frozen?
+          assert_predicate record.ssn, :frozen?
         end
 
         it "returns nil when the encrypted value is nil" do
@@ -67,7 +69,7 @@ module SymmetricEncryption
         it "delegates changed? to the encrypted attribute" do
           generate
 
-          assert record.ssn_changed?
+          assert_predicate record, :ssn_changed?
         end
 
         it "coerces the supplied type" do
@@ -98,7 +100,7 @@ module SymmetricEncryption
           record.ssn = "123456789" * 100
 
           assert_equal "123456789" * 100, record.ssn
-          assert SymmetricEncryption.header(record.encrypted_ssn).compressed?
+          assert_predicate SymmetricEncryption.header(record.encrypted_ssn), :compressed?
         end
 
         it "adds both attributes to a single module" do

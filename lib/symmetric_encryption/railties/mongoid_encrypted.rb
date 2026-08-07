@@ -77,9 +77,11 @@ require "mongoid"
 # @option options [ Boolean | Hash ] :encrypted  If the field contains encrypted data.
 #   When :encrypted is a Hash it consists of:
 #     @option options [ Symbol ]  :type The type for this field, #see SymmetricEncryption::COERCION_TYPES
-#     @option options [ Boolean ] :random_iv  Whether the encrypted value should use a random IV every time the field is encrypted.
+#     @option options [ Boolean ] :random_iv  Whether the encrypted value should use a random IV
+#       every time the field is encrypted.
 #     @option options [ Boolean ] :compress   Whether to compress this encrypted field
-#     @option options [ Symbol ]  :decrypt_as Name of the getters and setters to generate to access the decrypted value of this field.
+#     @option options [ Symbol ]  :decrypt_as Name of the getters and setters to generate to access
+#       the decrypted value of this field.
 #
 # Some of the other regular Mongoid options:
 #
@@ -96,12 +98,13 @@ Mongoid::Fields.option :encrypted do |model, field, options|
     # Support overriding the name of the decrypted attribute
     decrypted_field_name = options.delete(:decrypt_as)
     if decrypted_field_name.nil? && encrypted_field_name.to_s.start_with?("encrypted_")
-      decrypted_field_name = encrypted_field_name.to_s[("encrypted_".length)..-1]
+      decrypted_field_name = encrypted_field_name.to_s[("encrypted_".length)..]
     end
 
     if decrypted_field_name.nil?
       raise(ArgumentError,
-            "SymmetricEncryption for Mongoid. Encryption enabled for field #{encrypted_field_name}. It must either start with 'encrypted_' or the option :decrypt_as must be supplied")
+            "SymmetricEncryption for Mongoid. Encryption enabled for field #{encrypted_field_name}. " \
+            "It must either start with 'encrypted_' or the option :decrypt_as must be supplied")
     end
 
     SymmetricEncryption::Generator.generate_decrypted_accessors(model, decrypted_field_name, encrypted_field_name, options)

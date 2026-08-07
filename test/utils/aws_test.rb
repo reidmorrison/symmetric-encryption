@@ -65,6 +65,7 @@ module SymmetricEncryption
             message   = "hello world this is a top secret message"
             encrypted = aws.encrypt(message)
             decrypted = aws.decrypt(encrypted)
+
             assert_equal message, decrypted
           end
         end

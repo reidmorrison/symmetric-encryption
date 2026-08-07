@@ -5,6 +5,21 @@ on:
   - pull_request
 
 jobs:
+  rubocop:
+    name: Rubocop
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          # runs 'bundle install' and caches installed gems automatically
+          bundler-cache: true
+
+      - name: Run Rubocop
+        run: bundle exec rubocop
+
   test:
     name: "Test: Rails ${{ matrix.rails }} on Ruby ${{ matrix.ruby }}"
     runs-on: ubuntu-latest

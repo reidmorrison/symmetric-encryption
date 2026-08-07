@@ -109,12 +109,14 @@ module SymmetricEncryption
         end
 
         opts.on "-E", "--env ENVIRONMENT",
-                "Environment to use in the config file. Default: SYMMETRIC_ENCRYPTION_ENV || RACK_ENV || RAILS_ENV || 'development'" do |environment|
+                "Environment to use in the config file. " \
+                "Default: SYMMETRIC_ENCRYPTION_ENV || RACK_ENV || RAILS_ENV || 'development'" do |environment|
           @environment = environment
         end
 
         opts.on "-c", "--config CONFIG_FILE_PATH",
-                "File name & path to the Symmetric Encryption configuration file. Default: config/symmetric-encryption.yml or Env var: `SYMMETRIC_ENCRYPTION_CONFIG`" do |path|
+                "File name & path to the Symmetric Encryption configuration file. " \
+                "Default: config/symmetric-encryption.yml or Env var: `SYMMETRIC_ENCRYPTION_CONFIG`" do |path|
           @config_file_path = path
         end
 
@@ -157,12 +159,14 @@ module SymmetricEncryption
         end
 
         opts.on "-S", "--environments ENVIRONMENTS",
-                "Comma separated list of environments for which to generate the config file. Default: development,test,release,production" do |environments|
+                "Comma separated list of environments for which to generate the config file. " \
+                "Default: development,test,release,production" do |environments|
           @environments = environments.split(",").collect(&:strip).collect(&:to_sym)
         end
 
         opts.on "-C", "--cipher-name NAME",
-                "Name of the cipher to use when generating a new config file, or when rotating keys. Default: aes-256-cbc" do |name|
+                "Name of the cipher to use when generating a new config file, or when rotating keys. " \
+                "Default: aes-256-cbc" do |name|
           @cipher_name = name
         end
 
@@ -172,12 +176,14 @@ module SymmetricEncryption
         end
 
         opts.on "-U", "--rotate-kek",
-                "Replace the existing key encrypting keys only, the data encryption key is not changed, and updates the configuration file." do
+                "Replace the existing key encrypting keys only, the data encryption key is not changed, " \
+                "and updates the configuration file." do
           @rotate_kek = true
         end
 
         opts.on "-D", "--rolling-deploy",
-                "During key rotation, support a rolling deploy by placing the new key second in the list so that it is not activated yet." do
+                "During key rotation, support a rolling deploy by placing the new key second in the list " \
+                "so that it is not activated yet." do
           @rolling_deploy = true
         end
 
@@ -279,7 +285,7 @@ module SymmetricEncryption
       config = Config.read_file(config_file_path)
       config.each_pair do |env, cfg|
         next if environments && !environments.include?(env.to_sym)
-        next unless ciphers = cfg[:ciphers]
+        next unless (ciphers = cfg[:ciphers])
 
         highest = ciphers.max_by { |i| i[:version] }
         ciphers.clear
@@ -294,7 +300,7 @@ module SymmetricEncryption
       config = Config.read_file(config_file_path)
       config.each_pair do |env, cfg|
         next if environments && !environments.include?(env.to_sym)
-        next unless ciphers = cfg[:ciphers]
+        next unless (ciphers = cfg[:ciphers])
 
         highest = ciphers.max_by { |i| i[:version] }
         ciphers.delete(highest)
@@ -326,7 +332,8 @@ module SymmetricEncryption
       begin
         require "highline"
       rescue LoadError
-        puts("\nPlease install gem highline before using the command line task to decrypt an entered string.\n   gem install \"highline\"\n\n")
+        puts("\nPlease install gem highline before using the command line task to decrypt an entered string." \
+             "\n   gem install \"highline\"\n\n")
         exit(-2)
       end
 
@@ -341,7 +348,8 @@ module SymmetricEncryption
       begin
         require "highline"
       rescue LoadError
-        puts("\nPlease install gem highline before using the command line task to encrypt an entered string.\n   gem install \"highline\"\n\n")
+        puts("\nPlease install gem highline before using the command line task to encrypt an entered string." \
+             "\n   gem install \"highline\"\n\n")
         exit(-2)
       end
       value1    = nil

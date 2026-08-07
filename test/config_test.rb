@@ -46,6 +46,7 @@ module SymmetricEncryption
           CONFIG
 
           config = SymmetricEncryption::Config.read_file(file_name)
+
           assert_equal "A" * 32, config[:production][:ciphers].first[:key]
         end
       end
@@ -81,13 +82,14 @@ module SymmetricEncryption
           nested = "#{the_test_path}/a/b/symmetric-encryption.yml"
           SymmetricEncryption::Config.write_file(nested, config)
 
-          assert File.exist?(nested)
+          assert_path_exists nested
         end
 
         it "writes string keys, not symbols" do
           SymmetricEncryption::Config.write_file(file_name, config)
 
           raw = YAML.safe_load_file(file_name, permitted_classes: [Symbol], aliases: true)
+
           assert_equal %w[production], raw.keys
           assert_equal %w[ciphers], raw["production"].keys
         end
@@ -122,6 +124,7 @@ module SymmetricEncryption
           config = SymmetricEncryption::Config.new(file_name: the_config_file_name, env: "test")
 
           ciphers = config.ciphers
+
           assert_equal 5, ciphers.size
           assert ciphers.all?(SymmetricEncryption::Cipher)
           assert_equal 2, ciphers.first.version
@@ -155,6 +158,7 @@ module SymmetricEncryption
           config = migrate(ciphers: [{key: "A" * 32, iv: "B" * 16, cipher: "aes-256-cbc"}])
 
           cipher = config[:ciphers].first
+
           assert_equal "aes-256-cbc", cipher[:cipher_name]
           refute cipher.key?(:cipher)
         end
@@ -173,6 +177,7 @@ module SymmetricEncryption
           config = migrate(ciphers: [{encrypted_key: "1", key_encrypting_key: "RSA KEY"}])
 
           cipher = config[:ciphers].first
+
           assert_equal "RSA KEY", cipher[:private_rsa_key]
           refute cipher.key?(:key_encrypting_key)
         end
@@ -181,6 +186,7 @@ module SymmetricEncryption
           config = migrate(ciphers: [{encrypted_key: "1", key_encrypting_key: {key: "A" * 32}}])
 
           cipher = config[:ciphers].first
+
           assert_equal({key: "A" * 32}, cipher[:key_encrypting_key])
           refute cipher.key?(:private_rsa_key)
         end

@@ -158,7 +158,10 @@ module SymmetricEncryption
     # Returns [Key] by recursively navigating the config tree.
     #
     # Supports N level deep key encrypting keys.
+    # `version` is named only to keep it out of `args`, which is passed on to the keystore.
+    # rubocop:disable Lint/UnusedMethodArgument
     def self.read_key(iv:, key: nil, key_encrypting_key: nil, cipher_name: "aes-256-cbc", keystore: nil, version: 0, **args)
+      # rubocop:enable Lint/UnusedMethodArgument
       if key_encrypting_key.is_a?(Hash)
         # Recurse up the chain returning the parent key_encrypting_key
         key_encrypting_key = read_key(cipher_name: cipher_name, **key_encrypting_key)

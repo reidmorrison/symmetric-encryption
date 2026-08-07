@@ -17,30 +17,33 @@ class SymmetricEncryptionTest < Minitest::Test
 
       it "matches config file for first cipher" do
         cipher = SymmetricEncryption.cipher
+
         assert @cipher_v2.send(:key)
         assert @cipher_v2.send(:iv)
         assert @cipher_v2.version
         assert_equal @cipher_v2.cipher_name, cipher.cipher_name
         assert_equal @cipher_v2.version, cipher.version
-        assert_equal false, SymmetricEncryption.secondary_ciphers.include?(cipher)
+        refute_includes SymmetricEncryption.secondary_ciphers, cipher
       end
 
       it "match config file for v1 cipher" do
         cipher = SymmetricEncryption.cipher(2)
+
         assert @cipher_v2.cipher_name
         assert @cipher_v2.version
         assert_equal @cipher_v2.cipher_name, cipher.cipher_name
         assert_equal @cipher_v2.version, cipher.version
-        assert_equal false, SymmetricEncryption.secondary_ciphers.include?(cipher)
+        refute_includes SymmetricEncryption.secondary_ciphers, cipher
       end
 
       it "match config file for v0 cipher" do
         cipher = SymmetricEncryption.cipher(0)
+
         assert @cipher_v0.cipher_name
         assert @cipher_v0.version
         assert_equal @cipher_v0.cipher_name, cipher.cipher_name
         assert_equal @cipher_v0.version, cipher.version
-        assert_equal true, SymmetricEncryption.secondary_ciphers.include?(cipher)
+        assert_includes SymmetricEncryption.secondary_ciphers, cipher
       end
     end
 
@@ -84,10 +87,10 @@ class SymmetricEncryptionTest < Minitest::Test
 
         it "return BINARY encoding for non-UTF-8 encrypted data" do
           assert_equal Encoding.find("binary"), @non_utf8.encoding
-          assert_equal true, @non_utf8.valid_encoding?
+          assert_predicate @non_utf8, :valid_encoding?
           assert encrypted = SymmetricEncryption.encrypt(@non_utf8)
           assert decrypted = SymmetricEncryption.decrypt(encrypted)
-          assert_equal true, decrypted.valid_encoding?
+          assert_predicate decrypted, :valid_encoding?
           assert_equal Encoding.find("binary"), decrypted.encoding, decrypted
           assert_equal @non_utf8, decrypted
         end
@@ -149,6 +152,7 @@ class SymmetricEncryptionTest < Minitest::Test
         @social_security_number = "987654321"
         # Encrypt data without a header and encode with base64 which has a trailing '\n'
         no_header = SymmetricEncryption.cipher(0).binary_encrypt(@social_security_number, header: false)
+
         assert @encrypted_0_ssn = SymmetricEncryption.cipher(0).encode(no_header)
       end
 
@@ -196,6 +200,7 @@ class SymmetricEncryptionTest < Minitest::Test
 
         it "retains empty" do
           encrypted = SymmetricEncryption.encrypt("", type: :string)
+
           assert_equal "", encrypted
           assert_equal "", SymmetricEncryption.decrypt(encrypted, type: :string)
         end
@@ -233,7 +238,8 @@ class SymmetricEncryptionTest < Minitest::Test
       describe "boolean false" do
         it "encrypt and decrypt" do
           assert encrypted = SymmetricEncryption.encrypt(false, type: :boolean)
-          assert_equal false, SymmetricEncryption.decrypt(encrypted, type: :boolean)
+          # The point is the exact value, not truthiness: :boolean must coerce back to false.
+          assert_equal false, SymmetricEncryption.decrypt(encrypted, type: :boolean) # rubocop:disable Minitest/RefuteFalse
         end
       end
     end
@@ -247,7 +253,7 @@ class SymmetricEncryptionTest < Minitest::Test
         previous = SymmetricEncryption.cipher
         SymmetricEncryption.cipher = nil
 
-        refute SymmetricEncryption.cipher?
+        refute_predicate SymmetricEncryption, :cipher?
       ensure
         SymmetricEncryption.cipher = previous
       end
@@ -277,7 +283,7 @@ class SymmetricEncryptionTest < Minitest::Test
         previous = SymmetricEncryption.randomize_iv?
         SymmetricEncryption.randomize_iv = true
 
-        assert SymmetricEncryption.randomize_iv?
+        assert_predicate SymmetricEncryption, :randomize_iv?
         refute_equal SymmetricEncryption.encrypt("Hello World"), SymmetricEncryption.encrypt("Hello World")
       ensure
         SymmetricEncryption.randomize_iv = previous

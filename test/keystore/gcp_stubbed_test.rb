@@ -99,7 +99,7 @@ module SymmetricEncryption
           end
 
           it "writes the encrypted key file" do
-            assert ::File.exist?(key_config[:key_file])
+            assert_path_exists key_config[:key_file]
             assert_includes key_config[:key_file], "tester_test_v11.encrypted_key"
           end
 

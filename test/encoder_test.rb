@@ -32,10 +32,10 @@ class EncoderTest < Minitest::Test
 
         it "return BINARY encoding for non-UTF-8 data" do
           assert_equal Encoding.find("binary"), @non_utf8.encoding
-          assert @non_utf8.valid_encoding?
+          assert_predicate @non_utf8, :valid_encoding?
           assert encoded = @encoder.encode(@non_utf8)
           assert decoded = @encoder.decode(encoded)
-          assert decoded.valid_encoding?
+          assert_predicate decoded, :valid_encoding?
           assert_equal Encoding.find("binary"), decoded.encoding, decoded
           assert_equal @non_utf8, decoded
         end
@@ -49,7 +49,7 @@ class EncoderTest < Minitest::Test
         end
 
         it "return a new object when encoding" do
-          assert !@data.equal?(@encoder.encode(@data))
+          refute_same @data, @encoder.encode(@data)
         end
 
         it "return nil when decoding nil" do
@@ -61,7 +61,7 @@ class EncoderTest < Minitest::Test
         end
 
         it "return a new object when decoding" do
-          assert !@data_encoded.equal?(@encoder.decode(@data_encoded))
+          refute_same @data_encoded, @encoder.decode(@data_encoded)
         end
 
         it "encodes via the module" do

@@ -49,7 +49,9 @@ module SymmetricEncryption
     #  end
     def self.open(file_name_or_stream, compress: nil, **args)
       if file_name_or_stream.is_a?(String)
-        file_name_or_stream = ::File.open(file_name_or_stream, "wb")
+        # Not the block form: without a block this method returns the writer, and closing the
+        # underlying file is then the caller's job. The ensure below covers the block form.
+        file_name_or_stream = ::File.open(file_name_or_stream, "wb") # rubocop:disable Style/FileOpen
         compress            = !(/\.(zip|gz|gzip|xls.|)\z/i === file_name_or_stream) if compress.nil?
       elsif compress.nil?
         compress = true
@@ -60,7 +62,7 @@ module SymmetricEncryption
         file = Zlib::GzipWriter.new(file) if compress
         block_given? ? yield(file) : file
       ensure
-        file.close if block_given? && file && (file.respond_to?(:closed?) && !file.closed?)
+        file.close if block_given? && file.respond_to?(:closed?) && !file.closed?
       end
     end
 
@@ -94,7 +96,11 @@ module SymmetricEncryption
     end
 
     # Encrypt data before writing to the supplied stream
+    # Marginally over the complexity limit: the branches validate the combinations of
+    # random_key, random_iv and cipher_name against each other before any data is written.
+    # rubocop:disable Metrics/CyclomaticComplexity
     def initialize(ios, version: nil, cipher_name: nil, header: true, random_key: true, random_iv: true, compress: false)
+      # rubocop:enable Metrics/CyclomaticComplexity
       # Compress is only used at this point for setting the flag in the header
       @ios = ios
       raise(ArgumentError, "When :random_key is true, :random_iv must also be true") if random_key && !random_iv
@@ -147,7 +153,8 @@ module SymmetricEncryption
     # It is recommended to call Symmetric::EncryptedStream.open
     # rather than creating an instance of Symmetric::Writer directly to
     # ensure that the encrypted stream is closed before the stream itself is closed.
-    def close(close_child_stream = true)
+    # Positional to match IO#close. Changing it to a keyword would break existing callers.
+    def close(close_child_stream = true) # rubocop:disable Style/OptionalBooleanParameter
       return if closed?
 
       if size.positive?
