@@ -24,7 +24,7 @@ Gem::Specification.new do |s|
   s.add_dependency "coercible", "~> 1.0"
   s.metadata = {
     "bug_tracker_uri"       => "https://github.com/reidmorrison/symmetric-encryption/issues",
-    "changelog_uri"         => "https://github.com/reidmorrison/symmetric-encryption/releases",
+    "changelog_uri"         => "https://github.com/reidmorrison/symmetric-encryption/blob/master/CHANGELOG.md",
     "documentation_uri"     => "https://encryption.reidmorrison.com",
     "source_code_uri"       => "https://github.com/reidmorrison/symmetric-encryption/tree/v#{SymmetricEncryption::VERSION}",
     "rubygems_mfa_required" => "true"

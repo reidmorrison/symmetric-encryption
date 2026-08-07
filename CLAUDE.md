@@ -16,8 +16,8 @@ bundle exec rake test                      # Run the suite against the default G
 bundle exec rake test TEST=test/cipher_test.rb
 bundle exec ruby test/cipher_test.rb -n "/permit replacing value/"   # Single test by name
 
+bundle exec rake                           # Runs the suite for every appraisal. Use this to verify a change.
 appraisal install                          # Regenerate gemfiles/*.gemfile and install
-bundle exec rake                           # Default task: runs the suite for every appraisal
 appraisal rails_8.1 rake test              # One Rails version (rails_7.2, rails_8.0, rails_8.1)
 
 COVERAGE=true bundle exec rake test   # Writes coverage/index.html (currently ~96% line coverage)
@@ -29,9 +29,14 @@ bundle exec solargraph typecheck            # Optional, MRI only
 
 SimpleCov is off unless `COVERAGE` is set, and is started at the top of `test_helper.rb` before any lib file is required so that untouched files still count.
 
-Note: bare `rake` triggers `appraisal` unless `APPRAISAL_INITIALIZED` or `TRAVIS` is set, so use `rake test` for a quick single-version run.
+`rake test` runs one version for a quick check; bare `rake` fans out to every appraisal because the default task delegates to `appraisal` unless `APPRAISAL_INITIALIZED` or `TRAVIS` is set. Run `bundle exec rake` before calling a change done.
 
 Tests are Minitest with the spec DSL (`describe`/`it`). [test/test_helper.rb](test/test_helper.rb) loads [test/config/symmetric-encryption.yml](test/config/symmetric-encryption.yml) with env `test` and chmods the test key files to 0600 (git does not preserve the mode, and `Keystore::File#read` refuses to read a key file with looser permissions).
+
+Two things to know before writing tests here:
+
+- `SymmetricEncryption.cipher` is module-level global state. Anything that calls `Config.load!` (directly, or through the CLI) replaces the ciphers `test_helper` set up and breaks whichever file runs next, since Minitest randomizes order. Save and restore `cipher` and `secondary_ciphers` around such tests, as [cli_test.rb](test/cli_test.rb) does.
+- Minitest rejects `let` names that begin with `test` or that shadow a `Minitest::Spec` method (`value`, `name`, ...). That is why the existing helpers are named `the_test_path`, `the_config_file_name`, and so on.
 
 Two groups of tests skip themselves rather than fail, so watch the run count:
 
@@ -89,3 +94,4 @@ Changing the header format or the flag bits breaks every value already encrypted
 - Aligned assignment and `# @formatter:off`/`on` blocks around autoload and field lists are intentional; leave the alignment as-is.
 - Keyword arguments for anything optional. This was the defining API change of v4 and is the house style.
 - Backward compatibility with data encrypted by older versions is a hard requirement. Legacy config shapes (`private_rsa_key`, `encrypted_iv`, `iv_filename`) are migrated in `Keystore.migrate_config!` and `Config.migrate_old_formats!` rather than dropped.
+- [CHANGELOG.md](CHANGELOG.md) is written by hand, one curated entry per release saying what changed and why it matters. Do not generate it from commit or issue history: the previous changelog was deleted in #144 for being exactly that. Add to the unreleased section as part of the change, not afterwards.
