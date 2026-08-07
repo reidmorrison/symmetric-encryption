@@ -23,9 +23,7 @@ class KeyTest < Minitest::Test
     end
 
     let :encrypted_ssn do
-      essn = "cR\x9C,\x91\xA4{\b`\x9Fls\xA4\f\xD1\xBF"
-      essn.force_encoding("binary")
-      essn
+      "cR\x9C,\x91\xA4{\b`\x9Fls\xA4\f\xD1\xBF".b
     end
 
     describe "encrypt" do

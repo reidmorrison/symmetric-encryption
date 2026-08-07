@@ -62,7 +62,7 @@ module SymmetricEncryption
       # Replaces instances of encrypted data within lines of text with re-encrypted values
       def re_encrypt_lines(lines)
         hits         = 0
-        output_lines = ""
+        output_lines = +""
         r            = regexp
         lines.each_line do |line|
           line.force_encoding(SymmetricEncryption::UTF8_ENCODING)
