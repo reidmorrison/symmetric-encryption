@@ -78,6 +78,11 @@ class Person < ActiveRecord::Base
 end
 ~~~
 
+`type:` is the type the attribute returns in Ruby, not the type of the database column. The column is
+always `string` or `text`, whatever the declared type, since the value stored in the database is always
+the base64 encoded encrypted string. In the example above, `age` is an `Integer` in Ruby and a
+`t.string` column in the migration.
+
 For larger encrypted attributes it is also worthwhile to compress the value after it has been encrypted,
 by adding the option:
 `compress: true`
@@ -114,6 +119,57 @@ still available in `age_before_type_cast`.
 #### Note
 
 The column name in the database matches the name of the attribute in the model.
+
+#### Encrypting an existing column
+
+Declaring an attribute as `:encrypted` over a column that is not a `string` or `text` column fails when
+the record is saved, because the encrypted value is a string:
+
+~~~ruby
+create_table :people, force: true do |t|
+  t.integer :age
+end
+
+class Person < ActiveRecord::Base
+  attribute :age, :encrypted, type: :integer
+end
+
+Person.create!(age: 2019)
+# => PG::InvalidTextRepresentation: ERROR: invalid input syntax for integer: "QEVuQwJAEABHjHWXKblm..."
+~~~
+
+MySQL raises a similar error in strict mode, and quietly stores a zero when it is not. SQLite accepts
+the value without complaint, because of its dynamic typing, so a test suite running on SQLite will not
+report this.
+
+Changing the type of the column to `string` is not enough on its own: the values already in the column
+are unencrypted, and reading one back through the encrypted attribute raises
+`OpenSSL::Cipher::CipherError`. Encrypt them as part of the migration:
+
+~~~ruby
+class EncryptPersonAge < ActiveRecord::Migration[8.0]
+  # A local model, so that the migration does not depend on how `Person` declares its attributes.
+  class MigratedPerson < ActiveRecord::Base
+    self.table_name = "people"
+  end
+
+  def up
+    add_column :people, :encrypted_age, :string
+    MigratedPerson.reset_column_information
+
+    MigratedPerson.find_each do |person|
+      person.update_column(:encrypted_age, SymmetricEncryption.encrypt(person.age))
+    end
+
+    remove_column :people, :age
+    rename_column :people, :encrypted_age, :age
+  end
+end
+~~~
+
+`nil` values are left as `nil`, since `SymmetricEncryption.encrypt` returns `nil` for them. Add
+`attribute :age, :encrypted, type: :integer` to the model only once the migration has run, since the
+model reads the column as an encrypted value from that point on.
 
 #### Upgrading from attr_encrypted
 
