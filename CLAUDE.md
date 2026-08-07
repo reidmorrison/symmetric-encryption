@@ -20,7 +20,7 @@ appraisal install                          # Regenerate gemfiles/*.gemfile and i
 bundle exec rake                           # Default task: runs the suite for every appraisal
 appraisal rails_8.1 rake test              # One Rails version (rails_7.2, rails_8.0, rails_8.1)
 
-COVERAGE=true bundle exec rake test   # Writes coverage/index.html (currently ~87%, or ~94% ignoring the AWS/GCP keystores)
+COVERAGE=true bundle exec rake test   # Writes coverage/index.html (currently ~96% line coverage)
 
 bundle exec rubocop
 bundle exec rubocop -a
@@ -35,8 +35,13 @@ Tests are Minitest with the spec DSL (`describe`/`it`). [test/test_helper.rb](te
 
 Two groups of tests skip themselves rather than fail, so watch the run count:
 
-- AWS/GCP keystore tests skip without real credentials. Those three files ([keystore/aws.rb](lib/symmetric_encryption/keystore/aws.rb), [keystore/gcp.rb](lib/symmetric_encryption/keystore/gcp.rb), [utils/aws.rb](lib/symmetric_encryption/utils/aws.rb)) are the bulk of the remaining uncovered code.
+- The credentialed cloud keystore tests ([keystore/aws_test.rb](test/keystore/aws_test.rb), [keystore/gcp_test.rb](test/keystore/gcp_test.rb), [utils/aws_test.rb](test/utils/aws_test.rb)) skip unless AWS or GCP credentials are set. The logic they cover is also tested offline, see below.
 - [test/mongoid_test.rb](test/mongoid_test.rb) pings MongoDB at load time and skips the whole file with an explanatory message when the gem is missing or the server is unreachable. Start MongoDB with `docker compose up -d` ([docker-compose.yml](docker-compose.yml)) before expecting those 58 tests to run.
+
+The cloud keystores are covered offline by the `*_stubbed_test.rb` files, which need no credentials and make no network calls:
+
+- AWS uses the SDK's own response stubbing (`Aws.config[:stub_responses]`). Prefer this over hand-written mocks: request parameters are still validated against the real KMS API model, so a misnamed argument fails the test.
+- Cloud KMS has no equivalent, so [keystore/gcp_stubbed_test.rb](test/keystore/gcp_stubbed_test.rb) replaces the client with a stub that returns the real response protobufs and records the request arguments.
 
 CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs Rails 7.2/Ruby 3.2, Rails 8.0/Ruby 3.4, Rails 8.1/Ruby 4.0 with a mongo service, via `BUNDLE_GEMFILE=gemfiles/rails_X.Y.gemfile bundle exec rake test`.
 

@@ -5,10 +5,10 @@ module SymmetricEncryption
     class Gcp
       include Utils::Files
 
-      def self.generate_data_key(cipher_name:, app_name:, environment:, key_path:, version: 0)
+      def self.generate_data_key(cipher_name:, app_name:, environment:, key_path:, version: 0, dek: nil, **_args)
         version >= 255 ? (version = 1) : (version += 1)
 
-        dek       = SymmetricEncryption::Key.new(cipher_name: cipher_name)
+        dek     ||= SymmetricEncryption::Key.new(cipher_name: cipher_name)
         file_name = "#{key_path}/#{app_name}_#{environment}_v#{version}.encrypted_key"
         keystore  = new(
           key_file:    file_name,
@@ -46,9 +46,18 @@ module SymmetricEncryption
         write_encoded_to_file(file_name, encrypt(data_key))
       end
 
+      # Returns [String] the fully qualified name of the Cloud KMS key used to secure the data key.
+      #
+      # Example: projects/my-project/locations/global/keyRings/my_app/cryptoKeys/production
+      #
+      # Note: Built without a client so that the name is available before credentials are needed.
       def crypto_key
-        @crypto_key ||= self.class::KMS::KeyManagementServiceClient.crypto_key_path(project_id, location_id, app_name,
-                                                                                    environment.to_s)
+        @crypto_key ||= KMS::KeyManagementService::Paths.crypto_key_path(
+          project:    project_id,
+          location:   location_id,
+          key_ring:   app_name,
+          crypto_key: environment.to_s
+        )
       end
 
       private
@@ -58,15 +67,18 @@ module SymmetricEncryption
       attr_reader :app_name, :environment
 
       def encrypt(plaintext)
-        client.encrypt(crypto_key, plaintext).ciphertext
+        client.encrypt(name: crypto_key, plaintext: plaintext).ciphertext
       end
 
       def decrypt(ciphertext)
-        client.decrypt(crypto_key, ciphertext).plaintext
+        client.decrypt(name: crypto_key, ciphertext: ciphertext).plaintext
       end
 
       def client
-        self.class::KMS::KeyManagementServiceClient.new(timeout: 2, credentials: credentials)
+        @client ||= KMS::KeyManagementService::Client.new do |config|
+          config.credentials = credentials
+          config.timeout     = 2
+        end
       end
 
       def project_id

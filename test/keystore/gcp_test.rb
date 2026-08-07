@@ -46,11 +46,15 @@ module SymmetricEncryption
 
             assert encoded_data_key = ::File.read(file_name)
             encrypted_data_key = Base64.strict_decode64(encoded_data_key)
-            assert SymmetricEncryption::Keystore::Gcp::KMS::KeyManagementServiceClient.new.decrypt(key_path, encrypted_data_key)
+
+            client = SymmetricEncryption::Keystore::Gcp::KMS::KeyManagementService::Client.new do |config|
+              config.credentials = ENV.fetch("GOOGLE_CLOUD_KEYFILE", nil)
+            end
+            assert client.decrypt(name: key_path, ciphertext: encrypted_data_key)
           end
 
           it "is readable by Keystore.read_key" do
-            assert SymmetricEncryption::Keystore.read_key(key_config)
+            assert SymmetricEncryption::Keystore.read_key(**key_config)
           end
         end
 

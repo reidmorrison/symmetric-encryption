@@ -88,9 +88,8 @@ module SymmetricEncryption
       #   Use with caution, only intended for testing purposes !!!
       def delete_master_key(retention_days: 30)
         key_info = client.describe_key(key_id: master_key_alias)
-        ap key_info
-        resp = client.schedule_key_deletion(key_id: key_info.key_metadata.key_id, pending_window_in_days: retention_days)
-        ap client.delete_alias(alias_name: master_key_alias)
+        resp     = client.schedule_key_deletion(key_id: key_info.key_metadata.key_id, pending_window_in_days: retention_days)
+        client.delete_alias(alias_name: master_key_alias)
         resp.deletion_date
       rescue ::Aws::KMS::Errors::NotFoundException
         nil
@@ -124,15 +123,21 @@ module SymmetricEncryption
         client.create_alias(alias_name: master_key_alias, target_key_id: key_id)
       end
 
+      # Creates the master key if it does not exist yet, then tries the supplied block again.
+      #
+      # Note: The attempt counter has to be declared outside of the block being retried,
+      #       since `retry` re-runs the entire begin block.
       def auto_create_master_key
-        attempt = 1
-        yield
-      rescue ::Aws::KMS::Errors::NotFoundException
-        raise if attempt >= 2
+        attempt = 0
+        begin
+          yield
+        rescue ::Aws::KMS::Errors::NotFoundException
+          raise if attempt >= 1
 
-        create_master_key
-        attempt += 1
-        retry
+          attempt += 1
+          create_master_key
+          retry
+        end
       end
     end
   end

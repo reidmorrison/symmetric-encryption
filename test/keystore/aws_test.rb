@@ -109,7 +109,7 @@ module SymmetricEncryption
 
           it "is readable by Keystore.read_key" do
             ENV["AWS_REGION"] = "us-east-1"
-            assert SymmetricEncryption::Keystore.read_key(key_config)
+            assert SymmetricEncryption::Keystore.read_key(**key_config)
           end
         end
 
