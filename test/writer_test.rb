@@ -75,5 +75,93 @@ class WriterTest < Minitest::Test
         end
       end
     end
+
+    describe "#initialize" do
+      it "requires a random iv when using a random key" do
+        error = assert_raises(ArgumentError) do
+          SymmetricEncryption::Writer.new(StringIO.new, random_key: true, random_iv: false)
+        end
+        assert_includes error.message, ":random_iv must also be true"
+      end
+
+      it "only allows a cipher_name with a random key and iv" do
+        error = assert_raises(ArgumentError) do
+          SymmetricEncryption::Writer.new(StringIO.new, cipher_name: "aes-256-cbc", random_key: false, random_iv: false)
+        end
+        assert_includes error.message, "Cannot supply a :cipher_name"
+      end
+
+      it "raises when the version is not configured" do
+        error = assert_raises(SymmetricEncryption::CipherError) do
+          SymmetricEncryption::Writer.new(StringIO.new, version: 99)
+        end
+        assert_includes error.message, "not found"
+      end
+    end
+
+    describe "#<<" do
+      it "appends and returns self" do
+        stream = StringIO.new
+        writer = SymmetricEncryption::Writer.new(stream)
+        assert_equal writer, writer << "Hello " << "World"
+        writer.close(false)
+
+        assert_equal "Hello World", SymmetricEncryption::Reader.read(StringIO.new(stream.string))
+      end
+    end
+
+    describe "#write" do
+      it "returns the number of bytes written" do
+        stream = StringIO.new
+        writer = SymmetricEncryption::Writer.new(stream)
+        assert_equal 11, writer.write("Hello World")
+        writer.close(false)
+      end
+
+      it "ignores nil" do
+        stream = StringIO.new
+        writer = SymmetricEncryption::Writer.new(stream)
+        assert_nil writer.write(nil)
+        assert_equal 0, writer.size
+        writer.close(false)
+      end
+
+      it "converts non string values" do
+        stream = StringIO.new
+        writer = SymmetricEncryption::Writer.new(stream)
+        writer.write(21)
+        writer.close(false)
+
+        assert_equal "21", SymmetricEncryption::Reader.read(StringIO.new(stream.string))
+      end
+    end
+
+    describe "#flush" do
+      it "delegates to the stream" do
+        stream = StringIO.new
+        writer = SymmetricEncryption::Writer.new(stream)
+        refute_nil writer.flush
+        writer.close(false)
+      end
+    end
+
+    describe "#closed?" do
+      it "is closed after close" do
+        writer = SymmetricEncryption::Writer.new(StringIO.new)
+        refute writer.closed?
+
+        writer.close(false)
+        assert writer.closed?
+      end
+
+      it "close is idempotent" do
+        writer = SymmetricEncryption::Writer.new(StringIO.new)
+        writer.write("Hello World")
+        writer.close(false)
+
+        writer.close(false)
+        assert writer.closed?
+      end
+    end
   end
 end

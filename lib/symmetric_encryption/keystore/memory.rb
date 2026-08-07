@@ -2,8 +2,7 @@ module SymmetricEncryption
   module Keystore
     # In Memory Keystore usually used for testing purposes
     class Memory
-      attr_accessor :key_encrypting_key
-      attr_reader :encrypted_key
+      attr_accessor :key_encrypting_key, :encrypted_key
 
       # Returns [Hash] a new keystore configuration after generating the data key.
       #
@@ -22,10 +21,10 @@ module SymmetricEncryption
 
         {
           keystore:           :memory,
-          cipher_name:        cipher_name,
+          cipher_name:        dek.cipher_name,
           version:            version,
           encrypted_key:      encrypted_key,
-          iv:                 iv,
+          iv:                 dek.iv,
           key_encrypting_key: {
             key: kek.key,
             iv:  kek.iv

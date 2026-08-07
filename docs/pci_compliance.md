@@ -90,12 +90,10 @@ Testing Procedure:
 ~~~ruby
 # Rails ActiveRecord example of securing `bank_account_number`
 #
-# A column called `encrypted_bank_account_number` should exist in the database
-# that contains the encrypted bank account number. There should not be a column
-# called `bank_account_number`
+# The `bank_account_number` column in the database holds the encrypted value.
 class User < ActiveRecord::Base
-  attr_encrypted :bank_account_number, random_iv: false
-  attr_encrypted :long_string, random_iv: true, compress: true
+  attribute :bank_account_number, :encrypted, random_iv: false
+  attribute :long_string, :encrypted, compress: true
 ~~~
 
 ~~~ruby

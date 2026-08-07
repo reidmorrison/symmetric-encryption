@@ -18,11 +18,11 @@ module SymmetricEncryption
     end
 
     def self.encode(binary_string, encoding)
-      encoder(encoding).encode(binary_string)
+      self[encoding].encode(binary_string)
     end
 
     def self.decode(encoded_string, encoding)
-      encoder(encoding).decode(encoded_string)
+      self[encoding].decode(encoded_string)
     end
 
     class None

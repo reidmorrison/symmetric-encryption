@@ -12,3 +12,4 @@ Gemfile.lock
 
 tmp/*
 .rakeTasks
+/coverage/

@@ -327,5 +327,117 @@ class ReaderTest < Minitest::Test
         end
       end
     end
+
+    describe "stream methods" do
+      before do
+        @file_name = "tmp/reader_stream_test"
+        FileUtils.makedirs("tmp")
+        SymmetricEncryption::Writer.write(@file_name, @data_str, compress: false)
+      end
+
+      after do
+        FileUtils.rm_f(@file_name)
+      end
+
+      it "#flush delegates to the stream" do
+        SymmetricEncryption::Reader.open(@file_name) do |file|
+          refute_nil file.flush
+        end
+      end
+
+      it "#size returns the encrypted size" do
+        SymmetricEncryption::Reader.open(@file_name) do |file|
+          assert_equal File.size(@file_name), file.size
+        end
+      end
+
+      it "#readline returns each line" do
+        SymmetricEncryption::Reader.open(@file_name) do |file|
+          assert_equal @data[0], file.readline
+          assert_equal @data[1], file.readline
+        end
+      end
+
+      it "#readline raises at the end of the file" do
+        SymmetricEncryption::Reader.open(@file_name) do |file|
+          file.read
+          assert_raises(EOFError) { file.readline }
+        end
+      end
+
+      it "#gets with a length" do
+        SymmetricEncryption::Reader.open(@file_name) do |file|
+          assert_equal @data_str[0, 5], file.gets(nil, 5)
+        end
+      end
+
+      it "#seek to an absolute position" do
+        SymmetricEncryption::Reader.open(@file_name) do |file|
+          file.read(5)
+          assert_equal 0, file.seek(10, IO::SEEK_SET)
+          assert_equal @data_str[10..], file.read
+        end
+      end
+
+      it "#seek forwards from the current position" do
+        SymmetricEncryption::Reader.open(@file_name) do |file|
+          file.read(5)
+          file.seek(5, IO::SEEK_CUR)
+          assert_equal @data_str[10..], file.read
+        end
+      end
+
+      it "#seek backwards from the current position" do
+        SymmetricEncryption::Reader.open(@file_name) do |file|
+          file.read(15)
+          file.seek(-5, IO::SEEK_CUR)
+          assert_equal @data_str[10..], file.read
+        end
+      end
+
+      it "#seek relative to the end of the file" do
+        SymmetricEncryption::Reader.open(@file_name) do |file|
+          file.seek(-10, IO::SEEK_END)
+          assert_equal @data_str[-10..], file.read
+        end
+      end
+
+      it "#seek raises for an unknown whence" do
+        SymmetricEncryption::Reader.open(@file_name) do |file|
+          assert_raises(ArgumentError) { file.seek(0, :bad_whence) }
+        end
+      end
+    end
+
+    describe "data larger than the buffer size" do
+      before do
+        @file_name = "tmp/reader_large_test"
+        FileUtils.makedirs("tmp")
+        @large_data = "Hello World\n" * 5_000
+        SymmetricEncryption::Writer.write(@file_name, @large_data, compress: false)
+      end
+
+      after do
+        FileUtils.rm_f(@file_name)
+      end
+
+      it "reads across blocks" do
+        assert_equal @large_data, SymmetricEncryption::Reader.read(@file_name)
+      end
+
+      it "reads a fixed length across blocks" do
+        SymmetricEncryption::Reader.open(@file_name, buffer_size: 512) do |file|
+          assert_equal @large_data[0, 4_096], file.read(4_096)
+        end
+      end
+
+      it "reads line by line across blocks" do
+        count = 0
+        SymmetricEncryption::Reader.open(@file_name, buffer_size: 512) do |file|
+          file.each_line { |_line| count += 1 }
+        end
+        assert_equal 5_000, count
+      end
+    end
   end
 end

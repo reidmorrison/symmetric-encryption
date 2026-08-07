@@ -1,11 +1,11 @@
 AllCops:
-  TargetRubyVersion: 2.5
-  SuggestExtensions: false
+  TargetRubyVersion: 3.2
   NewCops: enable
   Exclude:
     - ".git/**/*"
     - "docs/**/*"
     - "gemfiles/*"
+    - "vendor/**/*"
 #
 # RuboCop built-in settings.
 #   For documentation on all settings see: https://docs.rubocop.org/en/stable
