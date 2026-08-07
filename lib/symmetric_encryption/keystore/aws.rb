@@ -70,9 +70,16 @@ module SymmetricEncryption
       #                ],
       #   iv:          'T80pYzD0E6e/bJCdjZ6TiQ=='
       # }
+      # permissions, owner, group:
+      #   What the encrypted data key files are expected to look like on disk.
+      #   See `SymmetricEncryption::Utils::FileAccess`.
+      #   The files are created with the supplied permissions. Owner and group are only recorded in
+      #   the returned configuration, since changing them requires privileges this process is not
+      #   expected to have. They describe the environment the key files are deployed into.
       def self.generate_data_key(cipher_name:, app_name:, environment:, key_path:, version: 0,
                                  regions: Utils::Aws::AWS_US_REGIONS,
                                  dek: nil,
+                                 permissions: nil, owner: nil, group: nil,
                                  **_args)
         # TODO: Also support generating environment variables instead of files.
 
@@ -87,14 +94,14 @@ module SymmetricEncryption
           {region: region, file_name: ::File.join(key_path, file_name)}
         end
 
-        keystore = new(key_files: key_files, master_key_alias: master_key_alias)
+        keystore = new(key_files: key_files, master_key_alias: master_key_alias, permissions: permissions)
         unless dek
           data_key = keystore.aws(regions.first).generate_data_key(cipher_name)
           dek      = Key.new(key: data_key, cipher_name: cipher_name)
         end
         keystore.write(dek.key)
 
-        {
+        config = {
           keystore:         :aws,
           cipher_name:      dek.cipher_name,
           version:          version,
@@ -102,6 +109,11 @@ module SymmetricEncryption
           key_files:        key_files,
           iv:               dek.iv
         }
+        # One entry covers every region, since the key files are all created the same way.
+        {permissions: permissions, owner: owner, group: group}.each_pair do |name, value|
+          config[name] = value unless value.nil?
+        end
+        config
       end
 
       # Alias pointing to the active version of the master key for that region.
@@ -111,10 +123,16 @@ module SymmetricEncryption
 
       # Stores the Encryption key in a file.
       # Secures the Encryption key by encrypting it with a key encryption key.
-      def initialize(key_files:, master_key_alias:, region: nil, key_encrypting_key: nil)
+      #
+      # permissions, owner, group:
+      #   What the encrypted data key files are expected to look like on disk. One entry covers
+      #   every region. See `SymmetricEncryption::Utils::FileAccess`.
+      def initialize(key_files:, master_key_alias:, region: nil, key_encrypting_key: nil,
+                     permissions: nil, owner: nil, group: nil)
         @key_files        = key_files
         @master_key_alias = master_key_alias
         @region           = region || ENV["AWS_REGION"] || ENV["AWS_DEFAULT_REGION"] || ::Aws.config[:region]
+        @file_access      = Utils::FileAccess.new(permissions: permissions, owner: owner, group: group)
         return unless key_encrypting_key
 
         raise(SymmetricEncryption::ConfigError,

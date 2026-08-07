@@ -7,7 +7,14 @@ module SymmetricEncryption
 
       KMS = Google::Cloud::Kms::V1
 
-      def self.generate_data_key(cipher_name:, app_name:, environment:, key_path:, version: 0, dek: nil, **_args)
+      # permissions, owner, group:
+      #   What the encrypted data key file is expected to look like on disk.
+      #   See `SymmetricEncryption::Utils::FileAccess`.
+      #   The file is created with the supplied permissions. Owner and group are only recorded in
+      #   the returned configuration, since changing them requires privileges this process is not
+      #   expected to have. They describe the environment the key file is deployed into.
+      def self.generate_data_key(cipher_name:, app_name:, environment:, key_path:, version: 0, dek: nil,
+                                 permissions: nil, owner: nil, group: nil, **_args)
         version >= 255 ? (version = 1) : (version += 1)
 
         dek     ||= SymmetricEncryption::Key.new(cipher_name: cipher_name)
@@ -15,11 +22,12 @@ module SymmetricEncryption
         keystore  = new(
           key_file:    file_name,
           app_name:    app_name,
-          environment: environment
+          environment: environment,
+          permissions: permissions
         )
         keystore.write(dek.key)
 
-        {
+        config = {
           keystore:    :gcp,
           cipher_name: dek.cipher_name,
           version:     version,
@@ -27,13 +35,21 @@ module SymmetricEncryption
           iv:          dek.iv,
           crypto_key:  keystore.crypto_key
         }
+        {permissions: permissions, owner: owner, group: group}.each_pair do |name, value|
+          config[name] = value unless value.nil?
+        end
+        config
       end
 
       # `key_encrypting_key` is accepted for interface compatibility only: Cloud KMS holds the
       # key encrypting key itself, so one can never be supplied here.
+      #
+      # permissions, owner, group:
+      #   What the encrypted data key file is expected to look like on disk.
+      #   See `SymmetricEncryption::Utils::FileAccess`.
       # rubocop:disable Lint/UnusedMethodArgument
       def initialize(key_file:, app_name: nil, environment: nil, key_encrypting_key: nil, crypto_key: nil, project_id: nil,
-                     credentials: nil, location_id: nil)
+                     credentials: nil, location_id: nil, permissions: nil, owner: nil, group: nil)
         # rubocop:enable Lint/UnusedMethodArgument
         @crypto_key  = crypto_key
         @app_name    = app_name
@@ -42,6 +58,7 @@ module SymmetricEncryption
         @project_id  = project_id
         @credentials = credentials
         @location_id = location_id
+        @file_access = Utils::FileAccess.new(permissions: permissions, owner: owner, group: group)
       end
 
       def read

@@ -39,8 +39,9 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- The file keystore now accepts the permissions, owner and group its key files are allowed to have,
-  so that Symmetric Encryption can be run where something other than the application decides them.
+- The keystores that hold their keys in files now accept the permissions, owner and group those key
+  files are allowed to have, so that Symmetric Encryption can be run where something other than the
+  application decides them.
   A Kubernetes secret volume mounted with `readOnly: true` mounts its files as `0644` owned by
   `root`, whatever user the container runs as, which the previous fixed expectation of `0600` or
   `0400` owned by the current user rejected outright, leaving no way to start the application:
@@ -59,7 +60,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   numeric id. Key files are still verified, against what the configuration says rather than against
   the default, and the defaults are unchanged when nothing is supplied: `owner` replaces the check
   that the key file is owned by the user running the application, and `group` adds a check that was
-  not performed at all before. See the
+  not performed at all before. This applies to the file keystore, and to the AWS KMS and Google
+  Cloud KMS keystores, which also hold their encrypted data encryption key in a local file. See the
   [Configuration Guide](https://encryption.reidmorrison.com/configuration.html#key-file-permissions-and-ownership).
 
 - `symmetric-encryption --generate --key-permissions 0644` writes the above configuration and
@@ -73,11 +75,23 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   reported as two separate messages, each naming what it found and what it expected.
 
   `SymmetricEncryption::Keystore::File::ALLOWED_PERMISSIONS` has been replaced by
-  `DEFAULT_PERMISSIONS`, which holds file modes as Integers rather than strings that included the
-  file type bits.
+  `SymmetricEncryption::Utils::FileAccess::DEFAULT_PERMISSIONS`, which holds file modes as Integers
+  rather than strings that included the file type bits. The checks themselves now live in
+  `SymmetricEncryption::Utils::FileAccess`, shared by every keystore that reads a key file.
 
 ### Fixed
 
+- The AWS KMS and Google Cloud KMS keystores never checked the encrypted data encryption key file
+  they read. Both hold that key in a local file, exactly as the file keystore does, but their shared
+  read path carried a `TODO: Validate that file is not globally readable.` and performed no check at
+  all, so a world readable or world writable key file was accepted without complaint. Both now
+  verify the file, and both accept `permissions`, `owner` and `group` for environments that decide
+  those themselves. The file keystore was unaffected, it has always had its own check.
+
+  The encrypted data encryption key is only useful to an attacker who also has access to KMS, so
+  this is a defence in depth gap rather than an immediate key disclosure. It is still worth
+  reviewing the permissions on existing key files: this check now fails on startup rather than
+  quietly reading them.
 - `symmetric-encryption --rotate-kek` raised `ArgumentError` on every supported Ruby.
   `Keystore.rotate_key_encrypting_keys!` passed a Hash positionally to two methods that only
   accept keyword arguments, so rotating key encrypting keys was impossible.

@@ -136,6 +136,45 @@ module SymmetricEncryption
 
             assert_equal 2, config[:version]
           end
+
+          it "creates the key file readable by its owner alone" do
+            assert_equal "100600", ::File.stat(key_config[:key_file]).mode.to_s(8)
+          end
+
+          describe "with supplied key file expectations" do
+            let :key_config do
+              with_stubbed_client do
+                SymmetricEncryption::Keystore::Gcp.generate_data_key(
+                  key_path:    the_test_path,
+                  cipher_name: "aes-256-cbc",
+                  app_name:    "tester",
+                  environment: "test",
+                  version:     10,
+                  permissions: "0644",
+                  owner:       Process.uid,
+                  group:       "root"
+                )
+              end
+            end
+
+            it "creates the key file with those permissions" do
+              assert_equal "100644", ::File.stat(key_config[:key_file]).mode.to_s(8)
+            end
+
+            it "records them in the config" do
+              assert_equal "0644", key_config[:permissions]
+              assert_equal Process.uid, key_config[:owner]
+              assert_equal "root", key_config[:group]
+            end
+
+            it "is readable by Keystore.read_key" do
+              key_config.delete(:group)
+              key_config.delete(:version)
+              key = with_stubbed_client { SymmetricEncryption::Keystore.read_key(**key_config) }
+
+              assert_equal key_config[:iv], key.iv
+            end
+          end
         end
 
         describe "#write and #read" do
@@ -169,6 +208,48 @@ module SymmetricEncryption
             with_stubbed_client { keystore.write(data_key) }
 
             assert_equal data_key, stub_client.encrypt_requests.first[:plaintext]
+          end
+
+          it "refuses a key file that can be read by others" do
+            with_stubbed_client do
+              keystore.write(data_key)
+              FileUtils.chmod(0o666, "#{the_test_path}/tester.encrypted_key")
+              error = assert_raises(SymmetricEncryption::ConfigError) { keystore.read }
+
+              assert_includes error.message, "has the wrong permissions: 0666. Expected 0600 or 0400."
+            end
+          end
+
+          it "reads a key file that has the permissions the config supplies" do
+            permissive = SymmetricEncryption::Keystore::Gcp.new(
+              key_file:    "#{the_test_path}/tester.encrypted_key",
+              app_name:    "tester",
+              environment: "test",
+              permissions: "0644"
+            )
+
+            with_stubbed_client do
+              permissive.write(data_key)
+
+              assert_equal "100644", ::File.stat("#{the_test_path}/tester.encrypted_key").mode.to_s(8)
+              assert_equal data_key, permissive.read
+            end
+          end
+
+          it "refuses a key file owned by another user" do
+            picky = SymmetricEncryption::Keystore::Gcp.new(
+              key_file:    "#{the_test_path}/tester.encrypted_key",
+              app_name:    "tester",
+              environment: "test",
+              owner:       Process.uid + 1
+            )
+
+            with_stubbed_client do
+              keystore.write(data_key)
+              error = assert_raises(SymmetricEncryption::ConfigError) { picky.read }
+
+              assert_includes error.message, "has the wrong owner:"
+            end
           end
         end
 

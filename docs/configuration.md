@@ -205,6 +205,25 @@ Notes:
 * Only relax these where something outside of the application controls the key file and the
   surrounding environment supplies the protection instead. On a shared machine, widening the
   permissions lets every other user on it read the encryption key.
+* The same three settings apply to the AWS KMS and Google Cloud KMS keystores, which also hold their
+  encrypted data encryption key in a local file. Supply them alongside `key_files` or `key_file`:
+
+  ~~~yaml
+  production:
+    ciphers:
+      - keystore: aws
+        master_key_alias: alias/symmetric-encryption/my_app/production
+        permissions: "0644"
+        owner: root
+        group: root
+        key_files:
+          - region: us-east-1
+            file_name: /etc/keys/my_app_production_us-east-1_v1.encrypted_key
+          - region: us-west-2
+            file_name: /etc/keys/my_app_production_us-west-2_v1.encrypted_key
+  ~~~
+
+  One entry covers every region, since those key files are all created the same way.
 
 ### Heroku Keystore
 
