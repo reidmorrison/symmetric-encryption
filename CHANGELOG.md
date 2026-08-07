@@ -37,6 +37,38 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   `encrypted_attribute?` and `encrypted_column?`.
 - The Google Cloud KMS keystore now requires `google-cloud-kms` v2. See below.
 
+### Added
+
+- The file keystore now accepts the permissions its key files are allowed to have, so that
+  Symmetric Encryption can be run where something other than the application decides them.
+  A Kubernetes secret volume mounted with `readOnly: true` always mounts its files as `0644`,
+  which the previous fixed expectation of `0600` or `0400` rejected outright, leaving no way to
+  start the application:
+
+  ~~~yaml
+  production:
+    ciphers:
+      - key_filename: /etc/keys/my_app_production_v1.encrypted_key
+        permissions: "0644"
+  ~~~
+
+  Supply the permissions per key file, as an octal file mode, or as a list when more than one is
+  acceptable. New key files are created with the first one. Key files are still verified, against
+  the supplied permissions rather than against the default, and the default is unchanged when
+  `permissions` is not supplied. See the
+  [Configuration Guide](https://encryption.reidmorrison.com/configuration.html#key-file-permissions).
+
+- `symmetric-encryption --generate --key-permissions 0644` writes the above configuration and
+  creates the key files with those permissions. `--rotate-keys` and `--rotate-kek` carry the
+  existing setting into the entries they write, so it only has to be supplied once.
+
+  The error message raised for a key file with the wrong permissions now reports the mode alone,
+  `0644`, instead of the mode with its file type bits, `100644`.
+
+  `SymmetricEncryption::Keystore::File::ALLOWED_PERMISSIONS` has been replaced by
+  `DEFAULT_PERMISSIONS`, which holds file modes as Integers rather than strings that included the
+  file type bits.
+
 ### Fixed
 
 - `symmetric-encryption --rotate-kek` raised `ArgumentError` on every supported Ruby.

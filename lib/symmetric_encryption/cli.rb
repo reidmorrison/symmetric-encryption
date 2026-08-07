@@ -6,7 +6,7 @@ module SymmetricEncryption
                 :decrypt, :random_password, :new_keys, :generate, :environment,
                 :keystore, :re_encrypt, :version, :output_file_name, :compress,
                 :environments, :cipher_name, :rolling_deploy, :rotate_keys, :rotate_kek, :prompt, :show_version,
-                :cleanup_keys, :activate_key, :migrate, :regions
+                :cleanup_keys, :activate_key, :migrate, :regions, :key_permissions
 
     KEYSTORES = %i[aws heroku environment file gcp].freeze
 
@@ -153,6 +153,16 @@ module SymmetricEncryption
           @key_path = path
         end
 
+        opts.on "--key-permissions PERMISSIONS",
+                "Comma separated list of octal file permissions that the generated key files are allowed to have. " \
+                "Only applies to the file keystore. Supply this when the environment the key files are deployed " \
+                "into decides their permissions. Key rotation carries the existing setting over, so this is only " \
+                "needed when generating a new configuration. Default: 0600,0400" do |permissions|
+          list = permissions.to_s.split(",").collect(&:strip)
+          # Write a single permission into the config file on its own, rather than as a list of one.
+          @key_permissions = list.size == 1 ? list.first : list
+        end
+
         opts.on "-a", "--app-name NAME",
                 "Application name to use when generating a new configuration. Default: symmetric-encryption" do |name|
           @app_name = name
@@ -234,14 +244,15 @@ module SymmetricEncryption
 
       config_file_does_not_exist!
       self.environments ||= %i[development test release production]
-      args              = {
+      args = {
         app_name:     app_name,
         environments: environments,
         cipher_name:  cipher_name
       }
-      args[:key_path]   = key_path if key_path
-      args[:regions]    = regions if regions && !regions.empty?
-      cfg               = Keystore.generate_data_keys(keystore: keystore, **args)
+      args[:key_path]    = key_path if key_path
+      args[:regions]     = regions if regions && !regions.empty?
+      args[:permissions] = key_permissions if key_permissions && !key_permissions.empty?
+      cfg                = Keystore.generate_data_keys(keystore: keystore, **args)
       Config.write_file(config_file_path, cfg)
       puts "New configuration file created at: #{config_file_path}"
     end

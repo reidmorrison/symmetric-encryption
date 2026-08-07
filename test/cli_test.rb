@@ -32,17 +32,16 @@ module SymmetricEncryption
       end
 
       # Generates a new config file with keys for the supplied environments.
-      def generate_config(*environments)
+      def generate_config(*environments, key_permissions: nil)
         environments = %i[test preprod production] if environments.empty?
-        capture_io do
-          CLI.new(
-            %W[--generate
-               --config #{config_file_name}
-               --key-path #{the_test_path}
-               --app-name tester
-               --environments #{environments.join(',')}]
-          ).run!
-        end
+        args         =
+          %W[--generate
+             --config #{config_file_name}
+             --key-path #{the_test_path}
+             --app-name tester
+             --environments #{environments.join(',')}]
+        args += ["--key-permissions", key_permissions] if key_permissions
+        capture_io { CLI.new(args).run! }
       end
 
       def versions_for(environment)
@@ -107,6 +106,8 @@ module SymmetricEncryption
           assert_equal "preprod", CLI.new(%w[--env preprod]).environment
           assert_equal :heroku, CLI.new(%w[--keystore heroku]).keystore
           assert_equal %w[us-east-1 us-west-2], CLI.new(["--regions", "us-east-1, us-west-2"]).regions
+          assert_equal %w[0644 0600], CLI.new(["--key-permissions", "0644, 0600"]).key_permissions
+          assert_equal "0644", CLI.new(%w[--key-permissions 0644]).key_permissions
         end
 
         it "defaults the re-encrypt pattern" do
@@ -160,6 +161,21 @@ module SymmetricEncryption
           end
         end
 
+        it "creates the key files with the supplied permissions" do
+          generate_config(:production, key_permissions: "0644")
+
+          cipher = Config.read_file(config_file_name)[:production][:ciphers].first
+          kekek  = cipher[:key_encrypting_key][:key_encrypting_key]
+
+          assert_equal "0644", cipher[:permissions]
+          assert_equal "0644", kekek[:permissions]
+          assert_equal "100644", File.stat(cipher[:key_filename]).mode.to_s(8)
+          assert_equal "100644", File.stat(kekek[:key_filename]).mode.to_s(8)
+
+          # The generated config has to be loadable, otherwise the permissions were only written.
+          assert Config.load!(file_name: config_file_name, env: "production")
+        end
+
         it "does not overwrite an existing config file" do
           generate_config
           out, = capture_io do
@@ -191,6 +207,20 @@ module SymmetricEncryption
 
           # The new key is first so that it is used immediately.
           assert_equal [2, 1], versions_for(:production)
+        end
+
+        it "carries the key file permissions over to the new key" do
+          generate_config(:production, key_permissions: "0644")
+          capture_io do
+            CLI.new(%W[--rotate-keys --config #{config_file_name} --app-name tester]).run!
+          end
+
+          cipher = Config.read_file(config_file_name)[:production][:ciphers].first
+
+          assert_equal 2, cipher[:version]
+          assert_equal "0644", cipher[:permissions]
+          assert_equal "100644", File.stat(cipher[:key_filename]).mode.to_s(8)
+          assert Config.load!(file_name: config_file_name, env: "production")
         end
 
         it "adds the new key second during a rolling deploy" do
@@ -245,6 +275,21 @@ module SymmetricEncryption
           refute_equal before_config[:key_encrypting_key], after_config[:key_encrypting_key]
           # The version is unchanged, only one cipher remains.
           assert_equal [1], versions_for(:production)
+        end
+
+        it "carries the key file permissions over to the new key encrypting key" do
+          generate_config(:production, key_permissions: "0644")
+          capture_io do
+            CLI.new(%W[--rotate-kek --config #{config_file_name} --app-name tester]).run!
+          end
+
+          cipher = Config.read_file(config_file_name)[:production][:ciphers].first
+          kekek  = cipher[:key_encrypting_key][:key_encrypting_key]
+
+          assert_equal "0644", cipher[:permissions]
+          assert_equal "0644", kekek[:permissions]
+          assert_equal "100644", File.stat(kekek[:key_filename]).mode.to_s(8)
+          assert Config.load!(file_name: config_file_name, env: "production")
         end
       end
 
