@@ -13,3 +13,5 @@ Gemfile.lock
 tmp/*
 .rakeTasks
 /coverage/
+test/test_db.sqlite3-shm
+test/test_db.sqlite3-wal

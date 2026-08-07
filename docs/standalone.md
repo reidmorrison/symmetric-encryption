@@ -39,7 +39,7 @@ SymmetricEncryption.decrypt(encrypted)
 ### Create configuration file
 
 Manually create a symmetric-encryption.yml configuration file based on the
-one supplied in [examples/symmetric-encryption.yml](https://github.com/reidmorrison/symmetric-encryption/blob/master/examples/symmetric-encryption.yml).
+one supplied in [examples/symmetric-encryption.yml](https://github.com/reidmorrison/symmetric-encryption/blob/main/examples/symmetric-encryption.yml).
 
 TODO: Add a command to generate a new stand-alone config file
 
