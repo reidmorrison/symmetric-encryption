@@ -96,6 +96,33 @@ class CipherTest < Minitest::Test
     end
 
     describe "#to_s" do
+      it "round trips through #parse" do
+        original = SymmetricEncryption::Header.new(
+          version:     2,
+          compress:    true,
+          iv:          "1234567890ABCDEF",
+          cipher_name: "aes-256-cbc"
+        )
+
+        parsed = SymmetricEncryption::Header.new
+        parsed.parse(original.to_s)
+
+        assert_equal 2, parsed.version
+        assert_predicate parsed, :compressed?
+        assert_equal "1234567890ABCDEF", parsed.iv
+        assert_equal "aes-256-cbc", parsed.cipher_name
+      end
+
+      it "omits the fields that were not set" do
+        parsed = SymmetricEncryption::Header.new
+        parsed.parse(SymmetricEncryption::Header.new(version: 2).to_s)
+
+        assert_nil parsed.iv
+        assert_nil parsed.key
+        assert_nil parsed.cipher_name
+        assert_nil parsed.auth_tag
+        refute_predicate parsed, :compressed?
+      end
     end
 
     describe "#parse" do

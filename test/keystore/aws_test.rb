@@ -14,7 +14,7 @@ module SymmetricEncryption
 
         let :the_test_path do
           path = "tmp/keystore/aws_test"
-          FileUtils.makedirs(path) unless ::File.exist?(path)
+          FileUtils.makedirs(path)
           path
         end
 

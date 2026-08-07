@@ -54,7 +54,7 @@ class ReaderTest < Minitest::Test
             file.read
           end
 
-          assert_equal @data_str[10..-1], decrypted
+          assert_equal @data_str[10..], decrypted
         end
 
         it "#each_line" do
@@ -79,7 +79,7 @@ class ReaderTest < Minitest::Test
               if size.zero?
                 assert_equal "", buf
               else
-                assert_equal @data_str[index..index + size - 1], buf
+                assert_equal @data_str[index..(index + size - 1)], buf
               end
               index += size
             end

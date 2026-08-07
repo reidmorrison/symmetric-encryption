@@ -113,14 +113,16 @@ module SymmetricEncryption
       offset = parse(buffer)
       return if offset.zero?
 
-      buffer.slice!(0..offset - 1)
+      buffer.slice!(0..(offset - 1))
       buffer
     end
 
     # Returns [Integer] the offset within the buffer of the data after the header has been read.
     #
     # Returns 0 if no header is present
-    def parse(buffer, offset = 0)
+    # Marginally over the ABC limit, and deliberately left alone: this walks the on-disk header
+    # format field by field, and splitting it up would obscure the byte order it depends on.
+    def parse(buffer, offset = 0) # rubocop:disable Metrics/AbcSize
       return 0 if buffer.nil? || (buffer == "") || (buffer.length <= MAGIC_HEADER_SIZE + 2)
 
       # Symmetric Encryption Header
@@ -164,28 +166,28 @@ module SymmetricEncryption
       flags = buffer.getbyte(offset)
       offset += 1
 
-      self.compress = (flags & FLAG_COMPRESSED) != 0
+      self.compress = flags.anybits?(FLAG_COMPRESSED)
 
-      if (flags & FLAG_IV).zero?
+      if flags.nobits?(FLAG_IV)
         self.iv = nil
       else
         self.iv, offset = read_string(buffer, offset)
       end
 
-      if (flags & FLAG_KEY).zero?
+      if flags.nobits?(FLAG_KEY)
         self.key = nil
       else
         encrypted_key, offset = read_string(buffer, offset)
         self.key              = cipher.binary_decrypt(encrypted_key)
       end
 
-      if (flags & FLAG_CIPHER_NAME).zero?
+      if flags.nobits?(FLAG_CIPHER_NAME)
         self.cipher_name = nil
       else
         self.cipher_name, offset = read_string(buffer, offset)
       end
 
-      if (flags & FLAG_AUTH_TAG).zero?
+      if flags.nobits?(FLAG_AUTH_TAG)
         self.auth_tag = nil
       else
         self.auth_tag, offset = read_string(buffer, offset)
@@ -236,6 +238,7 @@ module SymmetricEncryption
     FLAG_KEY         = 0b0010_0000
     FLAG_CIPHER_NAME = 0b0001_0000
     FLAG_AUTH_TAG    = 0b0000_1000
+    private_constant :FLAG_COMPRESSED, :FLAG_IV, :FLAG_KEY, :FLAG_CIPHER_NAME, :FLAG_AUTH_TAG
 
     attr_writer :auth_tag
 

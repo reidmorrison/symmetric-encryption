@@ -17,7 +17,9 @@ module SymmetricEncryption
     #    Which environments config to load. Usually: production, development, etc.
     #    Non-Rails apps can set env vars: RAILS_ENV, or RACK_ENV
     #    Default: Rails.env || ENV['RACK_ENV'] || ENV['RAILS_ENV'] || 'development'
-    def self.load!(file_name: nil, env: nil)
+    # Returns true rather than the ciphers so that callers cannot accidentally depend on
+    # the internal cipher list. Not a predicate despite the boolean return.
+    def self.load!(file_name: nil, env: nil) # rubocop:disable Naming/PredicateMethod
       config                                = new(file_name: file_name, env: env)
       ciphers                               = config.ciphers
       SymmetricEncryption.cipher            = ciphers.shift

@@ -7,7 +7,7 @@ module SymmetricEncryption
     describe SymmetricEncryption::Keystore::File do
       let :the_test_path do
         path = "tmp/keystore/file_test"
-        FileUtils.makedirs(path) unless ::File.exist?(path)
+        FileUtils.makedirs(path)
         path
       end
 

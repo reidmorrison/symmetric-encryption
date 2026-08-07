@@ -42,9 +42,15 @@ Layout/LineLength:
 Layout/SpaceInsideHashLiteralBraces:
   EnforcedStyle: no_space
 
+# cli.rb is excluded from the Metrics cops below for the same reason it is already excluded from
+# Metrics/BlockLength: `parser` is a flat run of twenty `opts.on` declarations and `run!` is the
+# subcommand dispatch. Both are long because they enumerate the CLI, not because they are complex.
+
 # TODO: Soften Limits for phase 1 only
 Metrics/AbcSize:
   Max: 40
+  Exclude:
+    - "**/*/cli.rb"
 
 # Support long block lengths for tests
 Metrics/BlockLength:
@@ -60,14 +66,19 @@ Metrics/ClassLength:
   Max: 250
   Exclude:
     - "test/**/*"
+    - "**/*/cli.rb"
 
 # TODO: Soften Limits for phase 1 only
 Metrics/CyclomaticComplexity:
   Max: 15
+  Exclude:
+    - "**/*/cli.rb"
 
 # Soften limits
 Metrics/MethodLength:
   Max: 50
+  Exclude:
+    - "**/*/cli.rb"
 
 # Soften limits
 Metrics/ModuleLength:
@@ -79,6 +90,12 @@ Metrics/ParameterLists:
 # TODO: Soften Limits for phase 1 only
 Metrics/PerceivedComplexity:
   Max: 21
+
+# lib/symmetric-encryption.rb is a deliberate alias for lib/symmetric_encryption.rb, so that
+# `gem "symmetric-encryption"` can be required under either spelling.
+Naming/FileName:
+  Exclude:
+    - "lib/symmetric-encryption.rb"
 
 # Initialization Vector abbreviation
 Naming/MethodParameterName:

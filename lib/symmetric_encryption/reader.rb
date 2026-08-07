@@ -67,7 +67,7 @@ module SymmetricEncryption
         file = Zlib::GzipReader.new(file) if !file.eof? && file.compressed?
         block ? block.call(file) : file
       ensure
-        file.close if block && file && file.respond_to?(:closed?) && !file.closed?
+        file.close if block && file.respond_to?(:closed?) && !file.closed?
       end
     end
 
@@ -99,7 +99,7 @@ module SymmetricEncryption
     # Returns [true|false] whether the file or stream contains any data
     # excluding the header should it have one
     def self.empty?(file_name_or_stream)
-      open(file_name_or_stream, &:eof?)
+      Reader.open(file_name_or_stream, &:eof?)
     end
 
     # Returns [true|false] whether the file contains the encryption header
@@ -157,7 +157,8 @@ module SymmetricEncryption
     # It is recommended to call Symmetric::EncryptedStream.open or Symmetric::EncryptedStream.io
     # rather than creating an instance of Symmetric::EncryptedStream directly to
     # ensure that the encrypted stream is closed before the stream itself is closed
-    def close(close_child_stream = true)
+    # Positional to match IO#close. Changing it to a keyword would break existing callers.
+    def close(close_child_stream = true) # rubocop:disable Style/OptionalBooleanParameter
       return if closed?
 
       @ios.close if close_child_stream
@@ -202,7 +203,7 @@ module SymmetricEncryption
       end
 
       @pos += data.length
-      data unless data.empty? && length && length.positive?
+      data unless data.empty? && length&.positive?
     end
 
     # Reads a single decrypted line from the file up to and including the optional sep_string.

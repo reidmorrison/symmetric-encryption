@@ -32,9 +32,11 @@ module SymmetricEncryption
       # Stores the Encryption key in an environment var.
       # Secures the Encryption key by encrypting it with a key encryption key.
       def initialize(key_encrypting_key:, key_env_var:, encoding: :base64strict)
-        @key_env_var        = key_env_var
-        @key_encrypting_key = key_encrypting_key
-        @encoding           = encoding
+        # Memory holds the encrypted key in an attribute. Here it lives in the environment
+        # variable instead, so there is nothing to hand up.
+        super(key_encrypting_key: key_encrypting_key)
+        @key_env_var = key_env_var
+        @encoding    = encoding
       end
 
       # Returns the Encryption key in the clear.

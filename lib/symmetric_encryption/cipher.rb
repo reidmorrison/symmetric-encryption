@@ -316,7 +316,7 @@ module SymmetricEncryption
       return str if str.empty?
 
       offset = header.parse(str)
-      data   = offset.positive? ? str[offset..-1] : str
+      data   = offset.positive? ? str[offset..] : str
 
       openssl_cipher = ::OpenSSL::Cipher.new(header.cipher_name || cipher_name)
       openssl_cipher.decrypt
@@ -336,11 +336,13 @@ module SymmetricEncryption
 
     # Returns [String] object represented as a string, filtering out the key
     def inspect
-      "#<#{self.class}:0x#{__id__.to_s(16)} @key=\"[FILTERED]\" @iv=#{iv.inspect} @cipher_name=#{cipher_name.inspect}, @version=#{version.inspect}, @encoding=#{encoding.inspect}, @always_add_header=#{always_add_header.inspect}>"
+      "#<#{self.class}:0x#{__id__.to_s(16)} @key=\"[FILTERED]\" @iv=#{iv.inspect} " \
+        "@cipher_name=#{cipher_name.inspect}, @version=#{version.inspect}, " \
+        "@encoding=#{encoding.inspect}, @always_add_header=#{always_add_header.inspect}>"
     end
 
     # DEPRECATED
-    def self.has_header?(buffer)
+    def self.has_header?(buffer) # rubocop:disable Naming/PredicatePrefix
       SymmetricEncryption::Header.present?(buffer)
     end
 
@@ -351,7 +353,9 @@ module SymmetricEncryption
     end
 
     # DEPRECATED
+    # rubocop:disable Metrics/ParameterLists, Style/OptionalBooleanParameter
     def self.build_header(version, compress = false, iv = nil, key = nil, cipher_name = nil)
+      # rubocop:enable Metrics/ParameterLists, Style/OptionalBooleanParameter
       h = Header.new(version: version, compress: compress, iv: iv, key: key, cipher_name: cipher_name)
       h.to_s
     end

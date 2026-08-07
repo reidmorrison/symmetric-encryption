@@ -21,9 +21,7 @@ module SymmetricEncryption
 
       from_type ||= value.class
       case type
-      when :json
-        value
-      when :yaml
+      when :json, :yaml
         value
       else
         coercer = Coercible::Coercer.new
