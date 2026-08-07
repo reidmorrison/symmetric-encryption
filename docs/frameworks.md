@@ -82,6 +82,35 @@ For larger encrypted attributes it is also worthwhile to compress the value afte
 by adding the option:
 `compress: true`
 
+#### Type casting
+
+The value is cast to the declared type as soon as it is assigned, using the same rules Active Record
+applies to an unencrypted attribute of that type:
+
+~~~ruby
+person.age = "124"
+person.age
+# => 124
+~~~
+
+That means a blank string becomes `nil` for every type other than `:string`, and a value that cannot be
+cast is not rejected: it becomes `0` for `:integer` and `:float`, `nil` for `:date`, `:datetime` and
+`:time`, and `true` for `:boolean`. Reject it the same way as for any other attribute, with a validation:
+
+~~~ruby
+class Person < ActiveRecord::Base
+  attribute :age, :encrypted, type: :integer
+
+  validates :age, numericality: {allow_nil: true}
+end
+~~~
+
+The validation reports on the value that was assigned, not on the cast one, since the assigned value is
+still available in `age_before_type_cast`.
+
+`:json` and `:yaml` values are left exactly as they were assigned, which is also what Active Record's own
+`:json` type does. They are serialized when the record is saved, and parsed when it is read back.
+
 #### Note
 
 The column name in the database matches the name of the attribute in the model.

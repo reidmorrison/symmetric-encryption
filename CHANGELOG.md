@@ -36,6 +36,39 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   Removed along with it: `encrypted_attributes`, `encrypted_keys`, `encrypted_columns`,
   `encrypted_attribute?` and `encrypted_column?`.
 - The Google Cloud KMS keystore now requires `google-cloud-kms` v2. See below.
+- Encrypted attributes are cast when they are assigned, not only when they are read back from the
+  database. Issue #146: with `attribute :age, :encrypted, type: :integer`, `person.age = "124"` left
+  the string `"124"` in place until the record had been saved and reloaded, when it turned into
+  `124`. The declared type is now applied immediately, using Active Record's own casting rules, so
+  an encrypted attribute behaves like the equivalent unencrypted one:
+
+  ~~~ruby
+  person.age = "124"
+  person.age
+  # Before: "124"
+  # After:  124
+  ~~~
+
+  Two consequences worth checking before upgrading:
+
+  * A blank string becomes `nil` for every type other than `:string`, so the column now holds `NULL`
+    rather than an encrypted `""`.
+  * A value that cannot be cast no longer raises `Coercible::UnsupportedCoercion`. It becomes
+    whatever Active Record would use: `0` for `:integer` (and `"12abc"` becomes `12`), `0.0` for
+    `:float` and `:decimal`, `nil` for `:date`, `:datetime` and `:time`, and `true` for `:boolean`.
+    Add `validates :age, numericality: true` to reject it, exactly as for an unencrypted attribute.
+    The value that was assigned is still available in `age_before_type_cast`, which is what that
+    validation reports on.
+
+  `:date`, `:datetime` and `:time` are still cast by the coercible gem rather than by Active Record,
+  because `ActiveModel::Type::Time` is meant for time columns and discards the date portion of the
+  value, and `ActiveModel::Type::DateTime` returns a `Time` where reading the attribute back returns
+  a `DateTime`. `:json` and `:yaml` values are left as they were assigned, which is what Active
+  Record's own `:json` type does.
+
+  A `type:` that is not one of the supported types is now rejected with an `ArgumentError` naming
+  the valid ones when the attribute is declared, rather than failing later with a coercion error.
+  Mongoid fields have always been checked this way.
 
 ### Added
 
@@ -81,6 +114,14 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- An encrypted attribute reported itself as changed when a value equal to the one it already held
+  was assigned as a string. Assigning `"124"` over `124` gave `age_changed? # => true` and wrote the
+  same value back to the database on every save. Casting on assignment, above, removes it.
+- Validations that read `*_before_type_cast` reported nothing on an unsaved record. The `:encrypted`
+  type answered `changed_in_place?` with `true` for any attribute that had never been read from the
+  database, because it compared a decrypted `nil` against the value that was assigned. Active Record
+  skips `*_before_type_cast` while an attribute is changed in place, so
+  `validates :age, numericality: true` passed silently on `person.age = "abc"`.
 - The AWS KMS and Google Cloud KMS keystores never checked the encrypted data encryption key file
   they read. Both hold that key in a local file, exactly as the file keystore does, but their shared
   read path carried a `TODO: Validate that file is not globally readable.` and performed no check at
