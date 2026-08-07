@@ -125,6 +125,34 @@ module SymmetricEncryption
             assert_equal 2, new_config[:version]
           end
         end
+
+        describe "with key file expectations in the config" do
+          let :config do
+            SymmetricEncryption::Keystore.generate_data_keys(
+              keystore:     :file,
+              key_path:     the_test_path,
+              app_name:     "tester",
+              environments: environments,
+              cipher_name:  "aes-128-cbc",
+              permissions:  "0640",
+              owner:        "root",
+              group:        0
+            )
+          end
+
+          it "carries them over to the new key" do
+            new_config   = key_rotation[:production][:ciphers].first
+            kekek_config = new_config[:key_encrypting_key][:key_encrypting_key]
+
+            assert_equal "0640", new_config[:permissions]
+            assert_equal "root", new_config[:owner]
+            assert_equal 0, new_config[:group]
+            assert_equal "0640", kekek_config[:permissions]
+            assert_equal "root", kekek_config[:owner]
+            assert_equal 0, kekek_config[:group]
+            assert_equal "100640", File.stat(new_config[:key_filename]).mode.to_s(8)
+          end
+        end
       end
 
       describe ".rotate_key_encrypting_keys!" do

@@ -79,9 +79,11 @@ module SymmetricEncryption
           version:     version,
           environment: environment
         }
-        args[:key_path]    = ::File.dirname(config[:key_filename]) if config.key?(:key_filename)
-        args[:permissions] = config[:permissions] if config.key?(:permissions)
-        new_data_key       = keystore_class.generate_data_key(**args)
+        args[:key_path] = ::File.dirname(config[:key_filename]) if config.key?(:key_filename)
+        # Carry over what the current key files are expected to look like, otherwise the rewritten
+        # config no longer describes the key files it names.
+        %i[permissions owner group].each { |name| args[name] = config[name] if config.key?(name) }
+        new_data_key = keystore_class.generate_data_key(**args)
 
         # Add as second key so that key can be published now and only used in a later deploy.
         if rolling_deploy
@@ -126,8 +128,10 @@ module SymmetricEncryption
           environment: environment,
           dek:         key
         }
-        args[:key_path]    = ::File.dirname(config[:key_filename]) if config.key?(:key_filename)
-        args[:permissions] = config[:permissions] if config.key?(:permissions)
+        args[:key_path] = ::File.dirname(config[:key_filename]) if config.key?(:key_filename)
+        # Carry over what the current key files are expected to look like, otherwise the rewritten
+        # config no longer describes the key files it names.
+        %i[permissions owner group].each { |name| args[name] = config[name] if config.key?(name) }
 
         new_config                     = keystore_class.generate_data_key(**args)
         # Only carry over these settings when they were set explicitly, otherwise the
