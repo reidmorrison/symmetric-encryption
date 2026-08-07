@@ -117,6 +117,75 @@ module SymmetricEncryption
 
             assert_equal dek.iv, config[:iv]
           end
+
+          it "creates every key file readable by its owner alone" do
+            key_config[:key_files].each do |key_file|
+              assert_equal "100600", ::File.stat(key_file[:file_name]).mode.to_s(8)
+            end
+          end
+
+          describe "with supplied key file expectations" do
+            let :key_config do
+              SymmetricEncryption::Keystore::Aws.generate_data_key(
+                regions:     regions,
+                key_path:    the_test_path,
+                cipher_name: "aes-256-cbc",
+                app_name:    "tester",
+                environment: "test",
+                version:     10,
+                permissions: "0644",
+                owner:       Process.uid,
+                group:       "root"
+              )
+            end
+
+            it "creates every key file with those permissions" do
+              key_config[:key_files].each do |key_file|
+                assert_equal "100644", ::File.stat(key_file[:file_name]).mode.to_s(8)
+              end
+            end
+
+            it "records them once, covering every region" do
+              assert_equal "0644", key_config[:permissions]
+              assert_equal Process.uid, key_config[:owner]
+              assert_equal "root", key_config[:group]
+            end
+
+            it "is readable by Keystore.read_key" do
+              key_config.delete(:group)
+
+              assert_equal data_key, SymmetricEncryption::Keystore.read_key(**key_config, region: regions.first).key
+            end
+          end
+        end
+
+        describe "#read" do
+          it "refuses a key file that can be read by others" do
+            file_name = key_config[:key_files].first[:file_name]
+            FileUtils.chmod(0o666, file_name)
+
+            error = assert_raises(SymmetricEncryption::ConfigError) do
+              SymmetricEncryption::Keystore.read_key(**key_config, region: regions.first)
+            end
+
+            assert_includes error.message, "has the wrong permissions: 0666. Expected 0600 or 0400."
+          end
+
+          it "reads a key file that has the permissions the config supplies" do
+            file_name = key_config[:key_files].first[:file_name]
+            FileUtils.chmod(0o644, file_name)
+            key = SymmetricEncryption::Keystore.read_key(**key_config, region: regions.first, permissions: "0644")
+
+            assert_equal data_key, key.key
+          end
+
+          it "refuses a key file owned by another user" do
+            error = assert_raises(SymmetricEncryption::ConfigError) do
+              SymmetricEncryption::Keystore.read_key(**key_config, region: regions.first, owner: Process.uid + 1)
+            end
+
+            assert_includes error.message, "has the wrong owner:"
+          end
         end
 
         describe "#initialize" do

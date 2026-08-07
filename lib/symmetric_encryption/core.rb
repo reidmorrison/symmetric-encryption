@@ -28,6 +28,7 @@ module SymmetricEncryption
 
   module Utils
     autoload :Aws,                  "symmetric_encryption/utils/aws"
+    autoload :FileAccess,           "symmetric_encryption/utils/file_access"
     autoload :Files,                "symmetric_encryption/utils/files"
     autoload :ReEncryptFiles,       "symmetric_encryption/utils/re_encrypt_files"
   end
