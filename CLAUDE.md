@@ -16,20 +16,20 @@ bundle exec rake test                      # Run the suite against the default G
 bundle exec rake test TEST=test/cipher_test.rb
 bundle exec ruby test/cipher_test.rb -n "/permit replacing value/"   # Single test by name
 
-bundle exec rake                           # Runs the suite for every appraisal. Use this to verify a change.
+bundle exec rake                           # Rubocop, then the suite for every appraisal. Use this to verify a change.
 appraisal install                          # Regenerate gemfiles/*.gemfile and install
 appraisal rails_8.1 rake test              # One Rails version (rails_7.2, rails_8.0, rails_8.1)
 
 COVERAGE=true bundle exec rake test   # Writes coverage/index.html (currently ~96% line coverage)
 
-bundle exec rubocop
-bundle exec rubocop -a
+bundle exec rubocop                        # Also runs first as part of the default rake task
+bundle exec rubocop -a                     # Safe autocorrections only. Check -A suggestions by hand.
 bundle exec solargraph typecheck            # Optional, MRI only
 ```
 
 SimpleCov is off unless `COVERAGE` is set, and is started at the top of `test_helper.rb` before any lib file is required so that untouched files still count.
 
-`rake test` runs one version for a quick check; bare `rake` fans out to every appraisal because the default task delegates to `appraisal` unless `APPRAISAL_INITIALIZED` or `TRAVIS` is set. Run `bundle exec rake` before calling a change done.
+`rake test` runs one version for a quick check; bare `rake` runs Rubocop and then fans out to every appraisal, because the default task delegates to `appraisal` unless `APPRAISAL_INITIALIZED` or `TRAVIS` is set. Rubocop is not part of the inner default task, so it runs once rather than once per appraisal, and offenses abort the run before any test starts. Run `bundle exec rake` before calling a change done.
 
 Tests are Minitest with the spec DSL (`describe`/`it`). [test/test_helper.rb](test/test_helper.rb) loads [test/config/symmetric-encryption.yml](test/config/symmetric-encryption.yml) with env `test` and chmods the test key files to 0600 (git does not preserve the mode, and `Keystore::File#read` refuses to read a key file with looser permissions).
 
@@ -48,7 +48,7 @@ The cloud keystores are covered offline by the `*_stubbed_test.rb` files, which 
 - AWS uses the SDK's own response stubbing (`Aws.config[:stub_responses]`). Prefer this over hand-written mocks: request parameters are still validated against the real KMS API model, so a misnamed argument fails the test.
 - Cloud KMS has no equivalent, so [keystore/gcp_stubbed_test.rb](test/keystore/gcp_stubbed_test.rb) replaces the client with a stub that returns the real response protobufs and records the request arguments.
 
-CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs Rails 7.2/Ruby 3.2, Rails 8.0/Ruby 3.4, Rails 8.1/Ruby 4.0 with a mongo service, via `BUNDLE_GEMFILE=gemfiles/rails_X.Y.gemfile bundle exec rake test`.
+CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs Rails 7.2/Ruby 3.2, Rails 8.0/Ruby 3.4, Rails 8.1/Ruby 4.0 with a mongo service, via `BUNDLE_GEMFILE=gemfiles/rails_X.Y.gemfile bundle exec rake test`. Rubocop is a separate single job rather than a fourth matrix entry, since its result does not depend on the Rails version.
 
 ## Architecture
 
@@ -90,7 +90,9 @@ Changing the header format or the flag bits breaks every value already encrypted
 
 ## Conventions
 
-- Rubocop enforced, `double_quotes`, trailing dot position, table-aligned hashes, 128 char lines (relaxed in tests). Metrics limits are deliberately softened in [.rubocop.yml](.rubocop.yml).
+- Rubocop enforced and currently clean, `double_quotes`, trailing dot position, table-aligned hashes, 128 char lines (relaxed in tests). Metrics limits are deliberately softened in [.rubocop.yml](.rubocop.yml), and `cli.rb` is excluded from them: `parser` and `run!` are long because they enumerate the CLI, not because they are complex.
+- `rubocop-minitest` and `rubocop-rake` are enabled as plugins. Before autocorrecting with `-A`, check what it would do to assertions: converting `assert_equal true, x` to `assert x` weakens the `:boolean` coercion tests, which is why a few carry inline disables.
+- Inline `rubocop:disable` comments in this codebase mark deliberate exceptions, most of them public API that cannot change: the DEPRECATED `Cipher` entry points, the positional flag on `Reader#close`/`Writer#close` that matches `IO#close`, and keystore keyword arguments that one store ignores but the shared interface requires. Read the comment above the disable before removing it.
 - Aligned assignment and `# @formatter:off`/`on` blocks around autoload and field lists are intentional; leave the alignment as-is.
 - Keyword arguments for anything optional. This was the defining API change of v4 and is the house style.
 - Backward compatibility with data encrypted by older versions is a hard requirement. Legacy config shapes (`private_rsa_key`, `encrypted_iv`, `iv_filename`) are migrated in `Keystore.migrate_config!` and `Config.migrate_old_formats!` rather than dropped.
