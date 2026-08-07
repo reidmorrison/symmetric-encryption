@@ -35,12 +35,12 @@ module SymmetricEncryption
     attr_reader :auth_tag
 
     # Returns whether the supplied buffer starts with a symmetric_encryption header
-    # Note: The encoding of the supplied buffer is forced to binary if not already binary
+    # The supplied buffer is not modified, and may be frozen.
     def self.present?(buffer)
       return false if buffer.nil? || (buffer == "")
 
-      buffer.force_encoding(SymmetricEncryption::BINARY_ENCODING)
-      buffer.start_with?(MAGIC_HEADER)
+      # Compare bytes, so that the result does not depend on the encoding of the buffer.
+      buffer.byteslice(0, MAGIC_HEADER_SIZE)&.b == MAGIC_HEADER
     end
 
     # Returns a magic header for this cipher instance that can be placed at
@@ -110,6 +110,10 @@ module SymmetricEncryption
     #   buffer
     #     String to extract the header from
     def parse!(buffer)
+      # `parse` returns a byte offset, so the buffer has to be binary for `slice!` below to
+      # cut in the same units. Unlike `parse`, this method modifies the buffer by contract.
+      buffer&.force_encoding(SymmetricEncryption::BINARY_ENCODING)
+
       offset = parse(buffer)
       return if offset.zero?
 
@@ -120,6 +124,10 @@ module SymmetricEncryption
     # Returns [Integer] the offset within the buffer of the data after the header has been read.
     #
     # Returns 0 if no header is present
+    #
+    # The supplied buffer is not modified, and may be frozen. Use `parse!` to strip the header
+    # from the buffer itself.
+    #
     # Marginally over the ABC limit, and deliberately left alone: this walks the on-disk header
     # format field by field, and splitting it up would obscure the byte order it depends on.
     def parse(buffer, offset = 0) # rubocop:disable Metrics/AbcSize
@@ -146,7 +154,10 @@ module SymmetricEncryption
       #    2 Bytes: Cipher Name Length (little endian), if included.
       #      Cipher name it UTF8 text
 
-      buffer.force_encoding(SymmetricEncryption::BINARY_ENCODING)
+      # Every read below is byte oriented, so the buffer has to be binary. Work against a
+      # binary copy when it is not, rather than re-encoding the caller's string in place.
+      buffer = buffer.b unless buffer.encoding == SymmetricEncryption::BINARY_ENCODING
+
       header = buffer.byteslice(offset, MAGIC_HEADER_SIZE)
       return 0 unless header == MAGIC_HEADER
 

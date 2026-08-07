@@ -52,6 +52,17 @@ class KeyTest < Minitest::Test
       it "string" do
         assert_equal ssn, key.decrypt(encrypted_ssn)
       end
+
+      it "accepts a frozen string" do
+        assert_equal ssn, key.decrypt(encrypted_ssn.freeze)
+      end
+
+      it "does not change the encoding of the supplied string" do
+        encrypted = encrypted_ssn.dup.force_encoding(Encoding::UTF_8)
+
+        assert_equal ssn, key.decrypt(encrypted)
+        assert_equal Encoding::UTF_8, encrypted.encoding
+      end
     end
 
     describe "key" do

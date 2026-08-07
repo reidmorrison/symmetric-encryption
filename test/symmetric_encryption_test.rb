@@ -297,6 +297,27 @@ class SymmetricEncryptionTest < Minitest::Test
 
         assert_equal "Hello World", SymmetricEncryption.decrypt(encrypted, version: 6)
       end
+
+      # Applications that enable frozen string literals pass frozen values in.
+      %i[none base64 base64strict base64urlsafe base16].each do |encoding|
+        it "accepts a frozen value with encoding: #{encoding}" do
+          previous                            = SymmetricEncryption.cipher.encoding
+          SymmetricEncryption.cipher.encoding = encoding
+          begin
+            encrypted = SymmetricEncryption.encrypt("Hello World").freeze
+
+            assert_equal "Hello World", SymmetricEncryption.decrypt(encrypted)
+          ensure
+            SymmetricEncryption.cipher.encoding = previous
+          end
+        end
+      end
+    end
+
+    describe ".encrypted?" do
+      it "accepts a frozen value" do
+        assert SymmetricEncryption.encrypted?(SymmetricEncryption.encrypt("Hello World").freeze)
+      end
     end
 
     describe ".try_decrypt" do

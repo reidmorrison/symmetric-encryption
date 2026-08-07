@@ -28,8 +28,9 @@ module SymmetricEncryption
     def decrypt(encrypted_string)
       return if encrypted_string.nil?
 
+      # Work against a binary copy rather than re-encoding the caller's string in place.
       encrypted_string = encrypted_string.to_s
-      encrypted_string.force_encoding(SymmetricEncryption::BINARY_ENCODING)
+      encrypted_string = encrypted_string.b unless encrypted_string.encoding == SymmetricEncryption::BINARY_ENCODING
       return encrypted_string if encrypted_string.empty?
 
       # Creates a new OpenSSL::Cipher with every call so that this key instance is thread-safe.
