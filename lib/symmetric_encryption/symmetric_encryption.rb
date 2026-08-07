@@ -250,8 +250,10 @@ module SymmetricEncryption
   def self.encrypted?(encrypted_data)
     return false if encrypted_data.nil? || (encrypted_data == "")
 
-    @header ||= SymmetricEncryption.cipher.encoded_magic_header
-    encrypted_data.to_s.start_with?(@header)
+    # Not memoized here. The primary cipher is replaced by `cipher=` and by every `Config.load!`,
+    # which would leave a module level copy pointing at the previous cipher's encoding.
+    # `Cipher#encoded_magic_header` memoizes per cipher, so this stays a single ivar read.
+    encrypted_data.to_s.start_with?(cipher.encoded_magic_header)
   end
 
   # When no header is present in the encrypted data, this custom Block/Proc is

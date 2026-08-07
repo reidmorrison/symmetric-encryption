@@ -56,6 +56,14 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   that had not already loaded the `json` standard library. `Coerce` now requires it.
 - `Writer#write` returned `data.length` after coercing the value with `to_s`, so writing anything
   that is not a String raised `NoMethodError`. It now returns the number of bytes written.
+- `SymmetricEncryption.encrypted?` returned `false` for correctly encrypted values after the
+  primary cipher was replaced, which every `Config.load!` and `SymmetricEncryption.cipher=` does.
+  It compared against a module level copy of the magic header, taken from whichever cipher
+  happened to be active on the first call. Since `encrypted?` backs the `symmetric_encryption`
+  validator, a rotation performed after boot could make validations reject valid data. It now
+  reads the header from the current cipher, which memoizes it per instance.
+- `Cipher#encoding=` discarded the encoder derived from the previous encoding but kept the magic
+  header, so changing the encoding of a cipher left `encoded_magic_header` reporting the old one.
 - `Header.present?`, `Header#parse`, `Cipher#binary_decrypt` and `Key#decrypt` no longer change
   the encoding of the string passed to them. They called `force_encoding` on the argument, which
   modifies the caller's object, so passing a frozen string raised `FrozenError`. Applications

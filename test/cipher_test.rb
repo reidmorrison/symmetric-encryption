@@ -246,6 +246,28 @@ class CipherTest < Minitest::Test
       end
     end
 
+    describe "#encoding=" do
+      it "discards the encoder derived from the previous encoding" do
+        cipher.encoding = :base64
+
+        assert_instance_of SymmetricEncryption::Encoder::Base64, cipher.encoder
+
+        cipher.encoding = :base16
+
+        assert_instance_of SymmetricEncryption::Encoder::Base16, cipher.encoder
+      end
+
+      it "discards the magic header derived from the previous encoding" do
+        cipher.encoding = :base64
+
+        assert_equal "QEVuQw", cipher.encoded_magic_header
+
+        cipher.encoding = :base16
+
+        assert_equal "40456e43", cipher.encoded_magic_header
+      end
+    end
+
     describe "#inspect" do
       it "does not include the key" do
         refute_includes cipher.inspect, "1234567890ABCDEF1234567890ABCDEF"
