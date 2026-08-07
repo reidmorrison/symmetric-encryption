@@ -56,6 +56,11 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   that had not already loaded the `json` standard library. `Coerce` now requires it.
 - `Writer#write` returned `data.length` after coercing the value with `to_s`, so writing anything
   that is not a String raised `NoMethodError`. It now returns the number of bytes written.
+- Loading the gem no longer emits `warning: literal string will be frozen in the future` under
+  Ruby 3.4 and later. `Header::MAGIC_HEADER` built its value by mutating a string literal, so the
+  warning appeared on require in any application that enables deprecation warnings. Two internal
+  buffers, in `Reader#read` and `ReEncryptFiles#re_encrypt_lines`, were also literals that are
+  appended to. Reported by @moznion in #172.
 
 ### Fixed: AWS KMS keystore
 

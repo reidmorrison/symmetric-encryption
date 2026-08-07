@@ -11,7 +11,7 @@ class WriterTest < Minitest::Test
         "Keep this secret\n",
         "And keep going even further and further..."
       ]
-      @data_str = @data.inject("") { |sum, str| sum << str }
+      @data_str = @data.inject(+"") { |sum, str| sum << str }
       @data_len = @data_str.length
       @file_name = "._test"
       @source_file_name = "._source_test"

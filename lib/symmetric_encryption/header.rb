@@ -8,7 +8,7 @@ module SymmetricEncryption
   class Header
     # Encrypted data includes this header prior to encoding when
     # `always_add_header` is true.
-    MAGIC_HEADER      = "@EnC".force_encoding(SymmetricEncryption::BINARY_ENCODING)
+    MAGIC_HEADER      = "@EnC".b.freeze
     MAGIC_HEADER_SIZE = MAGIC_HEADER.size
 
     # [true|false] Whether to compress the data before encryption.

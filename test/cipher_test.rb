@@ -71,7 +71,7 @@ class CipherTest < Minitest::Test
                 }
               }
 
-              @non_utf8 = "\xc2".force_encoding("binary")
+              @non_utf8 = "\xc2".b
               @cipher   = SymmetricEncryption::Cipher.new(
                 key:               "ABCDEF1234567890",
                 iv:                "ABCDEF1234567890",
@@ -86,7 +86,7 @@ class CipherTest < Minitest::Test
               end
               @social_security_number_encrypted = h[always_add_header ? :header : :no_header]
 
-              @social_security_number_encrypted.force_encoding(Encoding.find("binary")) if encoding == :none
+              @social_security_number_encrypted = @social_security_number_encrypted.b if encoding == :none
             end
 
             it "encrypt simple string" do
@@ -147,8 +147,7 @@ class CipherTest < Minitest::Test
           )
           @social_security_number = "987654321"
 
-          @social_security_number_encrypted = "A\335*\314\336\250V\340\023%\000S\177\305\372\266"
-          @social_security_number_encrypted.force_encoding("binary")
+          @social_security_number_encrypted = "A\335*\314\336\250V\340\023%\000S\177\305\372\266".b
 
           @sample_data = [
             {text: "555052345", encrypted: ""}

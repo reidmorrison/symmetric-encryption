@@ -22,7 +22,7 @@ class EncoderTest < Minitest::Test
               @data
             end
           @encoder      = SymmetricEncryption::Encoder[encoding]
-          @non_utf8     = "\xc2".force_encoding("binary")
+          @non_utf8     = "\xc2".b
         end
 
         it "correctly encodes" do
