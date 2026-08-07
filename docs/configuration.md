@@ -231,6 +231,66 @@ Specify Heroku as the keystore so that the encrypted encryption keys can be stor
 
     symmetric-encryption --generate --keystore heroku --app-name my_app --environments "development,test,production"
 
+Follow the displayed `heroku config:add` instructions to set the encrypted encryption key for each
+environment.
+
+#### One configuration file for every environment
+
+The keystore is a per environment setting, so a single configuration file can hold a different keystore
+for every environment. There is nothing to combine by hand: `--keystore` applies to the deployed
+environments, while `development` and `test` always receive a key held in the configuration file itself,
+so that a new developer needs no keys and no key files to run the application or its test suite.
+
+The command above generates:
+
+~~~yaml
+development:
+  ciphers:
+  - key: 1234567890ABCDEF
+    iv: 1234567890ABCDEF
+    cipher_name: aes-128-cbc
+    version: 1
+test:
+  ciphers:
+  - key: 1234567890ABCDEF
+    iv: 1234567890ABCDEF
+    cipher_name: aes-128-cbc
+    version: 1
+production:
+  ciphers:
+  - keystore: :heroku
+    cipher_name: aes-256-cbc
+    version: 1
+    key_env_var: MY_APP_PRODUCTION_V1
+    iv: !binary |-
+      k7jzJiVAWfUTCcJd2QXr8A==
+    key_encrypting_key:
+      key: !binary |-
+        WTfUx7X3WiwJ8zWqC+0wnCzhxngB7/RSrKWhrMFyykQ=
+      iv: !binary |-
+        igiEwwHM8ukpX3zwQT+LDw==
+~~~
+
+The development key is not a secret, it is the same in every generated configuration file. Do not use
+that environment for any data that has to stay private.
+
+To hold the development keys in files on the developer machine instead, replace the `development` entry
+with a `key_filename` entry as shown under [File Keystore](#file-keystore) above. The
+`symmetric-encryption` command always generates the key above for `development` and `test`, so this is
+one of the few changes to make by hand.
+
+#### Choosing the environment on Heroku
+
+The environment that is loaded from the configuration file is `Rails.env` by default. When several
+Heroku applications run with `RAILS_ENV=production` and each needs its own encryption key, name the
+Symmetric Encryption environment separately:
+
+    heroku config:add SYMMETRIC_ENCRYPTION_ENV=release
+
+`SYMMETRIC_ENCRYPTION_ENV` selects which entry of `symmetric-encryption.yml` is loaded, and leaves
+`RAILS_ENV` alone so that Rails still applies its production settings. The `symmetric-encryption`
+command honors the same variable when generating or rotating keys.
+
 ### AWS KMS keystore
 
 Symmetric Encryption can use the [AWS Key Management Service (KMS)](https://aws.amazon.com/kms/) to hold and manage

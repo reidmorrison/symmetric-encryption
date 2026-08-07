@@ -33,7 +33,7 @@ create_table :people, force: true do |t|
 end
 ~~~ 
 
-By default when defining an attribute it will be encrypted with a new, random, initialization vectore (IV).
+By default when defining an attribute it will be encrypted with a new, random, initialization vector (IV).
 The IV is also stored along with the encrypted value, which makes it a little larger.
 
 The default of `random_iv: true` is highly recommended for security reasons. However, we would never be able to
@@ -46,7 +46,7 @@ As a result, the following query would never get a match:
 Person.where(name: "Jack").count
 ~~~
 
-For these columns, it is necessary to add the option `random_iv: true`:
+For these columns, it is necessary to add the option `random_iv: false`:
 
 ~~~ruby
 class Person < ActiveRecord::Base
@@ -170,6 +170,42 @@ end
 `nil` values are left as `nil`, since `SymmetricEncryption.encrypt` returns `nil` for them. Add
 `attribute :age, :encrypted, type: :integer` to the model only once the migration has run, since the
 model reads the column as an encrypted value from that point on.
+
+#### Do not encrypt primary keys or foreign keys
+
+An `id`, primary key, or foreign key column must not be declared as `:encrypted`. Active Record builds
+association queries from the encrypted value, so the query looks for the encrypted id rather than the
+id itself:
+
+~~~ruby
+class Request < ActiveRecord::Base
+  belongs_to :organisation
+  attribute :organisation_id, :encrypted, type: :integer
+end
+
+organisation.requests.count
+# SELECT COUNT(*) FROM "requests" WHERE "requests"."organisation_id" = $1
+#   [["organisation_id", "QEVuQwJAEAADf7A6+JiS1XNImGA6PldIrRSddbiZiz1NiSxw2KikLA=="]]
+~~~
+
+Against the `integer` column the foreign key normally has, PostgreSQL rejects that value with
+`PG::InvalidTextRepresentation`, as described above. After the column has been changed to a `string`
+the query is accepted, but with the default `random_iv: true` it matches nothing, since the id encrypts
+to a different value every time.
+
+Adding `random_iv: false` makes `belongs_to` and `has_many` work, because Active Record passes the
+value through the attribute type in both directions, but joins still return nothing:
+
+~~~ruby
+Organisation.joins(:requests).count
+# => 0
+~~~
+
+The join compares `requests.organisation_id` against `organisations.id` in the database, where the
+encrypted value on one side and the id on the other can never match. Neither can a foreign key
+constraint, an index shared with an unencrypted column, or any query written in SQL.
+
+Encrypt the attributes that hold personal data, and leave the columns that identify the row alone.
 
 #### Upgrading from attr_encrypted
 

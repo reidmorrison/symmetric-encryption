@@ -4,6 +4,9 @@ layout: default
 
 ## Configuring Symmetric Encryption v3 for Heroku
 
+This page covers Symmetric Encryption v3 only, and the generators it describes were removed in v4.
+For v4 and above see the [Heroku Keystore](configuration.html#heroku-keystore) section of
+[Configuration](configuration.html).
 
 ### Add to Gemfile
 
