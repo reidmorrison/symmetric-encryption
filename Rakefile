@@ -3,7 +3,10 @@ require "rubygems"
 require "bundler/setup"
 
 require "rake/testtask"
+require "rubocop/rake_task"
 require_relative "lib/symmetric_encryption/version"
+
+RuboCop::RakeTask.new
 
 desc "Build the gem"
 task :gem do
@@ -24,10 +27,12 @@ Rake::TestTask.new(:test) do |t|
   t.warning = false
 end
 
-# By default run tests against all appraisals
+# By default run Rubocop once, then the tests against all appraisals.
+# Rubocop is deliberately not part of the inner default: its result does not depend on the
+# Rails version, so running it per appraisal would just repeat the same work.
 if !ENV["APPRAISAL_INITIALIZED"] && !ENV["TRAVIS"]
   require "appraisal"
-  task default: :appraisal
+  task default: %i[rubocop appraisal]
 else
   task default: :test
 end
