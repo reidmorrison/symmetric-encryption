@@ -53,6 +53,17 @@ class CipherTest < Minitest::Test
       it "does not have a header when empty string" do
         refute SymmetricEncryption::Header.present?("")
       end
+
+      it "accepts a frozen buffer" do
+        assert SymmetricEncryption::Header.present?(binary_encrypted_value.freeze)
+      end
+
+      it "does not change the encoding of the supplied buffer" do
+        buffer = binary_encrypted_value.dup.force_encoding(Encoding::UTF_8)
+
+        assert SymmetricEncryption::Header.present?(buffer)
+        assert_equal Encoding::UTF_8, buffer.encoding
+      end
     end
 
     describe "#cipher" do
@@ -150,6 +161,20 @@ class CipherTest < Minitest::Test
         assert_equal 6, header.parse(binary_encrypted_value)
       end
 
+      it "accepts a frozen buffer" do
+        header = SymmetricEncryption::Header.new
+
+        assert_equal 6, header.parse(binary_encrypted_value.freeze)
+      end
+
+      it "does not change the encoding of the supplied buffer" do
+        header = SymmetricEncryption::Header.new
+        buffer = binary_encrypted_value.dup.force_encoding(Encoding::UTF_8)
+
+        assert_equal 6, header.parse(buffer)
+        assert_equal Encoding::UTF_8, buffer.encoding
+      end
+
       describe "with random_iv" do
         let :random_iv do
           true
@@ -183,13 +208,13 @@ class CipherTest < Minitest::Test
       it "empty string" do
         header = SymmetricEncryption::Header.new
 
-        assert_nil header.parse!("")
+        assert_nil header.parse!(+"")
       end
 
       it "unencrypted string" do
         header = SymmetricEncryption::Header.new
 
-        assert_nil header.parse!("hello there")
+        assert_nil header.parse!(+"hello there")
       end
 
       it "encrypted string" do

@@ -311,8 +311,11 @@ module SymmetricEncryption
     def binary_decrypt(encrypted_string, header: Header.new)
       return if encrypted_string.nil?
 
+      # The offset returned by the header is a byte offset, so the string has to be binary for
+      # the slice below to cut in the same units. Convert a copy when it is not already binary,
+      # rather than re-encoding the caller's string in place.
       str = encrypted_string.to_s
-      str.force_encoding(SymmetricEncryption::BINARY_ENCODING)
+      str = str.b unless str.encoding == SymmetricEncryption::BINARY_ENCODING
       return str if str.empty?
 
       offset = header.parse(str)

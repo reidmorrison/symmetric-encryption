@@ -56,6 +56,12 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   that had not already loaded the `json` standard library. `Coerce` now requires it.
 - `Writer#write` returned `data.length` after coercing the value with `to_s`, so writing anything
   that is not a String raised `NoMethodError`. It now returns the number of bytes written.
+- `Header.present?`, `Header#parse`, `Cipher#binary_decrypt` and `Key#decrypt` no longer change
+  the encoding of the string passed to them. They called `force_encoding` on the argument, which
+  modifies the caller's object, so passing a frozen string raised `FrozenError`. Applications
+  that enable frozen string literals could not call them at all. Each now works against a binary
+  copy, and only when the string is not already binary, so the common path allocates nothing.
+  `Header#parse!` still modifies the buffer it is given, which is its documented purpose.
 - Loading the gem no longer emits `warning: literal string will be frozen in the future` under
   Ruby 3.4 and later. `Header::MAGIC_HEADER` built its value by mutating a string literal, so the
   warning appeared on require in any application that enables deprecation warnings. Two internal
