@@ -70,8 +70,6 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   the valid ones when the attribute is declared, rather than failing later with a coercion error.
   Mongoid fields have always been checked this way.
 
-### Added
-
 - Encrypted Active Record attributes are no longer written to the log in the clear. Issue #128: an
   encrypted attribute returns its decrypted value, so `Rails.logger.info(person)`, `inspect` and
   `attribute_for_inspect` all wrote out the value the attribute exists to protect. Attributes
@@ -85,8 +83,25 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   # After:  #<Person id: 1, name: "Jack", ssn: [FILTERED]>
   ~~~
 
+  Listed as a breaking change because it applies to every model that already declares an encrypted
+  attribute, without anything being added to it. Anything that reads a decrypted value back out of
+  `inspect`, `attribute_for_inspect` or the logs, including tests that assert on them, sees
+  `[FILTERED]` instead. Reading the attribute itself is unchanged, as is `attributes`, and `as_json`
+  keeps rendering the decrypted value unless the model opts out of it, see below.
+
   Set `config.symmetric_encryption.filter_encrypted_attributes = false` before the models are loaded
-  to leave the filtering to the application.
+  to restore the previous behavior and leave the filtering to the application.
+
+  Adding to a model's `filter_attributes` copies the list it inherits from `ActiveRecord::Base`,
+  which is where Rails puts the application's `config.filter_parameters`. A model that is loaded
+  before Rails has set those, from a gem's railtie or from an initializer that references the model,
+  therefore filters its encrypted attributes but not the attributes named in
+  `config.filter_parameters`. Active Record's own encryption copies the list at declaration time in
+  exactly the same way. See the
+  [Frameworks Guide](https://encryption.reidmorrison.com/frameworks.html) for what to do in a model
+  that is loaded that early.
+
+### Added
 
 - `SymmetricEncryption::ActiveRecord::ExcludeFromJson` keeps encrypted attributes out of the JSON
   representation of a model, so that they cannot be leaked by `render json: @person`. Also issue
