@@ -63,6 +63,15 @@ SymmetricEncryption.decrypt "JqLJOi6dNjWI9kX9lSL1XQ=="
 * Uses Ruby built-in support for OpenSSL and Zlib for high performance and
   maximum portability without introducing any additional dependencies.
 
+### Streaming
+
+The sister-project [IOStreams](https://iostreams.reidmorrison.com) uses Symmetric Encryption
+to encrypt and decrypt any file whose name ends in `.enc`.
+* Combines encryption with compression, file formats, and storage locations such as S3 and SFTP,
+  driven entirely by the file name extensions.
+* Re-uses the existing Symmetric Encryption configuration and setup.
+* See the [Files and Streams Guide](files.html) for when to use it.
+
 ### Backgound Job Processing
 
 The sister-project [Rocket Job](https://rocketjob.reidmorrison.com) uses Symmetric Encryption
@@ -139,6 +148,19 @@ SymmetricEncryption::Writer.open('encrypted_compressed.zip', compress: true) do 
   file.write "Hello World\n"
   file.write "Compress this\n"
   file.write "Keep this safe and secure\n"
+end
+~~~
+
+Encrypted files and streams can also be passed to any library that reads or writes an IO stream,
+such as an HTTP client or a CSV parser. See the [Files and Streams Guide](files.html).
+
+When encryption is one step in a larger pipeline, use
+[IOStreams](https://iostreams.reidmorrison.com), which layers compression, file formats, and
+storage locations on top of Symmetric Encryption:
+
+~~~ruby
+IOStreams.path('s3://my-bucket/customers.csv.gz.enc').each(:hash) do |record|
+  puts record['name']
 end
 ~~~
 

@@ -76,6 +76,55 @@ class WriterTest < Minitest::Test
       end
     end
 
+    describe "default compression" do
+      def compressed?(file_name)
+        header = SymmetricEncryption::Header.new
+        header.parse!(File.binread(file_name))
+        header.compressed?
+      end
+
+      %w[._test.enc ._test.csv ._test.xls].each do |file_name|
+        it "compresses #{file_name}" do
+          @file_name = file_name
+          SymmetricEncryption::Writer.write(@file_name, @data_str)
+
+          assert compressed?(@file_name)
+        end
+      end
+
+      %w[._test.zip ._test.gz ._test.gzip ._test.xlsx].each do |file_name|
+        it "does not compress #{file_name}, it is already compressed" do
+          @file_name = file_name
+          SymmetricEncryption::Writer.write(@file_name, @data_str)
+
+          refute compressed?(@file_name)
+        end
+      end
+
+      it "compresses a stream, since it has no file name to go by" do
+        stream = StringIO.new
+        SymmetricEncryption::Writer.write(stream, @data_str)
+        header = SymmetricEncryption::Header.new
+        header.parse!(stream.string.dup)
+
+        assert_predicate header, :compressed?
+      end
+
+      it "honors an explicit compress: false for an extension that would be compressed" do
+        @file_name = "._test.enc"
+        SymmetricEncryption::Writer.write(@file_name, @data_str, compress: false)
+
+        refute compressed?(@file_name)
+      end
+
+      it "honors an explicit compress: true for an already compressed extension" do
+        @file_name = "._test.gz"
+        SymmetricEncryption::Writer.write(@file_name, @data_str, compress: true)
+
+        assert compressed?(@file_name)
+      end
+    end
+
     describe "#initialize" do
       it "requires a random iv when using a random key" do
         error = assert_raises(ArgumentError) do
