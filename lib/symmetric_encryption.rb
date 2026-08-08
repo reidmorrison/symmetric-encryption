@@ -14,6 +14,11 @@ begin
     require "symmetric_encryption/railties/symmetric_encryption_validator"
 
     ActiveRecord::Type.register(:encrypted, SymmetricEncryption::ActiveRecord::EncryptedAttribute)
+
+    # Filters encrypted attributes out of `inspect` and the Rails logs. Prepended to Active Record
+    # itself, rather than to each model, so that it applies to every model without anything having
+    # to be declared in the model.
+    singleton_class.prepend(SymmetricEncryption::ActiveRecord::AutoFilteredAttributes)
   end
 
   ActiveSupport.on_load(:mongoid) do

@@ -89,6 +89,22 @@ module SymmetricEncryption
     @randomize_iv = randomize_iv
   end
 
+  # Whether to add Active Record attributes declared with the `:encrypted` type to the model's
+  # `filter_attributes`, so that `inspect` and the Rails logs show `[FILTERED]` instead of the
+  # decrypted value.
+  # true: Filter encrypted attributes. [DEFAULT]
+  # false: Leave filtering to the application.
+  #
+  # Applied when the attribute is declared, so it has to be set before the models are loaded:
+  #   config.symmetric_encryption.filter_encrypted_attributes = false
+  def self.filter_encrypted_attributes?
+    @filter_encrypted_attributes
+  end
+
+  def self.filter_encrypted_attributes=(filter_encrypted_attributes)
+    @filter_encrypted_attributes = filter_encrypted_attributes
+  end
+
   # Decrypt supplied string.
   #
   #  Returns [String] the decrypted string.
@@ -307,8 +323,9 @@ module SymmetricEncryption
   UTF8_ENCODING   = Encoding.find("UTF-8")
 
   # Defaults
-  @cipher            = nil
-  @secondary_ciphers = []
-  @select_cipher     = nil
-  @randomize_iv      = false
+  @cipher                      = nil
+  @secondary_ciphers           = []
+  @select_cipher               = nil
+  @randomize_iv                = false
+  @filter_encrypted_attributes = true
 end
