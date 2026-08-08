@@ -172,6 +172,13 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   reader supports, how the encoding of decrypted data differs between them, who closes what, and
   how to hand an encrypted or decrypted stream to an HTTP client. Issues #93 and #80.
 
+  It also points at the sister project [IOStreams](https://iostreams.reidmorrison.com/), which has
+  built in support for Symmetric Encryption and is the better tool whenever encryption is one step
+  in a larger pipeline, since it layers compression, file formats and storage locations such as S3
+  and SFTP on top of it. Neither fix below changes how IOStreams behaves: it always hands
+  `Writer.open` an already open stream rather than a file name, so the compression default it
+  reaches is unaffected, and its own streams were already being closed by the layer above.
+
 ### Fixed
 
 - `SymmetricEncryption::Reader.open` leaked a file descriptor on every uncompressed file or stream

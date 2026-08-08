@@ -18,6 +18,10 @@ the cipher used to decrypt.
 For encrypting and decrypting files from a shell, see the [Command Line Interface](cli.html),
 which uses the same classes.
 
+If encryption is one step in a larger pipeline, reach for
+[IOStreams](https://iostreams.reidmorrison.com/) instead of using `Writer` and `Reader` directly.
+See [Streaming with IOStreams](#streaming-with-iostreams) below.
+
 ### Encrypting a file
 
 Encrypt an existing file on disk. The contents are streamed, so the file is never fully loaded
@@ -268,6 +272,59 @@ SymmetricEncryption::Reader.open("customers.csv.enc") do |file|
   CSV.new(file).each { |row| p row }
 end
 ~~~
+
+### Streaming with IOStreams
+
+`Writer` and `Reader` encrypt and decrypt. They do not know about compression formats other than
+gzip, file formats, or where the file lives. The sister project
+[IOStreams](https://iostreams.reidmorrison.com/) does, and has direct support for Symmetric
+Encryption built in. Prefer it whenever encryption is one step among several.
+
+Add both gems to the `Gemfile`. IOStreams treats `symmetric-encryption` as a soft dependency and
+only loads it when a `.enc` file is read or written:
+
+~~~ruby
+gem "iostreams"
+gem "symmetric-encryption"
+~~~
+
+IOStreams derives the pipeline from the file name extensions, so `.enc` alone selects Symmetric
+Encryption, using the same configuration this gem already loaded:
+
+~~~ruby
+require "iostreams"
+
+IOStreams.path("customers.csv.enc").writer do |io|
+  io.write("id,name\n")
+end
+
+IOStreams.path("customers.csv.enc").read
+~~~
+
+Extensions combine, and are applied in order. Reading `customers.csv.gz.enc` decrypts first and
+then decompresses, and writing it does the reverse:
+
+~~~ruby
+IOStreams.path("customers.csv.gz.enc").reader { |io| io.read }
+~~~
+
+The file format and the storage location are extensions of the same idea, which is what makes
+IOStreams worth reaching for. A record at a time out of an encrypted, compressed CSV held in S3,
+never landing on local disk and never held in memory in full:
+
+~~~ruby
+IOStreams.path("s3://my-bucket/customers.csv.gz.enc").each(:hash) do |record|
+  puts record["name"]
+end
+~~~
+
+IOStreams also handles PGP, Zip and BZip2, reads Excel spreadsheets, and reads and writes over
+SFTP and HTTP. See the [IOStreams tutorial](https://iostreams.reidmorrison.com/tutorial) and the
+[list of supported extensions](https://iostreams.reidmorrison.com/extensions).
+
+Use `Writer` and `Reader` from this gem directly when encryption is all that is needed, when the
+encrypted data has no file name to infer a pipeline from, or when adding another dependency is not
+worthwhile.
 
 ### Reading files encrypted without a header
 

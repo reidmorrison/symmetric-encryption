@@ -21,6 +21,24 @@ expose all the encryption algorithms supported by OpenSSL.
 
 [Symmetric Encryption Guide](https://encryption.reidmorrison.com/)
 
+## IOStreams
+
+Checkout the sister project [IOStreams](https://iostreams.reidmorrison.com): a streaming library that makes
+compression, encryption, file format, and storage location transparent to your code.
+
+It has direct support for Symmetric Encryption, so a file name ending in `.enc` is encrypted or decrypted
+with the configuration this gem already loaded. Reach for it when encryption is one step in a larger
+pipeline, for example reading a record at a time out of an encrypted, compressed CSV held in S3:
+
+~~~ruby
+IOStreams.path("s3://my-bucket/customers.csv.gz.enc").each(:hash) do |record|
+  puts record["name"]
+end
+~~~
+
+See the [Files and Streams Guide](https://encryption.reidmorrison.com/files.html) for when to use IOStreams
+and when `SymmetricEncryption::Writer` and `SymmetricEncryption::Reader` are enough on their own.
+
 ## Rocket Job
 
 Checkout the sister project [Rocket Job](https://rocketjob.reidmorrison.com): Ruby's missing batch system.
