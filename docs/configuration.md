@@ -79,6 +79,64 @@ Options:
     * Used by the `aws` keystore to set the regions that should be supported.
     * Default: `us-east-1,us-east-2,us-west-1,us-west-2`
 
+### Supplying the key in the configuration file
+
+The generated configuration file holds an _encrypted_ encryption key that one of the keystores below
+unlocks. The key can also be supplied directly in the configuration file, which is how the
+`development` and `test` environments are generated, and is usually how existing keys are carried
+over when migrating an application:
+
+~~~yaml
+development:
+  ciphers:
+    - key: 1234567890ABCDEF
+      iv: 1234567890ABCDEF
+      cipher_name: aes-128-cbc
+      version: 1
+~~~
+
+Only do this where the configuration file itself is not a secret. Anyone who can read the file can
+decrypt everything that was encrypted with that key, so use one of the keystores below in production.
+
+`key` and `iv` are raw binary data, not text, and each has to be _exactly_ the number of bytes that
+`cipher_name` requires:
+
+| `cipher_name` | `key`    | `iv`     |
+|---------------|----------|----------|
+| `aes-128-cbc` | 16 bytes | 16 bytes |
+| `aes-192-cbc` | 24 bytes | 16 bytes |
+| `aes-256-cbc` | 32 bytes | 16 bytes |
+
+A random binary key cannot be written into YAML as an ordinary quoted string. Most of its bytes are
+not printable, and an escape such as `"\xB1"` is read back as the _character_ `U+00B1`, which is two
+bytes in UTF-8 rather than the single byte that was intended. Base64 encode the key instead and let
+YAML decode it back to binary with its `!!binary` tag:
+
+~~~yaml
+development:
+  ciphers:
+    - key: !!binary |
+        scfTCGywW1BWprMPXlUYDOxvso7xZQ3tlJR3h9qViMI=
+      iv: !!binary |
+        8FOTJUJAbbd/Ovy7163hOQ==
+      cipher_name: aes-256-cbc
+      version: 1
+~~~
+
+To move a hex encoded key into the configuration file, convert it to the base64 that `!!binary`
+expects:
+
+~~~ruby
+require "base64"
+
+puts Base64.strict_encode64(["b1c7d3086cb05b5056a6b30f5e55180cec6fb28ef1650ded94947787da9588c2"].pack("H*"))
+# => scfTCGywW1BWprMPXlUYDOxvso7xZQ3tlJR3h9qViMI=
+~~~
+
+When a key or iv is not the right length, loading the configuration raises an `ArgumentError` naming
+the cipher and the number of bytes that were supplied. Never truncate a key to make that error go
+away: a truncated key is a _different_ key, and nothing that was already encrypted can be read with it.
+
 ### File Keystore
 
 Create the directory where the output files will be created and secure it so that no other users can see the files:

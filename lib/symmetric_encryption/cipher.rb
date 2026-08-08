@@ -77,8 +77,9 @@ module SymmetricEncryption
                    version: 0,
                    always_add_header: true,
                    encoding: :base64strict)
-      @key               = key
-      @iv                = iv
+      openssl_cipher     = ::OpenSSL::Cipher.new(cipher_name)
+      @key               = Key.binary!(key, length: openssl_cipher.key_len, cipher_name: cipher_name, name: "key")
+      @iv                = iv && Key.binary!(iv, length: openssl_cipher.iv_len, cipher_name: cipher_name, name: "iv")
       @cipher_name       = cipher_name
       self.encoding      = encoding.to_sym
       @version           = version.to_i
