@@ -165,6 +165,14 @@ module SymmetricEncryption
       @closed = true
     end
 
+    # Returns [true|false] whether this stream is closed.
+    #
+    # Note: Must be public. `.open` uses `respond_to?(:closed?)` to decide whether it can close
+    #       the stream it created, since it can also be handed a Zlib::GzipReader.
+    def closed?
+      @closed || (@ios.respond_to?(:closed?) && @ios.closed?)
+    end
+
     # Flush the read stream
     #  Needed by XLS gem
     def flush
@@ -360,10 +368,6 @@ module SymmetricEncryption
         @read_buffer << @stream_cipher.update(buf, @cipher_buffer ||= "".b)
         @read_buffer << @stream_cipher.final if @ios.eof?
       end
-    end
-
-    def closed?
-      @closed || (@ios.respond_to?(:closed?) && @ios.closed?)
     end
   end
 end

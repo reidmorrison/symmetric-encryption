@@ -424,6 +424,70 @@ class ReaderTest < Minitest::Test
       end
     end
 
+    # Whether the block form of `.open` closes the stream it was given is exactly what is under
+    # test here, so these streams are deliberately opened without a block.
+    # rubocop:disable Style/FileOpen
+    describe "closing" do
+      before do
+        @file_name = "tmp/reader_close_test"
+        FileUtils.makedirs("tmp")
+      end
+
+      after do
+        FileUtils.rm_f(@file_name)
+      end
+
+      [true, false].each do |compress|
+        describe "compress: #{compress}" do
+          before do
+            SymmetricEncryption::Writer.write(@file_name, @data_str, compress: compress)
+          end
+
+          it "closes the stream it was given" do
+            stream = File.open(@file_name, "rb")
+            SymmetricEncryption::Reader.open(stream, &:read)
+
+            assert_predicate stream, :closed?
+          end
+
+          it "closes the file it opened" do
+            reader = nil
+            SymmetricEncryption::Reader.open(@file_name) { |file| reader = file }
+
+            assert_predicate reader, :closed?
+          end
+
+          it "leaves the stream open without a block, it belongs to the caller" do
+            stream = File.open(@file_name, "rb")
+            reader = SymmetricEncryption::Reader.open(stream)
+
+            refute_predicate stream, :closed?
+
+            reader.close
+
+            assert_predicate stream, :closed?
+          end
+        end
+      end
+
+      it "#closed? is public so that .open can close the reader" do
+        assert SymmetricEncryption::Reader.public_method_defined?(:closed?)
+      end
+
+      it "#closed? follows the underlying stream" do
+        SymmetricEncryption::Writer.write(@file_name, @data_str, compress: false)
+        stream = File.open(@file_name, "rb")
+        reader = SymmetricEncryption::Reader.new(stream)
+
+        refute_predicate reader, :closed?
+
+        stream.close
+
+        assert_predicate reader, :closed?
+      end
+    end
+    # rubocop:enable Style/FileOpen
+
     describe "data larger than the buffer size" do
       before do
         @file_name = "tmp/reader_large_test"

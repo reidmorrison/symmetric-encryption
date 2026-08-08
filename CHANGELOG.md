@@ -166,8 +166,32 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   rather than strings that included the file type bits. The checks themselves now live in
   `SymmetricEncryption::Utils::FileAccess`, shared by every keystore that reads a key file.
 
+- A [Files and Streams Guide](https://encryption.reidmorrison.com/files.html) documents `Writer`
+  and `Reader`, which previously had three examples on the home page and nothing else. It covers
+  supplying a stream in place of a file name, which of `read`, `seek`, `size` and the rest each
+  reader supports, how the encoding of decrypted data differs between them, who closes what, and
+  how to hand an encrypted or decrypted stream to an HTTP client. Issues #93 and #80.
+
 ### Fixed
 
+- `SymmetricEncryption::Reader.open` leaked a file descriptor on every uncompressed file or stream
+  it was given, and left the caller's stream open. The block form decides whether to close what it
+  built with `respond_to?(:closed?)`, and `Reader#closed?` was defined below `private`, so the
+  check was always false and the reader was never closed. Compressed files were unaffected, since
+  `.open` hands back a `Zlib::GzipReader` in that case and its `closed?` is public. `Reader.read`
+  and `Reader.decrypt` inherited the leak. `Reader#closed?` is now public, which is also what
+  callers checking whether a reader is still open would expect. Issue #93.
+- `SymmetricEncryption::Writer.open` compressed every file, including targets named `.zip`, `.gz`
+  and `.xlsx`, whose contents are compressed already. It has documented since v4.1.0 that
+  compression defaults to off for those extensions, but the check ran against the open `File`
+  object rather than the file name, because the name had already been replaced by the time the
+  test was reached, and a `Regexp` never matches a `File`. Compressing again costs time and
+  produces slightly larger output, it never produced an unreadable file, and existing encrypted
+  files are unaffected. Writing to one of those extensions now leaves the data uncompressed, as
+  documented. Pass `compress: true` to keep the previous behaviour.
+
+  The same check also matched any file name ending in a `.`, and `Writer.encrypt` still documented
+  the pre v4.1.0 default of `false`. Both corrected.
 - A key or iv of the wrong length is now rejected when the configuration is loaded, instead of by
   OpenSSL on the first encryption. `Cipher` and `Key` both raise an `ArgumentError` that names the
   cipher, the number of bytes it requires, and the number of bytes that were supplied, and points at

@@ -10,6 +10,11 @@ module SymmetricEncryption
   #   into the Symmetric Encryption Cipher block size.
   #   Only the last block in the file will be padded if it is less than the block size.
   class Writer
+    # Target file name extensions that hold already compressed data, so that compressing them
+    # again only costs time. `xls\w` covers the modern Excel formats, which are zip containers.
+    # The original `.xls` is deliberately not included, it is not compressed.
+    ALREADY_COMPRESSED = /\.(zip|gz|gzip|xls\w)\z/i
+
     # Open a file for writing, or use the supplied IO Stream.
     #
     # Parameters:
@@ -49,10 +54,11 @@ module SymmetricEncryption
     #  end
     def self.open(file_name_or_stream, compress: nil, **args)
       if file_name_or_stream.is_a?(String)
+        # Test the extension before the name is replaced by the open file below.
+        compress = !file_name_or_stream.match?(ALREADY_COMPRESSED) if compress.nil?
         # Not the block form: without a block this method returns the writer, and closing the
         # underlying file is then the caller's job. The ensure below covers the block form.
         file_name_or_stream = ::File.open(file_name_or_stream, "wb") # rubocop:disable Style/FileOpen
-        compress            = !(/\.(zip|gz|gzip|xls.|)\z/i === file_name_or_stream) if compress.nil?
       elsif compress.nil?
         compress = true
       end
@@ -87,7 +93,8 @@ module SymmetricEncryption
     #
     #   compress: [true|false]
     #     Whether to compress the target file prior to encryption.
-    #     Default: false
+    #     Default: true, unless `target` is a file name whose extension indicates that it is
+    #     already compressed. See `.open`.
     #
     # Notes:
     # * The file contents are streamed so that the entire file is _not_ loaded into memory.

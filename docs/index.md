@@ -142,6 +142,9 @@ SymmetricEncryption::Writer.open('encrypted_compressed.zip', compress: true) do 
 end
 ~~~
 
+Encrypted files and streams can also be passed to any library that reads or writes an IO stream,
+such as an HTTP client or a CSV parser. See the [Files and Streams Guide](files.html).
+
 ### Ruby Platform Support
 
 * Ruby v2.1, v2.2, v2.3, v2.4, or higher.
