@@ -168,6 +168,19 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- A key or iv of the wrong length is now rejected when the configuration is loaded, instead of by
+  OpenSSL on the first encryption. `Cipher` and `Key` both raise an `ArgumentError` that names the
+  cipher, the number of bytes it requires, and the number of bytes that were supplied, and points at
+  the `!!binary` YAML tag. OpenSSL's own `key must be 32 bytes` named neither the cipher nor where
+  the key came from, and arrived long after the configuration that supplied it was read.
+
+  This catches the most common way of getting a key into `symmetric-encryption.yml`. `key` and `iv`
+  are raw binary, but binary does not survive a YAML string: a hex encoded key is twice as many bytes
+  as it looks, and a `"\xB1"` escape is parsed as a character that is two bytes in UTF-8. Both now
+  fail on startup with an explanation rather than silently later. See
+  [Supplying the key in the configuration file](https://encryption.reidmorrison.com/configuration.html)
+  for how to supply a binary key. Truncating a key to make the error go away changes the key and
+  loses access to everything already encrypted with it.
 - An encrypted attribute reported itself as changed when a value equal to the one it already held
   was assigned as a string. Assigning `"124"` over `124` gave `age_changed? # => true` and wrote the
   same value back to the database on every save. Casting on assignment, above, removes it.

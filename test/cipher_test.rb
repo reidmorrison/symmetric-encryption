@@ -204,19 +204,38 @@ class CipherTest < Minitest::Test
   end
 
   describe SymmetricEncryption::Cipher do
-    let :cipher do
-      SymmetricEncryption::Cipher.new(
+    # aes-128-cbc takes a 16 byte key and a 16 byte iv, so both are valid unless a test
+    # replaces one of them.
+    def cipher_args(**overrides)
+      {
         cipher_name: "aes-128-cbc",
         key:         "1234567890ABCDEF",
-        iv:          "1234567890ABCDEF",
-        version:     3
-      )
+        iv:          "1234567890ABCDEF"
+      }.merge(overrides)
+    end
+
+    let :cipher do
+      SymmetricEncryption::Cipher.new(**cipher_args(version: 3))
     end
 
     describe "#initialize" do
       it "rejects a version outside of a single byte" do
-        assert_raises(ArgumentError) { SymmetricEncryption::Cipher.new(key: "1234567890ABCDEF", version: 256) }
-        assert_raises(ArgumentError) { SymmetricEncryption::Cipher.new(key: "1234567890ABCDEF", version: -1) }
+        assert_raises(ArgumentError) { SymmetricEncryption::Cipher.new(**cipher_args(version: 256)) }
+        assert_raises(ArgumentError) { SymmetricEncryption::Cipher.new(**cipher_args(version: -1)) }
+      end
+
+      # The length is only checked by OpenSSL when the key is used, which is long after the
+      # config that supplied it was read. See the same tests in key_test.rb.
+      it "rejects a key that is not the length the cipher requires" do
+        error = assert_raises(ArgumentError) { SymmetricEncryption::Cipher.new(**cipher_args(key: "1234567890")) }
+
+        assert_includes error.message, "must be exactly 16 bytes, but is 10 bytes"
+      end
+
+      it "rejects an iv that is not the length the cipher requires" do
+        error = assert_raises(ArgumentError) { SymmetricEncryption::Cipher.new(**cipher_args(iv: "1234567890")) }
+
+        assert_includes error.message, "must be exactly 16 bytes, but is 10 bytes"
       end
     end
 
