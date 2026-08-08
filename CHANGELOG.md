@@ -72,6 +72,45 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Encrypted Active Record attributes are no longer written to the log in the clear. Issue #128: an
+  encrypted attribute returns its decrypted value, so `Rails.logger.info(person)`, `inspect` and
+  `attribute_for_inspect` all wrote out the value the attribute exists to protect. Attributes
+  declared with the `:encrypted` type are now added to the model's `filter_attributes` as they are
+  declared, and to the Rails application's `config.filter_parameters`, which is what Active Record's
+  own `encrypts` does:
+
+  ~~~ruby
+  Rails.logger.info(person)
+  # Before: #<Person id: 1, name: "Jack", ssn: "top_secret">
+  # After:  #<Person id: 1, name: "Jack", ssn: [FILTERED]>
+  ~~~
+
+  Set `config.symmetric_encryption.filter_encrypted_attributes = false` before the models are loaded
+  to leave the filtering to the application.
+
+- `SymmetricEncryption::ActiveRecord::ExcludeFromJson` keeps encrypted attributes out of the JSON
+  representation of a model, so that they cannot be leaked by `render json: @person`. Also issue
+  #128:
+
+  ~~~ruby
+  class Person < ActiveRecord::Base
+    include SymmetricEncryption::ActiveRecord::ExcludeFromJson
+
+    attribute :ssn, :encrypted
+  end
+
+  Person.create(name: "Jack", ssn: "top_secret").as_json
+  # Before: {"id" => 1, "name" => "Jack", "ssn" => "top_secret"}
+  # After:  {"id" => 1, "name" => "Jack"}
+  ~~~
+
+  It has to be included in the model, rather than being applied to every encrypted attribute the way
+  the log filtering is, because an encrypted attribute that is deliberately part of an API response
+  has to keep working, and because Active Record's own `encrypts` renders decrypted values into JSON
+  as well. Once included, `as_json(only: %i[ssn])` does not bring the attribute back either.
+  Rendering it takes asking for it by name, with `as_json(methods: :ssn)`. See the
+  [Frameworks Guide](https://encryption.reidmorrison.com/frameworks.html).
+
 - The keystores that hold their keys in files now accept the permissions, owner and group those key
   files are allowed to have, so that Symmetric Encryption can be run where something other than the
   application decides them.

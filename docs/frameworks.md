@@ -207,6 +207,67 @@ constraint, an index shared with an unencrypted column, or any query written in 
 
 Encrypt the attributes that hold personal data, and leave the columns that identify the row alone.
 
+#### Logging
+
+An encrypted attribute returns its decrypted value, so anything that renders the whole record would
+otherwise write that value out. Encrypted attributes are added to the model's
+[filter_attributes](https://api.rubyonrails.org/classes/ActiveRecord/Core/ClassMethods.html#method-i-filter_attributes)
+as they are declared, so `inspect`, `attribute_for_inspect`, and the request parameters in the Rails
+logs show `[FILTERED]` instead:
+
+~~~ruby
+class Person < ActiveRecord::Base
+  attribute :ssn, :encrypted
+end
+
+Rails.logger.info(person)
+# => #<Person id: 1, name: "Jack", ssn: [FILTERED]>
+~~~
+
+This is what Active Record's own `encrypts` does, and it can be turned off. Since the filter is
+applied when the attribute is declared, it has to be set before the models are loaded:
+
+~~~ruby
+# config/application.rb
+config.symmetric_encryption.filter_encrypted_attributes = false
+~~~
+
+#### Rendering JSON
+
+Filtering covers `inspect` and the logs, which is as far as Active Record itself goes. It does not
+cover `as_json`, so an encrypted attribute is rendered in full by `render json:`:
+
+~~~ruby
+Person.create(name: "Jack", ssn: "top_secret").as_json
+# => {"id" => 1, "name" => "Jack", "ssn" => "top_secret"}
+~~~
+
+That is deliberate: an encrypted attribute that is meant to be part of an API response has to keep
+working. When the value should never reach a response, include `ExcludeFromJson` in the model:
+
+~~~ruby
+class Person < ActiveRecord::Base
+  include SymmetricEncryption::ActiveRecord::ExcludeFromJson
+
+  attribute :ssn, :encrypted
+end
+
+Person.create(name: "Jack", ssn: "top_secret").as_json
+# => {"id" => 1, "name" => "Jack"}
+~~~
+
+Every encrypted attribute in that model is then left out of `as_json`, `to_json` and
+`serializable_hash`, including when `as_json(only: %i[ssn])` asks for it. Rendering one becomes a
+deliberate act, by asking for it by name:
+
+~~~ruby
+person.as_json(methods: :ssn)
+# => {"id" => 1, "name" => "Jack", "ssn" => "top_secret"}
+~~~
+
+Reading the attribute is unaffected, as are `attributes` and anything else that does not go through
+`serializable_hash`.
+
 #### Upgrading from attr_encrypted
 
 `attr_encrypted` was removed in Symmetric Encryption v5. It was already unusable under Rails 7,

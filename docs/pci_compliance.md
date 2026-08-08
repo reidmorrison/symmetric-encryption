@@ -131,7 +131,13 @@ the required fields, or that the entire file is unreadable (not plain text)
 
 3.4.d
 
-* Outside the scope of Symmetric Encryption.
+* Active Record attributes declared with the `:encrypted` type are added to the model's
+`filter_attributes`, so their decrypted values are replaced with `[FILTERED]` in `inspect` and in
+the request parameters written to the Rails logs.
+* Include `SymmetricEncryption::ActiveRecord::ExcludeFromJson` in a model to keep its encrypted
+attributes out of `as_json`, and therefore out of any API response rendered from the model.
+* See the [Frameworks Guide](frameworks.html) for both.
+* Anywhere else that a decrypted value is written out is outside the scope of Symmetric Encryption.
     * Use features built into Rails to filter logged PII fields.
 
 #### 3.5 Procedures to protect keys (PCI DSS v3.2)
