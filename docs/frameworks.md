@@ -232,6 +232,24 @@ applied when the attribute is declared, it has to be set before the models are l
 config.symmetric_encryption.filter_encrypted_attributes = false
 ~~~
 
+Adding to a model's `filter_attributes` takes a copy of the list it inherits from
+`ActiveRecord::Base`, which is where Rails puts the application's `config.filter_parameters`. A model
+that is loaded before Rails has set those, from a gem's railtie or from an initializer that
+references the model, therefore filters its encrypted attributes but not the attributes named in
+`config.filter_parameters`. Set `filter_attributes` in the model itself when it is loaded that early:
+
+~~~ruby
+class Person < ActiveRecord::Base
+  self.filter_attributes += %i[password]
+
+  attribute :ssn, :encrypted
+end
+~~~
+
+Models loaded the usual way, eager loaded on boot or autoloaded on first use, are unaffected, since
+by then the application's filters are already in place. Active Record's own `encrypts` copies the
+list at declaration time in exactly the same way.
+
 #### Rendering JSON
 
 Filtering covers `inspect` and the logs, which is as far as Active Record itself goes. It does not

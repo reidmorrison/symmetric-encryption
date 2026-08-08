@@ -17,6 +17,13 @@ module SymmetricEncryption
     # Rails application's `config.filter_parameters` so that the value is also filtered out of the
     # request parameters in the logs.
     #
+    # Applied when the attribute is declared, as Active Record's own encryption also does, rather
+    # than being deferred to a Rails initializer. That keeps this working without Rails, and means
+    # no model can be missed because of when it was loaded. The one consequence, which Active Record
+    # shares: `filter_attributes +=` copies the list inherited from `ActiveRecord::Base`, so a model
+    # declared before Rails has added `config.filter_parameters` to that list does not pick them up.
+    # See the Frameworks Guide.
+    #
     # Filtering applies to `inspect` and to logging only, which is as far as Active Record itself
     # goes. It does _not_ remove the attribute from `as_json`, since an encrypted attribute that is
     # deliberately rendered into an API response has to keep working. Include
