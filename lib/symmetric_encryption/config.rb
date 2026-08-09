@@ -137,7 +137,7 @@ module SymmetricEncryption
 
     private_class_method :deep_symbolize_keys
 
-    # Iterate through the Hash symbolizing all keys.
+    # Iterate through the Hash stringifying all keys.
     def self.deep_stringify_keys(object)
       case object
       when Hash

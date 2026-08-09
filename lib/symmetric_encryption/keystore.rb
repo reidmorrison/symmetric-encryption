@@ -36,12 +36,19 @@ module SymmetricEncryption
     # * generating a new key, and iv with an incremented version number.
     #
     # Params:
-    #   config: [Hash]
-    #     The current contents of `symmetric-encryption.yml`.
+    #   full_config: [Hash]
+    #     The current contents of `symmetric-encryption.yml`, every environment. Updated in place
+    #     as well as returned.
     #
-    #   environments: [Array<String>]
-    #     List of environments for which to perform key rotation for.
-    #     Default: All environments found in the current configuration file except development and test.
+    #   app_name: [String]
+    #     Application name, used to name the new key files or environment variables.
+    #
+    #   environments: [Array<Symbol>]
+    #     List of environments to perform key rotation for.
+    #     Default: All environments found in the current configuration file.
+    #     Note: An environment that holds its key in the configuration file itself, which is how
+    #       development and test are generated, is skipped either way. There is no keystore to
+    #       generate a new key from.
     #
     #   rolling_deploy: [true|false]
     #     To support a rolling deploy of the new key it must added initially as the second key.
@@ -113,6 +120,14 @@ module SymmetricEncryption
     # Rotates just the key encrypting keys for the current cipher version.
     # The existing data encryption key is not changed, it is secured using the
     # new key encrypting keys.
+    #
+    # Returns [Hash] the configuration, updated in place as well as returned.
+    #
+    # Params: as for `.rotate_keys!`.
+    #
+    # Note: Only the keystores that hold the key encrypting key in the configuration file can be
+    #   rotated here. AWS KMS and GCP Cloud KMS hold the master key themselves, where it is
+    #   rotated through their own management interface.
     def self.rotate_key_encrypting_keys!(full_config, app_name:, environments: [])
       full_config.each_pair do |environment, cfg|
         # Only rotate keys for specified environments. Default, all

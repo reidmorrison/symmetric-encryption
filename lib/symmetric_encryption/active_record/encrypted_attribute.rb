@@ -22,6 +22,29 @@ module SymmetricEncryption
       }.freeze
       # @formatter:on
 
+      # The `:encrypted` attribute type:
+      #
+      #   attribute :ssn, :encrypted
+      #   attribute :age, :encrypted, type: :integer
+      #
+      # random_iv [true|false]
+      #   Whether to encrypt with a new random iv every time the attribute is written, so that the
+      #   same value does not encrypt to the same cipher text twice.
+      #   Set this to false when the attribute is looked up by its encrypted value, which needs the
+      #   same input to encrypt to the same output.
+      #   Default: true
+      #
+      # compress [true|false]
+      #   Whether to compress the value before encrypting it. Only worth it for large values, since
+      #   compression has an overhead of its own.
+      #   Default: false
+      #
+      # type [Symbol]
+      #   What the attribute holds, one of SymmetricEncryption::COERCION_TYPES. Assigned values are
+      #   cast to it exactly as Active Record casts an unencrypted attribute of that type, so
+      #   `attribute :age, :encrypted, type: :integer` behaves like `attribute :age, :integer`.
+      #   Default: :string
+      #
       # version [Integer]
       #   Encrypt this attribute with the cipher that has this version, instead of the primary
       #   cipher, so that it can be encrypted with a key of its own:

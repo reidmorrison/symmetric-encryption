@@ -1,5 +1,14 @@
 module SymmetricEncryption
+  # Encodes the binary output of encryption into something that can be stored in a text column,
+  # and decodes it again before decrypting. No encryption or decryption happens here.
+  #
+  # Every encoder returns a UTF-8 string from `encode`, and a BINARY string from `decode`, except
+  # `None`, which hands the binary data straight back.
+  #
+  # A cipher holds the encoder for its configured `encoding`. See `Cipher#encoder`.
   module Encoder
+    # Returns [SymmetricEncryption::Encoder] a new encoder for the supplied encoding.
+    # Raises ArgumentError when the encoding is not one of the supported ones.
     def self.[](encoding)
       case encoding
       when :base64

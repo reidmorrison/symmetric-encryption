@@ -2,14 +2,17 @@ module SymmetricEncryption # :nodoc:
   class Railtie < Rails::Railtie # :nodoc:
     # Exposes Symmetric Encryption's configuration to the Rails application configuration.
     #
+    # `config.symmetric_encryption` is the SymmetricEncryption module itself, so anything it
+    # exposes can be set from the Rails application configuration.
+    #
     # @example Set up configuration in the Rails app.
     #   module MyApplication
     #     class Application < Rails::Application
-    #       config.symmetric_encryption.cipher = SymmetricEncryption::Cipher.new(
-    #         key:    '1234567890ABCDEF',
-    #         iv:     '1234567890ABCDEF',
-    #         cipher_name: 'aes-128-cbc'
-    #       )
+    #       # Do not add encrypted attributes to the model's `filter_attributes`.
+    #       config.symmetric_encryption.filter_encrypted_attributes = false
+    #
+    #       # Encrypt with a random iv by default.
+    #       config.symmetric_encryption.randomize_iv = true
     #     end
     #   end
     config.symmetric_encryption = ::SymmetricEncryption
@@ -20,9 +23,14 @@ module SymmetricEncryption # :nodoc:
     # @example symmetric-encryption.yml
     #
     #   development:
-    #     cipher_name: aes-128-cbc
-    #     key:         1234567890ABCDEF
-    #     iv:          1234567890ABCDEF
+    #     ciphers:
+    #       - cipher_name: aes-128-cbc
+    #         version:     1
+    #         key:         1234567890ABCDEF
+    #         iv:          1234567890ABCDEF
+    #
+    # Honors the `SYMMETRIC_ENCRYPTION_CONFIG` and `SYMMETRIC_ENCRYPTION_ENV` environment
+    # variables, and does nothing when a cipher has already been set.
     #
     # Loaded before Active Record initializes since database.yml can have encrypted
     # passwords in it

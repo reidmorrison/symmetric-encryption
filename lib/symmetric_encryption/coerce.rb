@@ -2,8 +2,11 @@
 require "json"
 
 module SymmetricEncryption
-  # For coercing data types to from strings
+  # For coercing data types to and from strings
   module Coerce
+    # The Ruby class for each of SymmetricEncryption::COERCION_TYPES that the coercible gem
+    # handles. :json and :yaml are serialized here rather than coerced, and :boolean is absent
+    # because TrueClass and FalseClass are separate classes. See `.coercion_type`.
     TYPE_MAP = {
       string:   String,
       integer:  Integer,
@@ -29,9 +32,11 @@ module SymmetricEncryption
       end
     end
 
-    # Uses coercible gem to coerce values from strings into the target type
-    # Note: if the type is :string, then the value is returned as is, and the
-    #   coercible gem is not used at all.
+    # Coerce the decrypted string back into the target type.
+    # Notes:
+    # * If the type is :string, then the value is returned as is, and the coercible gem is not
+    #   used at all.
+    # * :json and :yaml are deserialized rather than coerced.
     def self.coerce_from_string(value, type)
       return value if value.nil? || (value == "")
 
@@ -47,9 +52,11 @@ module SymmetricEncryption
       end
     end
 
-    # Uses coercible gem to coerce values to strings from the specified type
-    # Note: if the type is :string, and value is not nil, then #to_s is called
-    #   on the value and the coercible gem is not used at all.
+    # Coerce the value into the string that is then encrypted.
+    # Notes:
+    # * If the type is :string, and value is not nil, then #to_s is called on the value and the
+    #   coercible gem is not used at all.
+    # * :json and :yaml are serialized rather than coerced.
     def self.coerce_to_string(value, type)
       return value if value.nil? || (value == "")
 

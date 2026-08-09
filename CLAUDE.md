@@ -54,7 +54,7 @@ CI ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs Rails 7.2/Ruby 3.
 
 ### Entry points
 
-[lib/symmetric_encryption.rb](lib/symmetric_encryption.rb) (and its alias [lib/symmetric-encryption.rb](lib/symmetric-encryption.rb)) is the full entry point: it loads core, then optionally hooks Rails via the Railtie and ActiveRecord/Mongoid via `ActiveSupport.on_load`, so gem load order does not matter. [lib/symmetric_encryption/core.rb](lib/symmetric_encryption/core.rb) is the framework-free entry point for standalone Ruby apps and declares nearly everything else as `autoload`; add new files there. One of those autoloads, `EncryptedStringType`, points at a file that does not exist and nothing references it.
+[lib/symmetric_encryption.rb](lib/symmetric_encryption.rb) (and its alias [lib/symmetric-encryption.rb](lib/symmetric-encryption.rb)) is the full entry point: it loads core, then optionally hooks Rails via the Railtie and ActiveRecord/Mongoid via `ActiveSupport.on_load`, so gem load order does not matter. [lib/symmetric_encryption/core.rb](lib/symmetric_encryption/core.rb) is the framework-free entry point for standalone Ruby apps and declares nearly everything else as `autoload`; add new files there.
 
 ### The layered model
 

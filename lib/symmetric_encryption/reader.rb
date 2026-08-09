@@ -20,7 +20,15 @@ module SymmetricEncryption
     #     Minimum Value 128
     #     Default: 16384
     #
-    # Note: Decryption occurs before decompression
+    #   version:
+    #     Which cipher version decrypts the stream, for a stream that has no header.
+    #     Ignored when the stream has a header, which names its own version.
+    #     Default: the primary cipher.
+    #
+    # Notes:
+    # * Decryption occurs before decompression.
+    # * A compressed stream is decompressed automatically. `.open` says so in its header, so
+    #   nothing has to be supplied here.
     #
     # # Example: Read and decrypt a line at a time from a file
     # SymmetricEncryption::Reader.open('test_file') do |file|
@@ -45,8 +53,9 @@ module SymmetricEncryption
     #   end
     # end
     #
-    # # Example: Read, Unencrypt and decompress data in a file
-    # SymmetricEncryption::Reader.open('encrypted_compressed.zip', compress: true) do |file|
+    # # Example: Read, decrypt and decompress data in a file
+    # # The stream says in its header that it is compressed, so nothing has to be supplied here.
+    # SymmetricEncryption::Reader.open('encrypted_compressed.enc') do |file|
     #   file.each_line {|line| p line }
     # end
     #
@@ -136,8 +145,9 @@ module SymmetricEncryption
     # Returns false when the header is present in the stream and it is not compressed
     # Returns nil when the header is not present in the stream
     #
-    # Note: The file will not be decompressed automatically when compressed.
-    #       To decompress the data automatically call SymmetricEncryption.open
+    # Note: An instance created with `.new` does not decompress the data automatically.
+    #       Use `SymmetricEncryption::Reader.open`, which wraps the reader in a Zlib::GzipReader
+    #       when the header says the stream is compressed.
     def compressed?
       @compressed
     end
@@ -152,11 +162,11 @@ module SymmetricEncryption
 
     # Close the IO Stream
     #
-    # Note: Also closes the passed in io stream or file
+    # Note: Also closes the passed in io stream or file, unless `close_child_stream` is false.
     #
-    # It is recommended to call Symmetric::EncryptedStream.open or Symmetric::EncryptedStream.io
-    # rather than creating an instance of Symmetric::EncryptedStream directly to
-    # ensure that the encrypted stream is closed before the stream itself is closed
+    # It is recommended to call SymmetricEncryption::Reader.open with a block rather than
+    # creating an instance of SymmetricEncryption::Reader directly, to ensure that the encrypted
+    # stream is closed before the stream itself is closed.
     # Positional to match IO#close. Changing it to a keyword would break existing callers.
     def close(close_child_stream = true) # rubocop:disable Style/OptionalBooleanParameter
       return if closed?
@@ -179,14 +189,15 @@ module SymmetricEncryption
       @ios.flush
     end
 
-    # Return the size of the file rounded up to the nearest encryption block size
+    # Returns [Integer] the size of the underlying encrypted stream, header included.
+    # This is not the number of decrypted bytes it yields.
     #  Needed by XLS gem
     def size
       @ios.size
     end
 
     # Read from the stream and return the decrypted data
-    # See IOS#read
+    # See IO#read
     #
     # Reads at most length bytes from the I/O stream, or to the end of file if
     # length is omitted or is nil. length must be a non-negative integer or nil.
@@ -221,10 +232,12 @@ module SymmetricEncryption
       gets(sep_string) || raise(EOFError, "End of file reached when trying to read a line")
     end
 
-    # Reads a single decrypted line from the file up to and including the optional sep_string.
-    # A sep_string of nil reads the entire contents of the file
+    # Reads a single decrypted line from the file up to and including sep_string.
+    # A sep_string of nil reads the entire contents of the file, up to `length` if supplied.
     # Returns nil on eof
     # The stream must be opened for reading or an IOError will be raised.
+    #
+    # Note: Unlike IO#gets, sep_string is required. `#each_line` supplies the usual default.
     def gets(sep_string, length = nil)
       return read(length) if sep_string.nil?
 

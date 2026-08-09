@@ -9,7 +9,9 @@ module SymmetricEncryption
         config
       end
 
-      # Write the encrypted Encryption key to `encrypted_key` attribute.
+      # Encrypts the Encryption key and prints the `heroku config:add` command that sets it.
+      #
+      # Nothing is written anywhere, running that command is left to whoever is deploying.
       def write(key)
         encrypted_key = key_encrypting_key.encrypt(key)
         puts "\n\n********************************************************************************"

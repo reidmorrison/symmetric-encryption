@@ -5,12 +5,15 @@ module SymmetricEncryption
     # Wrap the AWS KMS client so that it automatically creates the Customer Master Key,
     # if one does not already exist.
     #
-    # Map OpenSSL cipher names to AWS KMS key specs.
+    # See `SymmetricEncryption::Keystore::Aws` for the terms used here, and for the keystore that
+    # this wraps.
     class Aws
       attr_reader :master_key_alias, :client
 
+      # The regions a new data key is encrypted into when none are supplied.
       AWS_US_REGIONS = %w[us-east-1 us-east-2 us-west-1 us-west-2].freeze
 
+      # Maps OpenSSL cipher names to the AWS KMS key spec that generates a key of that length.
       # TODO: Map to OpenSSL ciphers
       AWS_KEY_SPEC_MAP = {
         "aes-256-cbc" => "AES_256",
@@ -57,7 +60,7 @@ module SymmetricEncryption
         end
       end
 
-      # Decrypt data previously encrypted using the cmk
+      # Encrypt data using the cmk
       def encrypt(data)
         auto_create_master_key do
           client.encrypt(key_id: master_key_alias, plaintext: data).ciphertext_blob
@@ -108,7 +111,7 @@ module SymmetricEncryption
         # TODO: Add error handling and retry
 
         resp = client.create_key(
-          description: "Symmetric Encryption for Ruby Customer Masker Key",
+          description: "Symmetric Encryption for Ruby Customer Master Key",
           tags:        [
             {tag_key: "CreatedAt", tag_value: Time.now.to_s},
             {tag_key: "CreatedBy", tag_value: whoami}

@@ -1,5 +1,10 @@
 # The key, iv and encrypted data are handled in their raw form, with no encoding.
 module SymmetricEncryption
+  # A symmetric key and its iv, and the OpenSSL cipher they belong to.
+  #
+  # Thin wrapper over OpenSSL. A Key can be the data encryption key that a `Cipher` encrypts with,
+  # or a key encrypting key that decrypts another key, which is how `Keystore.read_key` walks a
+  # chain of nested `key_encrypting_key` entries in the configuration file.
   class Key
     attr_reader :key, :iv, :cipher_name
 

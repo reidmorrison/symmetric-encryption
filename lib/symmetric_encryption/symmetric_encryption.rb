@@ -4,9 +4,12 @@ require "zlib"
 require "yaml"
 require "erb"
 
-# Encrypt using 256 Bit AES CBC symmetric key and initialization vector
-# The symmetric key is protected using the private key below and must
-# be distributed separately from the application
+# Transparently encrypt and decrypt data with a symmetric key that is held outside of the
+# application, in a keystore. See `SymmetricEncryption::Keystore`.
+#
+# `symmetric-encryption.yml` names the ciphers, and where each of their keys lives. The default
+# cipher is `aes-256-cbc`; `aes-256-gcm` is also supported and additionally detects any change to
+# an encrypted value. See `SymmetricEncryption::Cipher#authenticated?`.
 module SymmetricEncryption
   # List of types supported when encrypting or decrypting data
   #
@@ -18,6 +21,7 @@ module SymmetricEncryption
   #   :datetime  => DateTime
   #   :time      => Time
   #   :date      => Date
+  #   :boolean   => TrueClass, or FalseClass
   #   :json      => Uses JSON serialization, useful for hashes and arrays
   #   :yaml      => Uses YAML serialization, useful for hashes and arrays
   COERCION_TYPES = %i[string integer float decimal datetime time date boolean json yaml].freeze
@@ -70,8 +74,9 @@ module SymmetricEncryption
 
   # Returns [SymmetricEncryption::Cipher] with the supplied version, or nil when there is none.
   #
-  # The scoped ciphers first, so that one of them wins a version it shares with a configured
-  # cipher, then the configured ones, so that data encrypted before the block still reads.
+  # Searches the scoped ciphers first, so that one of them wins a version it shares with a
+  # configured cipher, then the configured ones, so that data encrypted before the block still
+  # reads.
   def self.cipher_for(version, scoped, primary)
     scoped&.find { |c| c.version == version } ||
       (@cipher if @cipher && (@cipher.version == version)) ||
@@ -163,7 +168,8 @@ module SymmetricEncryption
     @secondary_ciphers = secondary_ciphers
   end
 
-  # Returns the Primary Symmetric Cipher being used
+  # Returns [Array<SymmetricEncryption::Cipher>] the Secondary Symmetric Ciphers being used.
+  # These are only ever decrypted with, never encrypted with.
   def self.secondary_ciphers
     @secondary_ciphers
   end
@@ -207,12 +213,11 @@ module SymmetricEncryption
   #    version [Integer]
   #      Specify which cipher version to use if no header is present on the
   #      encrypted string.
-  #    type [:string|:integer|:float|:decimal|:datetime|:time|:date|:boolean]
-  #      If value is set to something other than :string, then the coercible gem
-  #      will be use to coerce the unencrypted string value into the specified
-  #      type. This assumes that the value was stored using the same type.
-  #      Note: If type is set to something other than :string, it's expected
-  #        that the coercible gem is available in the path.
+  #    type [Symbol]
+  #      One of SymmetricEncryption::COERCION_TYPES.
+  #      If type is set to something other than :string, then the decrypted string is coerced
+  #      into that type: :json and :yaml are deserialized, everything else is coerced by the
+  #      coercible gem. This assumes that the value was stored using the same type.
   #      Default: :string
   #
   #  If the supplied string has an encryption header then the cipher matching
@@ -280,18 +285,17 @@ module SymmetricEncryption
   end
 
   # AES Symmetric Encryption of supplied string
-  #  Returns result as a Base64 encoded string
+  #  Returns the encrypted result, encoded according to the encoding of the cipher used.
+  #    Base64 encoded for every encoding other than :none, which returns raw binary data.
   #  Returns nil if the supplied str is nil
   #  Returns "" if it is a string and it is empty
   #
   # Parameters
-  #   value [Object]
+  #   str [Object]
   #     String to be encrypted. If str is not a string, #to_s will be called on it
   #     to convert it to a string
   #
   #   random_iv [true|false]
-  #     Mandatory unless `SymmetricEncryption.randomize_iv = true` has been called.
-  #
   #     Whether the encrypted value should use a random IV every time the field is encrypted.
   #     It is recommended to set this to true where possible.
   #
@@ -301,10 +305,10 @@ module SymmetricEncryption
   #     the same input string.
   #     Note: Only set to true if the field will never be used as part of
   #       the where clause in an SQL query.
-  #     Note: When random_iv is true it will add a 8 byte header, plus the bytes
-  #       to store the random IV in every returned encrypted string, prior to the
-  #       encoding if any.
-  #     Default: false
+  #     Note: When random_iv is true the header grows by 2 bytes, plus the bytes to store the
+  #       random IV, in every returned encrypted string, prior to the encoding if any.
+  #       For `aes-256-cbc` that is 18 bytes, taking the header from 6 bytes to 24.
+  #     Default: `SymmetricEncryption.randomize_iv?`
   #     Highly Recommended where feasible: true
   #
   #   compress [true|false]
@@ -312,16 +316,14 @@ module SymmetricEncryption
   #     Should only be used for large strings since compression overhead and
   #     the overhead of adding the 'magic' header may exceed any benefits of
   #     compression
-  #     Note: Adds a 6 byte header prior to encoding, only if :random_iv is false
+  #     Note: Forces the 6 byte header when it would otherwise be left out.
   #     Default: false
   #
-  #   type [:string|:integer|:float|:decimal|:datetime|:time|:date|:boolean]
-  #     Expected data type of the value to encrypt
-  #     Uses the coercible gem to coerce non-string values into string values.
-  #     When type is set to :string (the default), uses #to_s to convert
-  #     non-string values to string values.
-  #     Note: If type is set to something other than :string, it's expected that
-  #       the coercible gem is available in the path.
+  #   type [Symbol]
+  #     Expected data type of the value to encrypt. One of SymmetricEncryption::COERCION_TYPES.
+  #     :json and :yaml are serialized, everything else is coerced into a string by the coercible
+  #     gem. When type is set to :string (the default), uses #to_s to convert non-string values
+  #     to string values.
   #     Default: :string
   #
   #   version [Integer]
@@ -329,6 +331,13 @@ module SymmetricEncryption
   #     The version is written into the header of the encrypted value, so nothing has to be
   #     supplied when decrypting it again.
   #     Default: the primary cipher.
+  #
+  #   header [true|false]
+  #     Whether to add the header to the encrypted value. A header is added regardless when it is
+  #     needed to decrypt the value again: when random_iv or compress is true, or when the cipher
+  #     is an authenticated one.
+  #     ** Highly recommended to leave this true, since it is what makes key rotation work. **
+  #     Default: `always_add_header` of the cipher being encrypted with.
   def self.encrypt(str, random_iv: SymmetricEncryption.randomize_iv?, compress: false, type: :string,
                    version: nil, header: cipher(version).always_add_header)
     return str if str.nil? || (str == "")

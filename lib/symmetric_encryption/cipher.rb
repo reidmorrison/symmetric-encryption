@@ -6,7 +6,10 @@ module SymmetricEncryption
   # Cipher is thread safe so that the same instance can be called by multiple
   # threads at the same time without needing an instance of Cipher per thread.
   class Cipher
-    # Cipher to use for encryption and decryption
+    # cipher_name: [String] the OpenSSL cipher, for example `aes-256-cbc`.
+    # version:     [Integer] which of the configured ciphers this is, written into the header.
+    # iv:          [String|nil] the fixed iv, used when the value is encrypted without a random iv.
+    # always_add_header: [true|false] whether to add the header when nothing else requires it.
     attr_accessor :cipher_name, :version, :iv, :always_add_header
     attr_reader :encoding
     attr_writer :key
@@ -45,25 +48,27 @@ module SymmetricEncryption
     #
     #   encoding [Symbol]
     #     :base64strict
-    #       Return as a base64 encoded string that does not include additional newlines
-    #       This is the recommended format since newlines in the values to
-    #       SQL queries are cumbersome. Also the newline reformatting is unnecessary
-    #       It is not the default for backward compatibility
+    #       Return as a base64 encoded string that does not include additional newlines.
+    #       This is the recommended format, and the default, since newlines in the values in
+    #       SQL queries are cumbersome, and the newline reformatting is unnecessary.
     #     :base64urlsafe
     #       Same as base64strict except that base64urlsafe uses '-' instead of '+' and '_' instead of '/'.
     #     :base64
-    #       Return as a base64 encoded string
+    #       Return as a base64 encoded string, with a newline every 60 characters.
     #     :base16
     #       Return as a Hex encoded string
     #     :none
     #       Return as raw binary data string. Note: String can contain embedded nulls
     #     Default: :base64strict
+    #     Note: Every cipher in one configuration file has to use an encoding that the others can
+    #       read, since a value is decoded with the primary cipher's encoder before its header
+    #       says which cipher encrypted it. See `Config#validate_encodings!`.
     #
     #   version [Integer]
     #     Optional. The version number of this encryption key
     #     Used by SymmetricEncryption to select the correct key when decrypting data
     #     Valid Range: 0..255
-    #     Default: 1
+    #     Default: 0
     #
     #   always_add_header [true|false]
     #     Whether to always include the header when encrypting data.
@@ -114,8 +119,12 @@ module SymmetricEncryption
     #
     # Notes:
     # * A configured `iv` is not used by an authenticated cipher. Every encrypted value gets its
-    #   own iv, since re-using one across different values would expose the data.
-    # * Not supported by `Writer` and `Reader`, see their documentation.
+    #   own iv, since re-using one across different values would expose the data. With
+    #   `random_iv: false` the iv is derived from the value being encrypted, so that encrypting
+    #   the same value twice still returns the same encrypted value. See `#deterministic_iv`.
+    # * `Writer` and `Reader` support authenticated ciphers. A stream larger than one chunk is
+    #   written as a chunked stream, so that it is verified as it is read rather than only once
+    #   all of it has been read. See `SymmetricEncryption::ChunkedStream`.
     def authenticated?
       @authenticated
     end
@@ -143,7 +152,7 @@ module SymmetricEncryption
     #     * Only set to true if the field will never be used as a lookup key, since
     #       the encrypted value needs to be same every time in this case.
     #     * When random_iv is true it adds the random IV string to the header.
-    #     Default: false
+    #     Default: `SymmetricEncryption.randomize_iv?`
     #     Highly Recommended where feasible: true
     #
     #   compress [true|false]
@@ -153,6 +162,12 @@ module SymmetricEncryption
     #     * Should only be used for large strings since compression overhead and
     #       the overhead of adding the encryption header may exceed any benefits of
     #       compression
+    #
+    #   header [true|false]
+    #     Whether to add the header to the encrypted value. A header is added regardless when it
+    #     is needed to decrypt the value again: when random_iv or compress is true, or when this
+    #     is an authenticated cipher.
+    #     Default: `always_add_header`
     def encrypt(str, random_iv: SymmetricEncryption.randomize_iv?, compress: false, header: always_add_header)
       return if str.nil?
 
@@ -166,16 +181,17 @@ module SymmetricEncryption
     # Decode and Decrypt string
     #   Returns a decrypted string after decoding it first according to the
     #           encoding setting of this cipher
-    #   Returns nil if encrypted_string is nil
-    #   Returns '' if encrypted_string == ''
+    #   Returns nil if str is nil
+    #   Returns '' if str == ''
     #
     # Parameters
-    #   encrypted_string [String]
-    #     Binary encrypted string to decrypt
+    #   str [String]
+    #     Encoded, encrypted string to decode and decrypt.
     #
-    # Reads the header if present for key, iv, cipher_name and compression
+    # Reads the header if present for key, iv, cipher_name and compression.
     #
-    # encrypted_string must be in raw binary form when calling this method
+    # Note: This always decrypts with _this_ cipher. Only `SymmetricEncryption.decrypt` looks the
+    #       cipher up by the version in the header.
     #
     # Creates a new OpenSSL::Cipher with every call so that this call
     # is thread-safe and can be called concurrently by multiple threads with
@@ -245,7 +261,7 @@ module SymmetricEncryption
     #     to convert it to a string
     #
     #   random_iv [true|false]
-    #     Whether the encypted value should use a random IV every time the
+    #     Whether the encrypted value should use a random IV every time the
     #     field is encrypted.
     #     Notes:
     #     * Setting random_iv to true will result in a different encrypted output for
@@ -254,7 +270,7 @@ module SymmetricEncryption
     #     * Only set to true if the field will never be used as a lookup key, since
     #       the encrypted value needs to be same every time in this case.
     #     * When random_iv is true it adds the random IV string to the header.
-    #     Default: false
+    #     Default: `SymmetricEncryption.randomize_iv?`
     #     Highly Recommended where feasible: true
     #
     #   compress [true|false]
@@ -321,15 +337,16 @@ module SymmetricEncryption
     #
     # Reads the 'magic' header if present for key, iv, cipher_name and compression
     #
-    # encrypted_string must be in raw binary form when calling this method
+    # encrypted_string must already be decoded. It does not have to carry the BINARY encoding,
+    # a binary copy is taken when it does not, since the header offsets are byte offsets.
     #
     # Creates a new OpenSSL::Cipher with every call so that this call
     # is thread-safe and can be called concurrently by multiple threads with
     # the same instance of Cipher
     #
     # Note:
-    #   When a string is encrypted and the header is used, its decrypted form
-    #   is automatically set to the same UTF-8 or Binary encoding
+    #   The result is always BINARY encoded. `#decrypt` is what forces it to UTF-8 when the
+    #   decrypted bytes are valid UTF-8.
     def binary_decrypt(encrypted_string, header: Header.new)
       return if encrypted_string.nil?
 

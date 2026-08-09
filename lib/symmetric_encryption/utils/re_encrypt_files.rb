@@ -17,13 +17,13 @@ module SymmetricEncryption
   module Utils
     # ReEncrypt files
     #
-    #   If a file is encrypted, it is re-encrypted with the cipher that has the highest version number.
-    #   A file that is already encrypted with the specified key version is not re-encrypted.
-    #   If an encrypted value cannot be decypted in the current environment it is left unmodified.
+    #   If a file is encrypted, it is re-encrypted with the cipher that has the supplied version.
+    #   A file that is already encrypted with that key version is not re-encrypted.
+    #   If an encrypted value cannot be decrypted in the current environment it is left unmodified.
     #
     #   If a file is not encrypted, the file is searched for any encrypted values, and those values are re-encrypted.
     #
-    #   symmetric_encryption --reencrypt "**/*.yml"
+    #   symmetric-encryption --re-encrypt "**/*.yml"
     class ReEncryptFiles
       attr_accessor :cipher, :version
 
@@ -46,9 +46,12 @@ module SymmetricEncryption
         end
       end
 
-      # Process a single file.
+      # Process a single file, replacing the encrypted values within it.
       #
       # Returns [Integer] number of encrypted values re-encrypted.
+      #
+      # Note: The whole file is read into memory, so anything over 256KB is skipped and returns 0.
+      #       A file that large is not a config file holding a handful of encrypted passwords.
       def re_encrypt_contents(file_name)
         return 0 if File.size(file_name) > 256 * 1024
 
