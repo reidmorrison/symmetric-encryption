@@ -103,6 +103,47 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Authenticated encryption, by setting `cipher_name` to `aes-256-gcm`. `aes-256-cbc`, the default,
+  keeps data secret but does not detect changes to it: anyone who can write to an encrypted value
+  can change it, and `decrypt` returns whatever those changed bytes decrypt to. An authenticated
+  cipher produces an auth tag, which is checked on the way back in, so decryption fails instead of
+  returning data that was tampered with.
+
+  ~~~yaml
+  production:
+    ciphers:
+      - key_filename: /etc/symmetric-encryption/production_v2.key
+        cipher_name:  aes-256-gcm
+        version:      2
+  ~~~
+
+  Nothing else changes: `SymmetricEncryption.encrypt` and `attribute :ssn, :encrypted` behave as
+  they did. Existing data is unaffected, and is still read by the cipher that encrypted it as long
+  as that cipher stays in `symmetric-encryption.yml` as a secondary cipher.
+
+  Details worth knowing before turning it on:
+
+  - The auth tag covers the header as well as the data, so the version, the compression flag, the
+    initialization vector and the cipher name cannot be changed either. An encrypted value carries
+    its auth tag in the header, so it always has one, whatever `always_add_header` is set to, and
+    is roughly 30 bytes larger than the same value under `aes-256-cbc` with no header.
+  - The auth tag has to be exactly 16 bytes. OpenSSL accepts a truncated tag, which an attacker
+    who can write to the value could forge in at most 256 attempts, so a short tag is rejected.
+    See [ruby/openssl#63](https://github.com/ruby/openssl/issues/63).
+  - `random_iv: false` still returns the same encrypted value for the same input, so an attribute
+    can still be queried. The initialization vector is derived from the value being encrypted
+    rather than taken from the configuration, because re-using one initialization vector across
+    different values would expose the data and make the auth tag forgeable. A configured `iv:` is
+    therefore ignored by an authenticated cipher.
+  - Not supported for files and streams. `Writer` and `Reader` raise `ArgumentError` rather than
+    quietly giving up the guarantee, since the auth tag of a stream only exists once the whole
+    stream has been written, and nothing could be verified until the entire file had been read.
+    Pass `cipher_name: "aes-256-cbc"` to encrypt the file itself. The random key generated for
+    each file is still encrypted with the global cipher, so an authenticated global cipher still
+    protects it.
+
+  See the [Authenticated Encryption Guide](https://encryption.reidmorrison.com/authenticated_encryption.html).
+
 - `SymmetricEncryption::ActiveRecord::ExcludeFromJson` keeps encrypted attributes out of the JSON
   representation of a model, so that they cannot be leaked by `render json: @person`. Also issue
   #128:

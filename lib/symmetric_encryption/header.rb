@@ -30,9 +30,17 @@ module SymmetricEncryption
     attr_reader :version
 
     # [String] Binary auth tag used to encrypt the data.
-    # Usually 16 bytes.
+    # Always 16 bytes, see `AUTH_TAG_SIZE`.
     # Present when using an authenticated encryption mode.
     attr_reader :auth_tag
+
+    # The number of bytes in the auth tag of an authenticated cipher.
+    #
+    # GCM accepts a shorter auth tag, and OpenSSL does not reject one, so an attacker who can
+    # write to the encrypted value could truncate the tag to a single byte and then forge it in
+    # at most 256 attempts. See https://github.com/ruby/openssl/issues/63. The length is fixed
+    # here, and checked on the way in, so that a truncated tag is rejected rather than trusted.
+    AUTH_TAG_SIZE = 16
 
     # Returns whether the supplied buffer starts with a symmetric_encryption header
     # The supplied buffer is not modified, and may be frozen.
@@ -71,18 +79,36 @@ module SymmetricEncryption
     #     `key` if supplied is encrypted with the cipher name based on the cipher version in this header.
     #     Intended for use when encrypting large files with a different cipher to the global one.
     #     Default: nil : Exclude cipher_name name from header
+    #   auth_tag [String]
+    #     The auth tag produced by an authenticated cipher, such as `aes-256-gcm`.
+    #     Default: nil : Exclude the auth tag from the header
+    #
+    #   authenticated [true|false]
+    #     Whether the data is encrypted with an authenticated cipher, and therefore whether the
+    #     header will carry an auth tag. Only needed while encrypting, when the auth tag is not
+    #     known yet: an authenticated cipher needs its additional authenticated data before it
+    #     can produce the tag. See `#auth_data`.
+    #     Default: whether `auth_tag` was supplied.
     def initialize(version: SymmetricEncryption.cipher.version,
                    compress: false,
                    iv: nil,
                    key: nil,
                    cipher_name: nil,
-                   auth_tag: nil)
-      @version     = version
-      @compress    = compress
-      @iv          = iv
-      @key         = key
-      @cipher_name = cipher_name
-      @auth_tag    = auth_tag
+                   auth_tag: nil,
+                   authenticated: !auth_tag.nil?)
+      @version       = version
+      @compress      = compress
+      @iv            = iv
+      @key           = key
+      @cipher_name   = cipher_name
+      @authenticated = authenticated
+      self.auth_tag  = auth_tag if auth_tag
+    end
+
+    # Returns [true|false] whether the data is encrypted with an authenticated cipher, and
+    # therefore whether this header carries an auth tag.
+    def authenticated?
+      @authenticated
     end
 
     # Returns [SymmetricEncryption::Cipher] the cipher used to decrypt or encrypt the key
@@ -94,6 +120,24 @@ module SymmetricEncryption
     def version=(version)
       @version = version
       @cipher  = nil
+    end
+
+    # Rejects an auth tag that is not exactly `AUTH_TAG_SIZE` bytes, since OpenSSL accepts a
+    # truncated one and a truncated tag is not expensive to forge.
+    #
+    # Held as binary, so that its length is always its length in bytes, and so that appending it
+    # to the rest of the header cannot fail on an encoding mismatch.
+    def auth_tag=(auth_tag)
+      auth_tag = auth_tag&.to_s&.b
+      if auth_tag && (auth_tag.length != AUTH_TAG_SIZE)
+        raise(
+          SymmetricEncryption::CipherError,
+          "The auth tag must be exactly #{AUTH_TAG_SIZE} bytes, but is #{auth_tag.length} bytes. " \
+          "A shorter auth tag is not accepted, because it is not expensive to forge."
+        )
+      end
+
+      @auth_tag = auth_tag
     end
 
     def compressed?
@@ -133,6 +177,8 @@ module SymmetricEncryption
     def parse(buffer, offset = 0) # rubocop:disable Metrics/AbcSize
       return 0 if buffer.nil? || (buffer == "") || (buffer.length <= MAGIC_HEADER_SIZE + 2)
 
+      start_offset = offset
+
       # Symmetric Encryption Header
       #
       # Consists of:
@@ -143,7 +189,7 @@ module SymmetricEncryption
       #       Bit 2: Whether the IV is included
       #       Bit 3: Whether the Key is included
       #       Bit 4: Whether the Cipher Name is included
-      #       Bit 5: Future use
+      #       Bit 5: Whether the Auth Tag is included
       #       Bit 6: Future use
       #       Bit 7: Future use
       #       Bit 8: Future use
@@ -153,6 +199,9 @@ module SymmetricEncryption
       #      Key in binary form
       #    2 Bytes: Cipher Name Length (little endian), if included.
       #      Cipher name it UTF8 text
+      #    2 Bytes: Auth Tag Length (little endian), if included.
+      #      Auth tag in binary form. Always the last field, so that every byte before it can be
+      #      passed to an authenticated cipher as its additional authenticated data.
 
       # Every read below is byte oriented, so the buffer has to be binary. Work against a
       # binary copy when it is not, rather than re-encoding the caller's string in place.
@@ -199,9 +248,17 @@ module SymmetricEncryption
       end
 
       if flags.nobits?(FLAG_AUTH_TAG)
-        self.auth_tag = nil
+        @authenticated = false
+        @auth_tag      = nil
+        @auth_data     = nil
       else
-        self.auth_tag, offset = read_string(buffer, offset)
+        @authenticated = true
+        # Every byte before the auth tag is the additional authenticated data. Sliced out of the
+        # buffer rather than rebuilt, so that it is exactly what the cipher was given, whether or
+        # not this header is later written out again.
+        @auth_data     = buffer.byteslice(start_offset, offset - start_offset)
+        tag, offset    = read_string(buffer, offset)
+        self.auth_tag  = tag
       end
 
       offset
@@ -209,12 +266,53 @@ module SymmetricEncryption
 
     # Returns [String] this header as a string
     def to_s
+      return auth_data unless authenticated?
+
+      unless auth_tag
+        raise(
+          SymmetricEncryption::CipherError,
+          "The auth tag has to be set before an authenticated header can be written out. " \
+          "It is only known once the data has been encrypted."
+        )
+      end
+
+      # Not `<<`, which would append to the memoized auth data.
+      "#{auth_data}#{[auth_tag.length].pack('v')}#{auth_tag}"
+    end
+
+    # Returns [String] the header bytes that precede the auth tag.
+    #
+    # For an authenticated cipher these bytes are the additional authenticated data (AAD). They
+    # are covered by the auth tag, so that the version, the flags, the iv and the cipher name
+    # cannot be changed without the tag check failing. The tag itself is excluded, since it is
+    # the output of the very operation that this data is fed into.
+    #
+    # Memoized for an authenticated header only, so that the bytes handed to the cipher as the
+    # AAD are byte for byte the bytes that `#to_s` writes out afterwards. An encrypted key in the
+    # header is not deterministic, it is encrypted again with a new random iv on every call.
+    def auth_data
+      return build_auth_data unless authenticated?
+
+      @auth_data ||= build_auth_data
+    end
+
+    private
+
+    FLAG_COMPRESSED  = 0b1000_0000
+    FLAG_IV          = 0b0100_0000
+    FLAG_KEY         = 0b0010_0000
+    FLAG_CIPHER_NAME = 0b0001_0000
+    FLAG_AUTH_TAG    = 0b0000_1000
+    private_constant :FLAG_COMPRESSED, :FLAG_IV, :FLAG_KEY, :FLAG_CIPHER_NAME, :FLAG_AUTH_TAG
+
+    # Returns [String] the header, excluding the auth tag. See `#auth_data`.
+    def build_auth_data
       flags = 0
       flags |= FLAG_COMPRESSED if compressed?
       flags |= FLAG_IV if iv
       flags |= FLAG_KEY if key
       flags |= FLAG_CIPHER_NAME if cipher_name
-      flags |= FLAG_AUTH_TAG if auth_tag
+      flags |= FLAG_AUTH_TAG if authenticated?
 
       header = "#{MAGIC_HEADER}#{version.chr(SymmetricEncryption::BINARY_ENCODING)}#{flags.chr(SymmetricEncryption::BINARY_ENCODING)}"
 
@@ -234,24 +332,8 @@ module SymmetricEncryption
         header << cipher_name
       end
 
-      if auth_tag
-        header << [auth_tag.length].pack("v")
-        header << auth_tag
-      end
-
       header
     end
-
-    private
-
-    FLAG_COMPRESSED  = 0b1000_0000
-    FLAG_IV          = 0b0100_0000
-    FLAG_KEY         = 0b0010_0000
-    FLAG_CIPHER_NAME = 0b0001_0000
-    FLAG_AUTH_TAG    = 0b0000_1000
-    private_constant :FLAG_COMPRESSED, :FLAG_IV, :FLAG_KEY, :FLAG_CIPHER_NAME, :FLAG_AUTH_TAG
-
-    attr_writer :auth_tag
 
     # Extracts a string from the supplied buffer.
     # The buffer starts with a 2 byte length indicator in little endian format.

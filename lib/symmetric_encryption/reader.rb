@@ -340,6 +340,10 @@ module SymmetricEncryption
       end
 
       @stream_cipher = ::OpenSSL::Cipher.new(cipher_name)
+      if @stream_cipher.authenticated?
+        raise(ArgumentError, SymmetricEncryption::Writer.authenticated_cipher_message(@stream_cipher.name))
+      end
+
       @stream_cipher.decrypt
       @stream_cipher.key = key || cipher.send(:key)
       @stream_cipher.iv  = iv || cipher.iv
