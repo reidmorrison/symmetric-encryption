@@ -10,6 +10,7 @@ require "symmetric_encryption/exception"
 
 # @formatter:off
 module SymmetricEncryption
+  autoload :ChunkedStream,          "symmetric_encryption/chunked_stream"
   autoload :Coerce,                 "symmetric_encryption/coerce"
   autoload :Config,                 "symmetric_encryption/config"
   autoload :Encoder,                "symmetric_encryption/encoder"

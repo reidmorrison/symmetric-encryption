@@ -186,8 +186,8 @@ class AuthenticatedCipherTest < Minitest::Test
       end
     end
 
-    # An authenticated cipher cannot encrypt a stream: its auth tag only exists once everything
-    # has been written, so nothing could be verified until the whole file had been read.
+    # A stream is authenticated a chunk at a time once there is more than one chunk of data, so
+    # that it can be verified as it is read. See chunked_stream_test.rb.
     describe "files and streams" do
       let :the_file_name do
         "._authenticated_test"
@@ -197,15 +197,13 @@ class AuthenticatedCipherTest < Minitest::Test
         FileUtils.rm_f(the_file_name)
       end
 
-      it "refuses to write a file" do
-        error = assert_raises ArgumentError do
-          SymmetricEncryption::Writer.open(the_file_name) { |file| file.write(clear_value) }
-        end
+      it "round trips a file" do
+        SymmetricEncryption::Writer.open(the_file_name) { |file| file.write(clear_value) }
 
-        assert_includes error.message, "not supported for files and streams"
+        assert_equal clear_value, SymmetricEncryption::Reader.open(the_file_name, &:read)
       end
 
-      it "refuses to read a file" do
+      it "refuses a stream that has no auth tag" do
         SymmetricEncryption::Writer.open(the_file_name, cipher_name: "aes-256-cbc") do |file|
           file.write(clear_value)
         end
@@ -218,11 +216,11 @@ class AuthenticatedCipherTest < Minitest::Test
         )
         File.binwrite(the_file_name, forged.to_s + buffer[offset..])
 
-        error = assert_raises ArgumentError do
+        error = assert_raises SymmetricEncryption::CipherError do
           SymmetricEncryption::Reader.open(the_file_name, &:read)
         end
 
-        assert_includes error.message, "not supported for files and streams"
+        assert_includes error.message, "no auth tag"
       end
 
       # The random key generated for the file is encrypted with the global cipher, so an

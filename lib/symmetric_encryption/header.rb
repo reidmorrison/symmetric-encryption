@@ -42,6 +42,20 @@ module SymmetricEncryption
     # here, and checked on the way in, so that a truncated tag is rejected rather than trusted.
     AUTH_TAG_SIZE = 16
 
+    # [Integer] The number of plain text bytes in each chunk of a chunked stream.
+    # Only present when `chunked?`. See `SymmetricEncryption::ChunkedStream`.
+    attr_reader :chunk_size
+
+    # The chunk sizes that are accepted, as powers of two: 1 KB to 16 MB.
+    #
+    # Bounded because the chunk size is read out of the header before anything has been
+    # authenticated, and it decides how large a buffer the reader allocates for each chunk.
+    MIN_CHUNK_SIZE_EXPONENT = 10
+    MAX_CHUNK_SIZE_EXPONENT = 24
+
+    # The chunk size used unless another one is asked for.
+    DEFAULT_CHUNK_SIZE = 64 * 1024
+
     # Returns whether the supplied buffer starts with a symmetric_encryption header
     # The supplied buffer is not modified, and may be frozen.
     def self.present?(buffer)
@@ -89,26 +103,62 @@ module SymmetricEncryption
     #     known yet: an authenticated cipher needs its additional authenticated data before it
     #     can produce the tag. See `#auth_data`.
     #     Default: whether `auth_tag` was supplied.
+    #   chunk_size [Integer]
+    #     The number of plain text bytes in each chunk, when the data is written as a chunked
+    #     stream. Each chunk carries its own auth tag, so that a stream can be authenticated as
+    #     it is read instead of only once all of it has been read.
+    #     Default: nil : Not a chunked stream
     def initialize(version: SymmetricEncryption.cipher.version,
                    compress: false,
                    iv: nil,
                    key: nil,
                    cipher_name: nil,
                    auth_tag: nil,
-                   authenticated: !auth_tag.nil?)
-      @version       = version
-      @compress      = compress
-      @iv            = iv
-      @key           = key
-      @cipher_name   = cipher_name
-      @authenticated = authenticated
-      self.auth_tag  = auth_tag if auth_tag
+                   authenticated: !auth_tag.nil?,
+                   chunk_size: nil)
+      @version         = version
+      @compress        = compress
+      @iv              = iv
+      @key             = key
+      @cipher_name     = cipher_name
+      @authenticated   = authenticated
+      self.chunk_size  = chunk_size if chunk_size
+      self.auth_tag    = auth_tag if auth_tag
     end
 
     # Returns [true|false] whether the data is encrypted with an authenticated cipher, and
     # therefore whether this header carries an auth tag.
     def authenticated?
       @authenticated
+    end
+
+    # Returns [true|false] whether the data is a chunked stream, each chunk of which carries its
+    # own auth tag. A chunked stream has no auth tag in its header.
+    def chunked?
+      !@chunk_size.nil?
+    end
+
+    # Returns [String] the exact bytes of this header, as they were parsed out of the stream.
+    #
+    # Every chunk of a chunked stream is authenticated against these bytes, which binds the chunks
+    # to this header: to its version, its flags, its chunk size and its encrypted key. Only
+    # captured while parsing a chunked stream, since slicing it out costs an allocation that the
+    # far more common path of decrypting a single value does not need.
+    attr_reader :header_bytes
+
+    # Rejects a chunk size that is not a power of two within the supported range.
+    def chunk_size=(chunk_size)
+      exponent = chunk_size && Math.log2(chunk_size)
+      unless exponent && (exponent % 1).zero? &&
+             exponent.between?(MIN_CHUNK_SIZE_EXPONENT, MAX_CHUNK_SIZE_EXPONENT)
+        raise(
+          SymmetricEncryption::CipherError,
+          "Chunk size #{chunk_size.inspect} is not supported. It has to be a power of two between " \
+          "#{2**MIN_CHUNK_SIZE_EXPONENT} and #{2**MAX_CHUNK_SIZE_EXPONENT} bytes."
+        )
+      end
+
+      @chunk_size = chunk_size
     end
 
     # Returns [SymmetricEncryption::Cipher] the cipher used to decrypt or encrypt the key
@@ -172,9 +222,10 @@ module SymmetricEncryption
     # The supplied buffer is not modified, and may be frozen. Use `parse!` to strip the header
     # from the buffer itself.
     #
-    # Marginally over the ABC limit, and deliberately left alone: this walks the on-disk header
-    # format field by field, and splitting it up would obscure the byte order it depends on.
-    def parse(buffer, offset = 0) # rubocop:disable Metrics/AbcSize
+    # Marginally over the ABC and length limits, and deliberately left alone: this walks the
+    # on-disk header format field by field, and splitting it up would obscure the byte order it
+    # depends on.
+    def parse(buffer, offset = 0) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
       return 0 if buffer.nil? || (buffer == "") || (buffer.length <= MAGIC_HEADER_SIZE + 2)
 
       start_offset = offset
@@ -190,7 +241,7 @@ module SymmetricEncryption
       #       Bit 3: Whether the Key is included
       #       Bit 4: Whether the Cipher Name is included
       #       Bit 5: Whether the Auth Tag is included
-      #       Bit 6: Future use
+      #       Bit 6: Whether the data is a chunked stream
       #       Bit 7: Future use
       #       Bit 8: Future use
       #    2 Bytes: IV Length (little endian), if included.
@@ -199,6 +250,7 @@ module SymmetricEncryption
       #      Key in binary form
       #    2 Bytes: Cipher Name Length (little endian), if included.
       #      Cipher name it UTF8 text
+      #    1 Byte:  The chunk size as a power of two, if this is a chunked stream.
       #    2 Bytes: Auth Tag Length (little endian), if included.
       #      Auth tag in binary form. Always the last field, so that every byte before it can be
       #      passed to an authenticated cipher as its additional authenticated data.
@@ -247,6 +299,13 @@ module SymmetricEncryption
         self.cipher_name, offset = read_string(buffer, offset)
       end
 
+      if flags.nobits?(FLAG_CHUNKED)
+        @chunk_size = nil
+      else
+        self.chunk_size = 2**buffer.getbyte(offset)
+        offset += 1
+      end
+
       if flags.nobits?(FLAG_AUTH_TAG)
         @authenticated = false
         @auth_tag      = nil
@@ -260,6 +319,10 @@ module SymmetricEncryption
         tag, offset    = read_string(buffer, offset)
         self.auth_tag  = tag
       end
+
+      # Only for a chunked stream, whose chunks are each authenticated against these bytes. Every
+      # other value pays nothing for it, since slicing it out costs an allocation.
+      @header_bytes = buffer.byteslice(start_offset, offset - start_offset) if chunked?
 
       offset
     end
@@ -303,7 +366,9 @@ module SymmetricEncryption
     FLAG_KEY         = 0b0010_0000
     FLAG_CIPHER_NAME = 0b0001_0000
     FLAG_AUTH_TAG    = 0b0000_1000
-    private_constant :FLAG_COMPRESSED, :FLAG_IV, :FLAG_KEY, :FLAG_CIPHER_NAME, :FLAG_AUTH_TAG
+    FLAG_CHUNKED     = 0b0000_0100
+    private_constant :FLAG_COMPRESSED, :FLAG_IV, :FLAG_KEY, :FLAG_CIPHER_NAME, :FLAG_AUTH_TAG,
+                     :FLAG_CHUNKED
 
     # Returns [String] the header, excluding the auth tag. See `#auth_data`.
     def build_auth_data
@@ -313,6 +378,7 @@ module SymmetricEncryption
       flags |= FLAG_KEY if key
       flags |= FLAG_CIPHER_NAME if cipher_name
       flags |= FLAG_AUTH_TAG if authenticated?
+      flags |= FLAG_CHUNKED if chunked?
 
       header = "#{MAGIC_HEADER}#{version.chr(SymmetricEncryption::BINARY_ENCODING)}#{flags.chr(SymmetricEncryption::BINARY_ENCODING)}"
 
@@ -331,6 +397,8 @@ module SymmetricEncryption
         header << [cipher_name.length].pack("v")
         header << cipher_name
       end
+
+      header << Math.log2(chunk_size).to_i.chr(SymmetricEncryption::BINARY_ENCODING) if chunked?
 
       header
     end
