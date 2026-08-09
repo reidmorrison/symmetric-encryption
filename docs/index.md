@@ -137,10 +137,10 @@ attribute :age, :encrypted, type: :integer
 `filter_attributes` automatically, so `inspect` and the Rails logs show `[FILTERED]` rather than the
 decrypted value. See [Rails](rails.html).
 
-**Authenticated encryption** with `aes-256-gcm`, which detects any change to an encrypted value
-rather than decrypting whatever it is given. Files and streams are authenticated a chunk at a time,
-so they are verified as they are read rather than only once all of the data has been read. See
-[Security](security.html).
+**Authenticated encryption** with `aes-256-gcm`, the cipher new configurations are generated with,
+which detects any change to an encrypted value rather than decrypting whatever it is given. Files
+and streams are authenticated a chunk at a time, so they are verified as they are read rather than
+only once all of the data has been read. See [Security](security.html).
 
 **Encrypted files and streams:**
 

@@ -39,6 +39,11 @@ module SymmetricEncryption
       @cipher_name = cipher_name
     end
 
+    # Returns [String] the encrypted string.
+    #
+    # With an authenticated cipher, such as `aes-256-gcm`, the auth tag is appended to the
+    # encrypted data, since a Key has no header to carry it in. `SymmetricEncryption::ChunkedStream`
+    # writes its chunks the same way.
     def encrypt(string)
       return if string.nil?
 
@@ -53,8 +58,14 @@ module SymmetricEncryption
 
       result = openssl_cipher.update(string)
       result << openssl_cipher.final
+      result << openssl_cipher.auth_tag(Header::AUTH_TAG_SIZE) if openssl_cipher.authenticated?
+      result
     end
 
+    # Returns [String] the decrypted string.
+    #
+    # Raises OpenSSL::Cipher::CipherError when an authenticated cipher's auth tag does not match,
+    # which is what detects a key file that has been tampered with.
     def decrypt(encrypted_string)
       return if encrypted_string.nil?
 
@@ -68,9 +79,28 @@ module SymmetricEncryption
       openssl_cipher.decrypt
       openssl_cipher.key = key
       openssl_cipher.iv  = iv
+      encrypted_string   = extract_auth_tag!(openssl_cipher, encrypted_string) if openssl_cipher.authenticated?
 
       result = openssl_cipher.update(encrypted_string)
       result << openssl_cipher.final
+    end
+
+    private
+
+    # Returns [String] the encrypted data with the trailing auth tag removed, after handing the tag
+    # to the cipher. See `#encrypt` for where it is appended.
+    def extract_auth_tag!(openssl_cipher, encrypted_string)
+      size = Header::AUTH_TAG_SIZE
+      if encrypted_string.bytesize <= size
+        raise(
+          SymmetricEncryption::CipherError,
+          "The encrypted key is #{encrypted_string.bytesize} bytes, too short to hold its #{size} byte auth tag. " \
+          "Cipher #{cipher_name.inspect} is an authenticated cipher, so the key it encrypted carries one."
+        )
+      end
+
+      openssl_cipher.auth_tag = encrypted_string.byteslice(-size, size)
+      encrypted_string.byteslice(0, encrypted_string.bytesize - size)
     end
   end
 end

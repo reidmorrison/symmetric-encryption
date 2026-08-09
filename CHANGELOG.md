@@ -7,6 +7,30 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Breaking changes
 
+- `symmetric-encryption --generate` now writes `aes-256-gcm` instead of `aes-256-cbc`.
+
+  `aes-256-cbc` keeps data secret but cannot tell whether it has been changed: an attacker who can
+  write to an encrypted column or file can alter it, and what comes back out is whatever those
+  altered bytes decrypt to. `aes-256-gcm` is authenticated, so decryption fails instead. New
+  applications should not have to know to ask for that.
+
+  Existing configuration files are unaffected. They name their own `cipher_name`, and a cipher entry
+  that omits it still defaults to `aes-256-cbc`, so data already encrypted stays readable. To move an
+  existing application over, add a new `aes-256-gcm` key with `--rotate-keys --cipher-name
+  aes-256-gcm` and keep the old cipher in the file as a secondary, which is ordinary
+  [key rotation](https://encryption.reidmorrison.com/key_rotation.html).
+
+  Two consequences worth knowing before switching:
+  - Encrypted values grow by roughly 30 bytes, since an authenticated value always carries a header
+    and an auth tag.
+  - A value encrypted with `random_iv: false`, so that it can be queried, derives its initialization
+    vector from the value itself rather than using the configured one. The same input still encrypts
+    to the same output, so lookups keep working.
+
+  `SymmetricEncryption::Key`, which secures the key encrypting keys, now supports authenticated
+  ciphers; it previously failed to decrypt anything it had encrypted with one. The AWS KMS keystore
+  maps the GCM cipher names to key specs, so `--generate --keystore aws` works with the new default.
+
 - Ruby 3.2 is now the minimum supported runtime. Earlier versions are end-of-life and are no
   longer tested.
 - Rails 7.2 is now the minimum supported version of Rails / Active Record.

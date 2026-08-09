@@ -61,7 +61,7 @@ module SymmetricEncryption
           cli = CLI.new(%w[--generate])
 
           assert_equal "symmetric-encryption", cli.app_name
-          assert_equal "aes-256-cbc", cli.cipher_name
+          assert_equal "aes-256-gcm", cli.cipher_name
           assert_equal :file, cli.keystore
           assert_equal "#{Dir.home}/.symmetric-encryption", cli.key_path
           refute cli.rolling_deploy

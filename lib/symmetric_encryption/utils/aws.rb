@@ -14,9 +14,13 @@ module SymmetricEncryption
       AWS_US_REGIONS = %w[us-east-1 us-east-2 us-west-1 us-west-2].freeze
 
       # Maps OpenSSL cipher names to the AWS KMS key spec that generates a key of that length.
+      # KMS only knows about the key length, so the mode does not appear here: `aes-256-gcm` and
+      # `aes-256-cbc` both take the 32 byte key that `AES_256` produces.
       # TODO: Map to OpenSSL ciphers
       AWS_KEY_SPEC_MAP = {
+        "aes-256-gcm" => "AES_256",
         "aes-256-cbc" => "AES_256",
+        "aes-128-gcm" => "AES_128",
         "aes-128-cbc" => "AES_128"
       }.freeze
 

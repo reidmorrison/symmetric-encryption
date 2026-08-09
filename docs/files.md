@@ -93,7 +93,7 @@ SymmetricEncryption::Writer.encrypt(source: "photo.jpg", target: "photo.jpg.enc"
 
 ## Step 4: Detect changes to an encrypted file
 
-`aes-256-cbc`, the default cipher, keeps a file secret but does not detect changes to it. Anyone
+`aes-256-cbc`, the cipher used before v5, keeps a file secret but does not detect changes to it. Anyone
 who can write to the file can change it, and what comes back out is whatever those changed bytes
 decrypt to.
 
