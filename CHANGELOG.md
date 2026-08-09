@@ -181,6 +181,28 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- An encrypted `:date`, `:datetime` or `:time` attribute can now be assigned from a `date_select`,
+  `datetime_select` or `time_select` form helper. Issue #62: those helpers submit one field per part
+  of the date, which Active Record collects into a Hash keyed by parameter position and assigns in
+  one go. Only Active Record's own date and time types understood that Hash, so the value fell
+  through to the coercible gem, which looks for the keys `:year`, `:month` and `:day` and uses
+  `Time.now` for each one it does not find. The date the user picked was therefore silently replaced
+  by the current date or time, encrypted, and saved:
+
+  ~~~ruby
+  # params: {"date_of_birth(1i)" => "1975", "date_of_birth(2i)" => "11", "date_of_birth(3i)" => "9"}
+  person.date_of_birth
+  # Before: Mon, 09 Feb 2026  (whatever the date happened to be)
+  # After:  Sun, 09 Nov 1975
+  ~~~
+
+  Such an assignment is now cast by the Active Record type for the declared type, so the missing
+  parameters take the same defaults, an incomplete date becomes `nil` rather than part of today, and
+  the attribute reports the same `*_came_from_user?` as an unencrypted one, which is what decides
+  whether a validation reports on the cast value or on `*_before_type_cast`. Records already saved
+  with the wrong date have to be corrected by hand: the date that was submitted was never stored.
+
+  A Hash assigned to a `:json` or `:yaml` attribute is unaffected, it is still a value.
 - `SymmetricEncryption::Reader.open` leaked a file descriptor on every uncompressed file or stream
   it was given, and left the caller's stream open. The block form decides whether to close what it
   built with `respond_to?(:closed?)`, and `Reader#closed?` was defined below `private`, so the
