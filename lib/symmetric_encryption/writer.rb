@@ -72,21 +72,6 @@ module SymmetricEncryption
       end
     end
 
-    # Returns [String] the message for an attempt to use an authenticated cipher on a stream.
-    #
-    # An authenticated cipher only produces its auth tag once everything has been encrypted, and
-    # the tag can only be checked once everything has been decrypted. Streaming would therefore
-    # have to hand out data that has not been authenticated yet, which is what the cipher is
-    # there to prevent, so it is refused rather than quietly weakened.
-    def self.authenticated_cipher_message(cipher_name)
-      "#{cipher_name} is an authenticated cipher, which is not supported for files and streams. " \
-        "Its auth tag only exists once the whole stream has been written, so nothing could be " \
-        "verified until the entire file had been read. Encrypt the file with an unauthenticated " \
-        "cipher instead, by supplying `cipher_name: \"aes-256-cbc\"`, or `version:` of a cipher " \
-        "that uses one. The random key for the file is still encrypted with the global cipher, " \
-        "so an authenticated global cipher still protects it."
-    end
-
     # Write the contents of a string in memory to an encrypted file / stream.
     #
     # Notes:
@@ -121,7 +106,8 @@ module SymmetricEncryption
     # Marginally over the complexity limit: the branches validate the combinations of
     # random_key, random_iv and cipher_name against each other before any data is written.
     # rubocop:disable Metrics/CyclomaticComplexity
-    def initialize(ios, version: nil, cipher_name: nil, header: true, random_key: true, random_iv: true, compress: false)
+    def initialize(ios, version: nil, cipher_name: nil, header: true, random_key: true, random_iv: true,
+                   compress: false, chunk_size: Header::DEFAULT_CHUNK_SIZE)
       # rubocop:enable Metrics/CyclomaticComplexity
       # Compress is only used at this point for setting the flag in the header
       @ios = ios
@@ -137,14 +123,23 @@ module SymmetricEncryption
               "Cipher with version:#{version} not found in any of the configured SymmetricEncryption ciphers")
       end
 
+      @size          = 0
+      @closed        = false
+      @authenticated = ::OpenSSL::Cipher.new(cipher_name || cipher.cipher_name).authenticated?
+      if @authenticated
+        initialize_authenticated(
+          cipher, cipher_name: cipher_name, compress: compress, random_key: random_key,
+                  random_iv: random_iv, chunk_size: chunk_size
+        )
+        return
+      end
+
       # Force header if compressed or using random iv, key
       if (header == true) || compress || random_key || random_iv
         header = Header.new(version: cipher.version, compress: compress, cipher_name: cipher_name)
       end
 
       @stream_cipher = ::OpenSSL::Cipher.new(cipher_name || cipher.cipher_name)
-      raise(ArgumentError, self.class.authenticated_cipher_message(@stream_cipher.name)) if @stream_cipher.authenticated?
-
       @stream_cipher.encrypt
 
       if random_key
@@ -160,9 +155,6 @@ module SymmetricEncryption
       end
 
       @ios.write(header.to_s) if header
-
-      @size   = 0
-      @closed = false
     end
 
     # Close the IO Stream.
@@ -181,7 +173,9 @@ module SymmetricEncryption
     def close(close_child_stream = true) # rubocop:disable Style/OptionalBooleanParameter
       return if closed?
 
-      if size.positive?
+      if @authenticated
+        close_authenticated
+      elsif size.positive?
         final = @stream_cipher.final
         @ios.write(final) unless final.empty?
       end
@@ -195,6 +189,7 @@ module SymmetricEncryption
     if defined?(JRuby)
       def write(data)
         return unless data
+        return authenticated_write(data) if @authenticated
 
         bytes = data.to_s
         @size += bytes.size
@@ -205,6 +200,7 @@ module SymmetricEncryption
     else
       def write(data)
         return unless data
+        return authenticated_write(data) if @authenticated
 
         bytes = data.to_s
         @size += bytes.size
@@ -241,5 +237,121 @@ module SymmetricEncryption
     # Returns [Integer] the number of unencrypted and uncompressed bytes
     # written to the file so far.
     attr_reader :size
+
+    private
+
+    # Prepares to write with an authenticated cipher, such as `aes-256-gcm`.
+    #
+    # Nothing is written yet, not even the header. Where the auth tag goes depends on how much
+    # data there turns out to be, and that is not known until either the stream ends or it
+    # overflows the first chunk:
+    #
+    # * Up to one chunk of data is written as a single encrypted value, with its auth tag in the
+    #   header, exactly as `Cipher#encrypt` writes one. No chunk overhead at all.
+    # * More than that is written as a chunked stream, and the header says so. See
+    #   `SymmetricEncryption::ChunkedStream`.
+    def initialize_authenticated(cipher, cipher_name:, compress:, random_key:, random_iv:, chunk_size:)
+      unless random_iv
+        raise(
+          ArgumentError,
+          "An authenticated cipher needs a new iv for every stream, so :random_iv cannot be false. Re-using one " \
+          "iv across streams encrypted with the same key exposes the data and makes the auth tag forgeable."
+        )
+      end
+
+      @cipher = cipher
+      @stream_cipher_name = cipher_name || cipher.cipher_name
+      @compress          = compress
+      @chunk_size        = chunk_size
+      @stream_key        = random_key ? ::OpenSSL::Cipher.new(@stream_cipher_name).random_key : cipher.send(:key)
+      @random_key        = random_key
+      @buffer            = "".b
+      @chunk_number      = 0
+      @chunked_stream    = nil
+    end
+
+    # Buffers the data, and starts a chunked stream once there is more of it than one chunk holds.
+    def authenticated_write(data)
+      bytes = data.to_s
+      @size += bytes.bytesize
+      @buffer << bytes.b
+
+      # Only once there is more than a chunk of data is it known that the chunk being written is
+      # not the last one, which is part of what each chunk is authenticated against.
+      write_chunk(last: false) while @buffer.bytesize > @chunk_size
+
+      bytes.bytesize
+    end
+
+    # Writes out whatever is left, in whichever of the two formats fits.
+    def close_authenticated
+      return close_unchunked if @chunked_stream.nil?
+
+      write_chunk(last: true)
+    end
+
+    # Writes the stream as a single encrypted value with its auth tag in the header, for data that
+    # fits in one chunk.
+    def close_unchunked
+      header = Header.new(
+        version:       @cipher.version,
+        compress:      @compress,
+        cipher_name:   @stream_cipher_name == @cipher.cipher_name ? nil : @stream_cipher_name,
+        key:           (@stream_key if @random_key),
+        authenticated: true
+      )
+
+      openssl_cipher = ::OpenSSL::Cipher.new(@stream_cipher_name)
+      openssl_cipher.encrypt
+      openssl_cipher.key = @stream_key
+      header.iv          = openssl_cipher.iv = openssl_cipher.random_iv
+      # `auth_data` is memoized for an authenticated header, so these are the same bytes that
+      # `to_s` writes out below, including the encrypted key.
+      openssl_cipher.auth_data = header.auth_data
+
+      encrypted = openssl_cipher.update(@buffer)
+      encrypted << openssl_cipher.final
+      header.auth_tag = openssl_cipher.auth_tag(Header::AUTH_TAG_SIZE)
+
+      @ios.write(header.to_s)
+      @ios.write(encrypted) unless encrypted.empty?
+    end
+
+    # Writes one chunk, starting the chunked stream if this is the first.
+    def write_chunk(last:)
+      start_chunked_stream if @chunked_stream.nil?
+
+      data = last ? @buffer : @buffer.byteslice(0, @chunk_size)
+      @ios.write(@chunked_stream.encrypt(@chunk_number, data, last: last))
+      @chunk_number += 1
+      @buffer = last ? "".b : @buffer.byteslice(@chunk_size..) || "".b
+    end
+
+    # Writes the header of a chunked stream, and prepares to encrypt its chunks.
+    def start_chunked_stream
+      nonce_prefix = ChunkedStream.generate_nonce_prefix
+      header       = Header.new(
+        version:     @cipher.version,
+        compress:    @compress,
+        cipher_name: @stream_cipher_name == @cipher.cipher_name ? nil : @stream_cipher_name,
+        key:         (@stream_key if @random_key),
+        iv:          nonce_prefix,
+        chunk_size:  @chunk_size
+      )
+
+      # Serialized exactly once. A header holding a key is not deterministic, the key is encrypted
+      # again with a new random iv on every call, and every chunk is authenticated against the
+      # bytes that were actually written.
+      header_bytes = header.to_s
+      @ios.write(header_bytes)
+
+      @chunked_stream = ChunkedStream.new(
+        cipher_name:  @stream_cipher_name,
+        key:          @stream_key,
+        nonce_prefix: nonce_prefix,
+        header_bytes: header_bytes,
+        chunk_size:   @chunk_size
+      )
+    end
   end
 end

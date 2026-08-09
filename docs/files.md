@@ -85,6 +85,18 @@ Set `compress` explicitly to override either default:
 SymmetricEncryption::Writer.encrypt(source: "photo.jpg", target: "photo.jpg.enc", compress: false)
 ~~~
 
+### Detecting changes to an encrypted file
+
+`aes-256-cbc`, the default cipher, keeps a file secret but does not detect changes to it. Anyone
+who can write to the file can change it, and what comes back out is whatever those changed bytes
+decrypt to.
+
+Configuring an authenticated cipher, `aes-256-gcm`, changes that: a file that has been tampered
+with, or truncated, fails to decrypt instead of returning data. Nothing about the code above
+changes, files are simply written and read as before. See
+[Authenticated Encryption](authenticated_encryption.html) for how a stream of any size is
+verified as it is read.
+
 ### Streams instead of files
 
 Anywhere a file name is accepted, an IO stream can be supplied instead. This is how encrypted

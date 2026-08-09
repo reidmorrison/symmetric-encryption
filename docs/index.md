@@ -68,7 +68,9 @@ SymmetricEncryption.decrypt "JqLJOi6dNjWI9kX9lSL1XQ=="
   from the entire encryption key space.
 * Option to generate a new initialization vector (IV) with every encrypted value.
 * Authenticated encryption with `aes-256-gcm`, which detects any change to an encrypted value
-  instead of decrypting whatever it is given. See [Authenticated Encryption](authenticated_encryption.html).
+  instead of decrypting whatever it is given. Files and streams of any size are authenticated a
+  chunk at a time, so that they are verified as they are read rather than only once all of the
+  data has been read. See [Authenticated Encryption](authenticated_encryption.html).
 
 ### Validations
 

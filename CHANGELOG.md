@@ -135,14 +135,40 @@ This project adheres to [Semantic Versioning](http://semver.org/).
     rather than taken from the configuration, because re-using one initialization vector across
     different values would expose the data and make the auth tag forgeable. A configured `iv:` is
     therefore ignored by an authenticated cipher.
-  - Not supported for files and streams. `Writer` and `Reader` raise `ArgumentError` rather than
-    quietly giving up the guarantee, since the auth tag of a stream only exists once the whole
-    stream has been written, and nothing could be verified until the entire file had been read.
-    Pass `cipher_name: "aes-256-cbc"` to encrypt the file itself. The random key generated for
-    each file is still encrypted with the global cipher, so an authenticated global cipher still
-    protects it.
+  - Files and streams are authenticated a chunk at a time, so that they are verified as they are
+    read rather than only once all of the data has been read. See below.
 
   See the [Authenticated Encryption Guide](https://encryption.reidmorrison.com/authenticated_encryption.html).
+
+- Files and streams encrypted with an authenticated cipher are split into chunks, each carrying
+  its own auth tag. The auth tag of a whole stream only exists once everything has been
+  encrypted, and can only be checked once everything has been decrypted, so a reader would have
+  to hand out data long before it could know whether that data had been tampered with. Each chunk
+  is verified before any of it is returned.
+
+  Which form a stream takes is decided by how much data there turns out to be, and needs nothing
+  from the caller:
+
+  - Up to one chunk, 64 KB by default, is written as a single encrypted value with its auth tag
+    in the header, exactly as an encrypted string is written. No chunk overhead at all.
+  - More than that is written as a chunked stream, costing 16 bytes per chunk, which is 0.02%
+    with the default chunk size. Supply `chunk_size` to change it, a power of two from 1 KB to
+    16 MB. The reader takes it from the header.
+
+  Reading decrypts a whole chunk and holds it, handing out whatever the caller asks for, so
+  `read`, `read(count)`, `gets` and `each_line` are unchanged, and only one chunk is held in
+  memory however large the file is.
+
+  A chunk is its encrypted data followed by its auth tag, and nothing else: there is no per chunk
+  header. Everything else is derived rather than stored, because a stored value is one an
+  attacker can change. The nonce is `prefix || chunk number || last chunk`, so a chunk moved to
+  another position, repeated, or taken from another stream fails its auth tag check, and so does
+  a truncated stream, because the chunk left at the end was encrypted as a middle chunk. Every
+  chunk is also authenticated against the bytes of the stream's header, which covers the version,
+  the compression flag, the chunk size and the encrypted key.
+
+  Streams encrypted with an unauthenticated cipher are written and read exactly as before, byte
+  for byte, and `test/benchmark_streams.rb` measures that they are no slower.
 
 - `SymmetricEncryption::ActiveRecord::RailsEncryptor` reads values that Symmetric Encryption
   encrypted, from inside Active Record encryption, so that an application can move its encrypted
