@@ -129,6 +129,33 @@ module SymmetricEncryption
           assert ciphers.all?(SymmetricEncryption::Cipher)
           assert_equal 2, ciphers.first.version
         end
+
+        # A value is decoded with the primary cipher's encoding before its header says which
+        # cipher encrypted it, so ciphers whose encodings disagree cannot read each other at all.
+        it "accepts base64 alongside base64strict" do
+          config = SymmetricEncryption::Config.new(file_name: the_config_file_name, env: "test")
+
+          assert_equal %i[base64strict base64], config.ciphers.map(&:encoding).uniq
+        end
+
+        it "raises when the encodings cannot read each other" do
+          file_name = File.join(the_test_path, "mixed_encodings.yml")
+          SymmetricEncryption::Config.write_file(
+            file_name,
+            test: {
+              ciphers: [
+                {key: "1" * 32, iv: "2" * 16, cipher_name: "aes-256-cbc", version: 1, encoding: :base64strict},
+                {key: "3" * 32, iv: "4" * 16, cipher_name: "aes-256-cbc", version: 2, encoding: :base16}
+              ]
+            }
+          )
+
+          error = assert_raises SymmetricEncryption::ConfigError do
+            SymmetricEncryption::Config.new(file_name: file_name, env: "test").ciphers
+          end
+
+          assert_includes error.message, "cannot read each other"
+        end
       end
 
       describe ".load!" do

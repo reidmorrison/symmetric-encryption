@@ -7,6 +7,7 @@ module SymmetricEncryption
       random_iv = options.delete(:random_iv) || false
       compress  = options.delete(:compress) || false
       type      = options.delete(:type) || :string
+      version   = options.delete(:version)
 
       unless options.empty?
         raise(ArgumentError, "SymmetricEncryption Invalid options #{options.inspect} when encrypting '#{decrypted_name}'")
@@ -56,7 +57,7 @@ module SymmetricEncryption
         def #{decrypted_name}=(value)
           v = SymmetricEncryption::Coerce.coerce(value, :#{type}).freeze
           return if (@#{decrypted_name} == v) && !v.nil? && !(v == '')
-          self.#{encrypted_name} = @stored_#{encrypted_name} = ::SymmetricEncryption.encrypt(v, random_iv: #{random_iv}, compress: #{compress}, type: :#{type}).freeze
+          self.#{encrypted_name} = @stored_#{encrypted_name} = ::SymmetricEncryption.encrypt(v, random_iv: #{random_iv}, compress: #{compress}, type: :#{type}, version: #{version.inspect}).freeze
           @#{decrypted_name} = v
         end
 
@@ -65,7 +66,7 @@ module SymmetricEncryption
         # If this method is not called, then the encrypted value is never decrypted
         def #{decrypted_name}
           if !defined?(@stored_#{encrypted_name}) || (@stored_#{encrypted_name} != self.#{encrypted_name})
-            @#{decrypted_name} = ::SymmetricEncryption.decrypt(self.#{encrypted_name}.freeze, type: :#{type}).freeze
+            @#{decrypted_name} = ::SymmetricEncryption.decrypt(self.#{encrypted_name}.freeze, type: :#{type}, version: #{version.inspect}).freeze
             @stored_#{encrypted_name} = self.#{encrypted_name}
           end
           @#{decrypted_name}

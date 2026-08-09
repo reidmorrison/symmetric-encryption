@@ -41,7 +41,11 @@ module SymmetricEncryption
           end
 
           it "raises when the version is unknown" do
-            assert_raises(ArgumentError) { SymmetricEncryption::Utils::ReEncryptFiles.new(version: 99) }
+            error = assert_raises(SymmetricEncryption::CipherError) do
+              SymmetricEncryption::Utils::ReEncryptFiles.new(version: 99)
+            end
+
+            assert_includes error.message, "version:99"
           end
         end
 

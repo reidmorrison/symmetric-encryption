@@ -13,10 +13,10 @@ There are two quite different things people want here, and they have different a
 
 ### Different keys for different data
 
-Give each key its own version in the configuration file, and encrypt with that cipher:
+Give each key its own version in the configuration file, and name the version when encrypting:
 
 ~~~ruby
-encrypted = SymmetricEncryption.cipher(3).encrypt("Hello World")
+encrypted = SymmetricEncryption.encrypt("Hello World", version: 3)
 
 SymmetricEncryption.decrypt(encrypted)
 # => "Hello World"
@@ -25,34 +25,42 @@ SymmetricEncryption.decrypt(encrypted)
 Decryption needs nothing extra. The version is in the header, so the right cipher is chosen
 automatically.
 
-Files and streams take the version as an option:
+Files and streams take the same option:
 
 ~~~ruby
 SymmetricEncryption::Writer.open("archive.enc", version: 3) { |file| file.write(data) }
 ~~~
 
-Active Record attributes and Mongoid fields always encrypt with the primary cipher. There is no
-version option on the declaration, so wrap the code that writes them instead:
+Active Record attributes and Mongoid fields take it when they are declared:
 
 ~~~ruby
-SymmetricEncryption.with_cipher(SymmetricEncryption.cipher(3)) do
-  person.update!(api_key: "secret")
+class Person < ActiveRecord::Base
+  attribute :ssn,     :encrypted
+  attribute :api_key, :encrypted, version: 3
+end
+
+class Person
+  include Mongoid::Document
+
+  field :encrypted_ssn,     type: String, encrypted: true
+  field :encrypted_api_key, type: String, encrypted: {version: 3}
 end
 ~~~
 
-Reading needs no wrapper, since the version is in the header of each value.
+Changing the version of an attribute leaves values that were already written readable, since each
+value records the version it was encrypted with. New values are written with the new key, so the
+data moves over as records are saved.
 
-Three things to know before relying on this:
+Two things to know before relying on this:
 
 * The command line interface treats every version as a rotation of the same key.
   `--activate-key` moves the highest version to the top, and `--cleanup-keys` removes everything
-  except the highest. Both will happily throw away a key that is there for a different purpose.
-  Do not use them on a configuration file that holds keys for more than one purpose.
+  except the highest. `--cleanup-keys` names the versions it is about to remove and asks first,
+  but `--activate-key` will still reorder a configuration file that holds keys for more than one
+  purpose, which changes which key new data is encrypted with.
 * All of the ciphers have to use a compatible `encoding`, since a value is decoded before its
-  header is read. `:base64` and `:base64strict` work together. `:base16`, `:base64urlsafe` and
-  `:none` do not mix with the others.
-* `SymmetricEncryption.cipher(3)` returns `nil` when no cipher has that version, so a version
-  that is not in the configuration file fails with `NoMethodError` rather than saying so.
+  header is read. `:base64` and `:base64strict` work together, and mixing anything else is
+  refused when the configuration file is loaded.
 
 **If this is a Rails application, and the data is nothing but Active Record attributes, use
 [Active Record encryption](rails_encryption.html) instead.** `encrypts :ssn, key: "..."` does the

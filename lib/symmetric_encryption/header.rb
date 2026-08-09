@@ -222,10 +222,9 @@ module SymmetricEncryption
     # The supplied buffer is not modified, and may be frozen. Use `parse!` to strip the header
     # from the buffer itself.
     #
-    # Marginally over the ABC and length limits, and deliberately left alone: this walks the
-    # on-disk header format field by field, and splitting it up would obscure the byte order it
-    # depends on.
-    def parse(buffer, offset = 0) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
+    # Marginally over the ABC limit, and deliberately left alone: this walks the on-disk header
+    # format field by field, and splitting it up would obscure the byte order it depends on.
+    def parse(buffer, offset = 0) # rubocop:disable Metrics/AbcSize
       return 0 if buffer.nil? || (buffer == "") || (buffer.length <= MAGIC_HEADER_SIZE + 2)
 
       start_offset = offset
@@ -268,12 +267,8 @@ module SymmetricEncryption
       self.version = buffer.getbyte(offset)
       offset += 1
 
-      unless cipher
-        raise(
-          SymmetricEncryption::CipherError,
-          "Cipher with version:#{version.inspect} not found in any of the configured SymmetricEncryption ciphers"
-        )
-      end
+      # Raises when no cipher has the version this header names.
+      cipher
 
       flags = buffer.getbyte(offset)
       offset += 1

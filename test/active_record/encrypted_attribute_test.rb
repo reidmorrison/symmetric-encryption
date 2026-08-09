@@ -18,6 +18,7 @@ ActiveRecord::Schema.define version: 0 do
     t.string :false_value
     t.string :json_value
     t.string :yaml_value
+    t.string :versioned_value
   end
 end
 
@@ -35,6 +36,8 @@ class Person < ActiveRecord::Base
   attribute :false_value, :encrypted, type: :boolean
   attribute :json_value, :encrypted, type: :json
   attribute :yaml_value, :encrypted, type: :yaml
+  # Encrypted with a key of its own, rather than the primary one.
+  attribute :versioned_value, :encrypted, version: 6
 end
 
 # Uncastable values are reported by the same validations as an unencrypted attribute.
@@ -357,6 +360,38 @@ class EncryptedAttributeTest < Minitest::Test
         assert_equal true, person.true_value
         assert_equal false, person.false_value
         # rubocop:enable Minitest/AssertTruthy, Minitest/RefuteFalse
+      end
+    end
+  end
+end
+
+# Encrypting one attribute with a key of its own, by naming the version of the cipher to use.
+class EncryptedAttributeVersionTest < Minitest::Test
+  describe SymmetricEncryption::ActiveRecord::EncryptedAttribute do
+    let :person do
+      Person.create!(versioned_value: "secret", address: "primary")
+    end
+
+    def raw_value(record, column)
+      Person.connection.select_value("SELECT #{column} FROM people WHERE id = #{record.id}")
+    end
+
+    it "encrypts with the version declared" do
+      assert_equal 6, SymmetricEncryption.header(raw_value(person, "versioned_value")).version
+    end
+
+    it "encrypts other attributes with the primary cipher" do
+      assert_equal SymmetricEncryption.cipher.version,
+                   SymmetricEncryption.header(raw_value(person, "address")).version
+    end
+
+    it "reads the value back" do
+      assert_equal "secret", Person.find(person.id).versioned_value
+    end
+
+    it "raises when no cipher has the version declared" do
+      assert_raises SymmetricEncryption::CipherError do
+        SymmetricEncryption::ActiveRecord::EncryptedAttribute.new(version: 99).serialize("value")
       end
     end
   end

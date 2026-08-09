@@ -116,12 +116,9 @@ module SymmetricEncryption
         raise(ArgumentError, "Cannot supply a :cipher_name unless both :random_key and :random_iv are true")
       end
 
-      # Cipher to encrypt the random_key, or the entire file
+      # Cipher to encrypt the random_key, or the entire file.
+      # Raises when there is no cipher with this version.
       cipher = SymmetricEncryption.cipher(version)
-      unless cipher
-        raise(SymmetricEncryption::CipherError,
-              "Cipher with version:#{version} not found in any of the configured SymmetricEncryption ciphers")
-      end
 
       @size          = 0
       @closed        = false

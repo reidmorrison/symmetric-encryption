@@ -41,11 +41,14 @@ module SymmetricEncryption
 
   # Returns the Primary Symmetric Cipher being used
   # If a version is supplied
-  #   Returns the primary cipher if no match was found and version == 0
-  #   Returns nil if no match was found and version != 0
+  #   Returns the cipher with that version
+  #   Returns the primary cipher if no match was found and version == 0, since a value with no
+  #     header reports version 0 and was encrypted with whichever cipher was primary at the time.
   #
   # Inside a `with_cipher` block the ciphers supplied to it are used instead, and are searched
   # before the configured ones.
+  #
+  # Raises SymmetricEncryption::CipherError when no cipher has the supplied version.
   def self.cipher(version = nil)
     scoped  = Fiber[SCOPED_CIPHERS] if @cipher_scoping
     primary = scoped ? scoped.first : @cipher
@@ -58,13 +61,31 @@ module SymmetricEncryption
 
     return primary if version.nil? || (primary.version == version)
 
-    # The scoped ciphers first, so that one of them wins a version it shares with a configured
-    # cipher, then the configured ones, so that data encrypted before the block still reads.
+    cipher_for(version, scoped, primary) || raise(
+      SymmetricEncryption::CipherError,
+      "Cipher with version:#{version.inspect} not found in any of the configured SymmetricEncryption ciphers. " \
+      "Available versions: #{available_versions(scoped).inspect}."
+    )
+  end
+
+  # Returns [SymmetricEncryption::Cipher] with the supplied version, or nil when there is none.
+  #
+  # The scoped ciphers first, so that one of them wins a version it shares with a configured
+  # cipher, then the configured ones, so that data encrypted before the block still reads.
+  def self.cipher_for(version, scoped, primary)
     scoped&.find { |c| c.version == version } ||
       (@cipher if @cipher && (@cipher.version == version)) ||
       secondary_ciphers.find { |c| c.version == version } ||
       (primary if version.zero?)
   end
+  private_class_method :cipher_for
+
+  # Returns [Array<Integer>] the versions that can be selected right now, for error messages.
+  def self.available_versions(scoped)
+    ciphers = [*scoped, @cipher, *secondary_ciphers].compact
+    ciphers.map(&:version).uniq.sort
+  end
+  private_class_method :available_versions
 
   # Returns whether a primary cipher has been set
   def self.cipher?
@@ -302,12 +323,19 @@ module SymmetricEncryption
   #     Note: If type is set to something other than :string, it's expected that
   #       the coercible gem is available in the path.
   #     Default: :string
+  #
+  #   version [Integer]
+  #     Encrypt with the cipher that has this version, instead of the primary cipher.
+  #     The version is written into the header of the encrypted value, so nothing has to be
+  #     supplied when decrypting it again.
+  #     Default: the primary cipher.
   def self.encrypt(str, random_iv: SymmetricEncryption.randomize_iv?, compress: false, type: :string,
-                   header: cipher.always_add_header)
+                   version: nil, header: cipher(version).always_add_header)
     return str if str.nil? || (str == "")
 
     # Encrypt and then encode the supplied string
-    cipher.encrypt(Coerce.coerce_to_string(str, type), random_iv: random_iv, compress: compress, header: header)
+    cipher(version).encrypt(Coerce.coerce_to_string(str, type), random_iv: random_iv, compress: compress,
+                                                                header: header)
   end
 
   # Invokes decrypt
