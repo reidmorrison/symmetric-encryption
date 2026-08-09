@@ -1,90 +1,390 @@
 ---
 layout: default
+redirect_from:
+  - /heroku.html
+  - /standalone.html
+  - /v3_configuration.html
 ---
 
 ## Configuration
+{:.no_toc}
 
-If running Symmetric Encryption v3, see [v3 Configuration](v3_configuration.html)
+**Contents**
 
-The notes below apply to Symmetric Encryption v4 and above.
+* TOC
+{:toc}
 
-### Add to Gemfile
+There are two things to configure: **which ciphers** an environment uses, and **where their keys
+live**. The first goes in `config/symmetric-encryption.yml`, which belongs in source control. The
+second is a keystore, and the key itself never goes into source control.
 
-Add the following line to your Gemfile _after_ the rails gems:
+Start at Step 1 and stop when your setup works. Most applications never get past Step 4.
+
+## Step 1: Add the gem
 
 ~~~ruby
-gem 'symmetric-encryption'
+gem "symmetric-encryption"
 ~~~
 
-Install using bundler:
+In Rails, add it *after* the rails gems. Then:
 
-    bundle
+~~~
+bundle install
+~~~
 
-### Creating the configuration file
+## Step 2: Generate the configuration and keys
 
-Generate the configuration file and encryption keys for every environment:
+~~~
+symmetric-encryption --generate --app-name my_app
+~~~
 
-    symmetric-encryption --generate
+~~~
+New configuration file created at: config/symmetric-encryption.yml
+~~~
 
-Options:
-* `--key-path OUTPUT_PATH`
-    * The path where the encrypted key files should be written to.
-    * This path should be outside of the application and definitely under a
-      path that would _not_ be included in the source control system.
-    * Secure the path and generated files so that only the user under which the
-      application runs can access them.
-    * Move the environment specific key files to their relevant environments
-      and then destroy them from development machines.
-    * Ignored when using the `--heroku` or `--environment` keystores.
-    * If the directory does not exist it will attempt to create it.
-    * Default: `~/.symmetric-encryption`
-* `--app-name NAME`
-    * Set an application name.
-    * If running rails, recommended to set this to the rails application name.
-    * The file keystore uses the app name as part of the file name.
-    * The environment keystore uses the app name as part of the environment variable name.
-    * Recommend using a lowercase application name.
-    * Default: `symmetric-encryption`
-* `--environments ENVIRONMENTS`
-    * Comma separated list of environments for which to generate the config file.
-    * Default: `development,test,release,production`
-* `--cipher-name NAME`
-    * Name of the cipher to use when generating a new config file, or when rotating keys.
-    * Default: `aes-256-cbc`
-* `--config CONFIG_FILE`
-    * Path and filename of the generated configuration file.
-    * Default: `config/symmetric-encryption.yml`.
-* `--keystore [aws|environment|file|heroku]`
-    * Specify which keystore to use to hold the encryption keys.
-    * Valid values:
-        * `aws`
-            * Generate a configuration file for use with the [AWS Key Management Service](https://aws.amazon.com/kms/).
-            * See instructions below on setting up the AWS Credentials prior to generating or rotating encryption keys.
-        * `environment`
-            * Generate a configuration file where the encrypted encryption key is held in an environment variable
-              instead of using the default file store.
-            * Follow the instructions displayed to set the encrypted encryption key in each environment.
-        * `file`
-            * Stores the encrypted encryption key as files on disk.
-            * See `--key-path` to change the location of the file keystore.
-        * `heroku`
-            * Generate a configuration file for use on heroku.
-            * Follow the instructions displayed to store the encrypted encryption key
-              as a heroku environment settings.
-        * `gcp`
-            * Generate a configuration file for use with the [Google Cloud Platform KMS](https://cloud.google.com/kms/).
-            * See instructions below on setting up access credentials and settings.
-    * Default: `file`
-* `--regions`
-    * Used by the `aws` keystore to set the regions that should be supported.
-    * Default: `us-east-1,us-east-2,us-west-1,us-west-2`
+Useful options:
 
-### Supplying the key in the configuration file
+* `--app-name NAME` — used in key file names and environment variable names. In Rails, use the
+  application name, lowercase. Default: `symmetric-encryption`
+* `--environments LIST` — comma separated. Default: `development,test,release,production`
+* `--key-path PATH` — where key files are written. Default: `~/.symmetric-encryption`
+* `--keystore NAME` — one of `file`, `environment`, `heroku`, `aws`, `gcp`. Default: `file`
+* `--cipher-name NAME` — Default: `aes-256-cbc`. Use `aes-256-gcm` for
+  [authenticated encryption](security.html).
+* `--config PATH` — Default: `config/symmetric-encryption.yml`
+* `--regions LIST` — AWS KMS only. Default: `us-east-1,us-east-2,us-west-1,us-west-2`
 
-The generated configuration file holds an _encrypted_ encryption key that one of the keystores below
-unlocks. The key can also be supplied directly in the configuration file, which is how the
-`development` and `test` environments are generated, and is usually how existing keys are carried
-over when migrating an application:
+Every option is listed on the [Command Line](cli.html) page.
+
+## Step 3: Understand what was generated
+
+A configuration file has one entry per environment, and each entry lists one or more ciphers:
+
+~~~yaml
+development:
+  ciphers:
+  - key: 1234567890ABCDEF
+    iv: 1234567890ABCDEF
+    cipher_name: aes-128-cbc
+    version: 1
+test:
+  ciphers:
+  - key: 1234567890ABCDEF
+    iv: 1234567890ABCDEF
+    cipher_name: aes-128-cbc
+    version: 1
+production:
+  ciphers:
+  - keystore: :file
+    cipher_name: aes-256-cbc
+    version: 1
+    key_filename: /home/deploy/.symmetric-encryption/my_app_production_v1.encrypted_key
+    iv: !binary |-
+      k7jzJiVAWfUTCcJd2QXr8A==
+    key_encrypting_key:
+      encrypted_key: !binary |-
+        WTfUx7X3WiwJ8zWqC+0wnCzhxngB7/RSrKWhrMFyykQ=
+      iv: !binary |-
+        igiEwwHM8ukpX3zwQT+LDw==
+~~~
+
+Three things are worth noticing.
+
+**Development and test hold their key in the file itself.** That key is the same in every generated
+configuration file and is published in this documentation, so it is not a secret. It means a new
+developer needs no key files to run the application or its test suite. Never put private data through
+those environments.
+
+**The keystore is a per environment setting.** One configuration file can use a different keystore in
+every environment. There is nothing to merge by hand.
+
+**The first cipher encrypts; the rest only decrypt.** New values are always encrypted with the first
+cipher in the list. The others exist so that data encrypted by earlier keys can still be read. This
+is what makes [key rotation](key_rotation.html) possible.
+
+## Step 4: Deploy the keys
+
+The generated files divide in two, and keeping them apart is the whole point:
+
+| File | Source control | Deployed to |
+|---|---|---|
+| `config/symmetric-encryption.yml` | **Yes** | Every environment |
+| `~/.symmetric-encryption/my_app_production_v1.encrypted_key` | **Never** | Production servers only |
+
+Deploy each environment's key file only to that environment's servers, so that one environment cannot
+decrypt another's data. Every server *within* an environment gets the same key file.
+
+Lock the key files down. Symmetric Encryption refuses to read a key file that other users on the
+machine can read:
+
+~~~
+chmod -R 0400 ~/.symmetric-encryption
+~~~
+
+Do this **after** running `symmetric-encryption`, not before, or generation cannot write the files.
+
+To meet PCI compliance these steps are performed by an operations administrator, not by a developer.
+Developers should never have copies of production key files. See [Security](security.html).
+
+### Loading the configuration
+
+In Rails there is nothing to do. The railtie loads the configuration during boot, in
+`before_configuration`, deliberately earlier than Active Record so that `database.yml` can itself
+contain an encrypted password.
+
+Outside Rails, load it yourself:
+
+~~~ruby
+require "symmetric_encryption"
+
+SymmetricEncryption.load!("config/symmetric-encryption.yml", "production")
+~~~
+
+Two environment variables override the defaults, in Rails and out of it:
+
+* `SYMMETRIC_ENCRYPTION_CONFIG` — path to the configuration file.
+* `SYMMETRIC_ENCRYPTION_ENV` — which environment entry to load. Useful when several deployments run
+  with `RAILS_ENV=production` but each needs its own key.
+
+## Keystores
+
+### File keystore
+
+The default. The data encryption key lives in a file on disk, itself encrypted by a key encrypting
+key. Suitable for any environment where you control the file system.
+
+~~~
+mkdir ~/.symmetric-encryption
+symmetric-encryption --generate --app-name my_app --environments "development,test,preprod,production"
+~~~
+
+Generated:
+
+~~~
+config/symmetric-encryption.yml
+
+~/.symmetric-encryption/my_app_preprod_v1.encrypted_key
+~/.symmetric-encryption/my_app_production_v1.encrypted_key
+~~~
+
+If you generated the keys on a development machine, edit `symmetric-encryption.yml` so that
+`key_filename` points at wherever the key files actually live on each server.
+
+If you see a "Permission denied" error when running `symmetric-encryption`, confirm you can read,
+write, and access (that is, execute) the directory.
+
+#### Key file permissions and ownership
+
+Symmetric Encryption refuses to read a key file that other users on the machine can read, since
+anyone who can read the key file can decrypt everything that was encrypted with it. By default a key
+file has to be `0600` or `0400`, and has to be owned by the user running the application.
+
+Some environments dictate the permissions and ownership of the key file and cannot be asked for
+`0600` owned by the application user. The most common is a Kubernetes secret volume mounted with
+`readOnly: true`, which mounts its files as `0644` owned by `root`, whatever user the container runs
+as. Supply the permissions, owner, and group those key files will have, and Symmetric Encryption
+verifies against those instead of the defaults:
+
+~~~yaml
+production:
+  ciphers:
+    - key_filename: /etc/keys/my_app_production_v1.encrypted_key
+      permissions: "0644"
+      owner: root
+      group: root
+      iv: aFhScC9maXNHTFhBaFZjS3M=
+      key_encrypting_key:
+        encrypted_key: TWpBeE9UQXhNRE10TWpFNU1UUTVMVGM9
+        iv: WVRJNU1UUTVMVGM1TFRJd01UZz0=
+        key_encrypting_key:
+          key_filename: /etc/keys/my_app_production_v1.kekek
+          permissions: "0644"
+          owner: root
+          group: root
+          iv: TVRrMk1UUTVMVGM1TFRJd01UZz0=
+~~~
+
+Notes:
+
+* All three apply to one key file, so supply them for every `key_filename` entry, including the key
+  encrypting key files nested below it. Generate a configuration with the permissions already in
+  place using `--key-permissions`:
+
+      symmetric-encryption --generate --app-name my_app --key-permissions 0644
+
+  `--rotate-keys` and `--rotate-kek` carry all three settings into the entries they write, so they
+  only have to be supplied once. There is no equivalent option for `owner` and `group`, because
+  `symmetric-encryption` cannot give a file away to another user. Add them by hand: they describe the
+  environment the key files are deployed into, not the machine the keys were generated on.
+* Supply `permissions` as an octal file mode without the file type bits, either as a String,
+  `"0644"`, or as an Integer, `0644`.
+* Supply `owner` and `group` as a name, `root`, or as a numeric id, `0`. Use the numeric id when the
+  name does not resolve on every machine that loads this configuration.
+* `owner` replaces the default check that the key file is owned by the user running the application.
+  `group` adds a check that is not performed at all by default. Naming them is not the same as
+  skipping them: the key file still has to match what the configuration says.
+* Supply a list when more than one value is acceptable. New key files are created with the first
+  permission in the list, so list the most restrictive one first:
+
+  ~~~yaml
+    - key_filename: /etc/keys/my_app_production_v1.encrypted_key
+      permissions:
+        - "0600"
+        - "0644"
+      owner:
+        - deploy
+        - root
+  ~~~
+
+* The configuration file is evaluated with ERB, so a value can come from the environment when it
+  differs per deployment: `permissions: "<%= ENV['KEY_FILE_PERMISSIONS'] %>"`.
+* Only relax these where something outside the application controls the key file and the surrounding
+  environment supplies the protection instead. On a shared machine, widening the permissions lets
+  every other user read the encryption key.
+* The same three settings apply to the AWS KMS and Google Cloud KMS keystores, which also hold their
+  encrypted data encryption key in a local file. Supply them alongside `key_files` or `key_file`:
+
+  ~~~yaml
+  production:
+    ciphers:
+      - keystore: aws
+        master_key_alias: alias/symmetric-encryption/my_app/production
+        permissions: "0644"
+        owner: root
+        group: root
+        key_files:
+          - region: us-east-1
+            file_name: /etc/keys/my_app_production_us-east-1_v1.encrypted_key
+          - region: us-west-2
+            file_name: /etc/keys/my_app_production_us-west-2_v1.encrypted_key
+  ~~~
+
+  One entry covers every region, since those key files are all created the same way.
+
+### Environment variable keystore
+
+Holds the encrypted encryption key in an environment variable instead of a file. For platforms with
+no writable file system, or where secrets are injected as environment variables.
+
+~~~
+symmetric-encryption --generate --keystore environment --app-name my_app
+~~~
+
+The command prints the `export` line to set in each environment. Nothing is written for you: setting
+the variable is the deploy's job, which is the point.
+
+### Heroku keystore
+
+The same as the environment keystore, with Heroku-shaped instructions:
+
+~~~
+symmetric-encryption --generate --keystore heroku --app-name my_app --environments "development,test,production"
+~~~
+
+Follow the displayed `heroku config:add` instructions to set the encrypted encryption key for each
+environment.
+
+When several Heroku applications run with `RAILS_ENV=production` and each needs its own encryption
+key, name the Symmetric Encryption environment separately:
+
+~~~
+heroku config:add SYMMETRIC_ENCRYPTION_ENV=release
+~~~
+
+`SYMMETRIC_ENCRYPTION_ENV` selects which entry of `symmetric-encryption.yml` is loaded and leaves
+`RAILS_ENV` alone, so Rails still applies its production settings. The `symmetric-encryption` command
+honors the same variable when generating or rotating keys.
+
+### AWS KMS
+
+The most secure keystore supported. The master key lives in
+[AWS KMS](https://aws.amazon.com/kms/) and cannot be read or exported, only used to encrypt and
+decrypt data encryption keys. The encrypted data encryption key is stored locally, safe because only
+KMS can unlock it.
+
+Symmetric Encryption creates a Customer Master Key in every configured region and for every
+environment, so they can be managed and rotated from the AWS KMS console.
+
+**Dependency.** A soft dependency, only needed when this keystore is used:
+
+~~~ruby
+gem "aws-sdk-kms"
+~~~
+
+**Credentials.** Use a separate *management* credential, granted access to all KMS operations, to
+create and rotate keys. Follow the AWS instructions for
+[creating and setting AWS credentials](https://docs.aws.amazon.com/sdk-for-ruby/v3/developer-guide/setup-config.html).
+
+**Generate:**
+
+~~~
+symmetric-encryption --generate --keystore aws --app-name my_app --environments "development,test,production"
+~~~
+
+New keys are encrypted with the master key in every configured region, so data encrypted in one
+region can be decrypted in another during a disaster. Default regions:
+`us-east-1,us-east-2,us-west-1,us-west-2`, overridden with `--regions`.
+
+**Migrate an existing configuration to AWS:**
+
+~~~
+symmetric-encryption --rotate-keys --keystore aws --app-name my_app --environments production
+~~~
+
+**Rotate an existing AWS configuration:**
+
+~~~
+symmetric-encryption --rotate-keys --app-name my_app --environments production
+~~~
+
+When rotating an existing AWS KMS configuration, the new data key is encrypted for the same regions
+as the current key files, and the new key files are written to the same path. Supply `--regions` or
+`--key-path` to change either.
+
+**Set the region** on every server, so the right KMS endpoint is used:
+
+~~~
+export AWS_REGION=us-west-2
+~~~
+
+**Access control.** Each environment should have its own credentials, restricted to decrypting with
+the Customer Master Key for that environment only, so one environment cannot decrypt another's data
+encryption key. For each key in each region, restrict the key policy to that environment's AWS API
+user: create a user `rails_release` for the release environment and limit it to decrypt authorization
+on the `release` key.
+
+### Google Cloud KMS
+
+Uses Google Cloud [KMS](https://cloud.google.com/kms) to hold the key encrypting key.
+
+Symmetric Encryption expects the key and keyring to exist already, with the **keyring named after
+your application** and the **key named after your environment**.
+
+**Dependency:**
+
+~~~ruby
+gem "google-cloud-kms"
+~~~
+
+**Credentials.** A service account with encrypt and decrypt permission on the KMS key. Follow the GCP
+instructions for
+[creating and setting credentials](https://cloud.google.com/docs/authentication/getting-started#auth-cloud-implicit-ruby).
+
+**Environment variables:**
+
+* `GOOGLE_CLOUD_PROJECT` — required, your GCP project id.
+* `GOOGLE_CLOUD_LOCATION` — optional, defaults to `global`.
+
+**Generate:**
+
+~~~
+symmetric-encryption --generate --keystore gcp --app-name my_app --environments "development,test,production"
+~~~
+
+## Supplying the key in the configuration file
+
+The key can be supplied directly in the configuration file, which is how `development` and `test` are
+generated, and is usually how existing keys are carried over when migrating an application:
 
 ~~~yaml
 development:
@@ -96,9 +396,9 @@ development:
 ~~~
 
 Only do this where the configuration file itself is not a secret. Anyone who can read the file can
-decrypt everything that was encrypted with that key, so use one of the keystores below in production.
+decrypt everything encrypted with that key, so use a keystore in production.
 
-`key` and `iv` are raw binary data, not text, and each has to be _exactly_ the number of bytes that
+`key` and `iv` are raw binary data, not text, and each has to be *exactly* the number of bytes that
 `cipher_name` requires:
 
 | `cipher_name` | `key`    | `iv`     |
@@ -106,11 +406,12 @@ decrypt everything that was encrypted with that key, so use one of the keystores
 | `aes-128-cbc` | 16 bytes | 16 bytes |
 | `aes-192-cbc` | 24 bytes | 16 bytes |
 | `aes-256-cbc` | 32 bytes | 16 bytes |
+| `aes-256-gcm` | 32 bytes | not used |
 
 A random binary key cannot be written into YAML as an ordinary quoted string. Most of its bytes are
-not printable, and an escape such as `"\xB1"` is read back as the _character_ `U+00B1`, which is two
-bytes in UTF-8 rather than the single byte that was intended. Base64 encode the key instead and let
-YAML decode it back to binary with its `!!binary` tag:
+not printable, and an escape such as `"\xB1"` is read back as the *character* `U+00B1`, which is two
+bytes in UTF-8 rather than the single byte intended. Base64 encode the key instead and let YAML decode
+it back to binary with its `!!binary` tag:
 
 ~~~yaml
 development:
@@ -134,338 +435,29 @@ puts Base64.strict_encode64(["b1c7d3086cb05b5056a6b30f5e55180cec6fb28ef1650ded94
 ~~~
 
 When a key or iv is not the right length, loading the configuration raises an `ArgumentError` naming
-the cipher and the number of bytes that were supplied. Never truncate a key to make that error go
-away: a truncated key is a _different_ key, and nothing that was already encrypted can be read with it.
-
-### File Keystore
-
-Create the directory where the output files will be created and secure it so that no other users can see the files:
-
-~~~
-mkdir ~/.symmetric-encryption
-~~~
-
-Once you have generated the configuration files, you will want to change the permissions on this directory; however,
-do not do this until **after** you've run the `symmetric-encryption` command:
-
-~~~
-chmod -R 0400 ~/.symmetric-encryption
-~~~
-
-If you see a "Permission denied" error when running `symmetric-encryption`, confirm that you have the ability to read, 
-write, and access (i.e. execute) the directory.
-
-Generate file keystore, using an application name of `my_app`. Create keystores for each of the environments
-`development`, `test`, `preprod`, `acceptance`, and `production`.
-
-    symmetric-encryption --generate --app-name my_app --environments "development,test,preprod,acceptance,production"
-
-Output
-
-    New configuration file created at: config/symmetric-encryption.yml
-
-The following files were created:
-
-~~~
-config/symmetric-encryption.yml
-
-~/.symmetric-encryption/my_app_preprod_v1.key
-~/.symmetric-encryption/my_app_acceptance_v1.key
-~/.symmetric-encryption/my_app_production_v1.key
-~~~
-
-Move the file for each environment to all of the servers for that environment that will be running Symmetric Encryption.
-Do not copy all files to every environment since each environment should only be able decrypt data from its own environment.
-If you generated your keys on a development machine, you may need to edit the `symmetric-encryption.yml` file to
-change the `file_name` path to reflect where the key files reside on each server.
-
-When running multiple Rails servers in a particular environment copy the same key files to every server in that environment.
-I.e. All Rails servers in each environment must run the same encryption keys.
-
-The file `config/symmetric-encryption.yml` should be stored in the source control system along with the other source code.
-Do not store any of the key files in `~/.symmetric-encryption` in the source control system since they must be kept separate
-at all times from the above `config/symmetric-encryption.yml` file.
-
-To meet PCI Compliance the above steps need to be completed by an Operations Administrator and not by a developer
-or software engineer. The developers should never have access to the key files, or have copies of them on their machines.
-
-It is recommended to lock down the key files to prevent any other user from being able to read them:
-~~~
-chmod -R 0400 ~/.symmetric-encryption
-~~~
-
-#### Key file permissions and ownership
-
-Symmetric Encryption refuses to read a key file that other users on the machine can read, since
-anyone who can read the key file can decrypt everything that was encrypted with it. By default a
-key file has to be `0600` or `0400`, and has to be owned by the user running the application.
-
-Some environments dictate the permissions and the ownership of the key file, and cannot be asked
-for `0600` owned by the application user. The most common one is a Kubernetes secret volume mounted
-with `readOnly: true`, which mounts its files as `0644` owned by `root`, whatever user the container
-itself runs as. Supply the permissions, the owner, and the group that those key files will have and
-Symmetric Encryption verifies against those instead of the defaults:
-
-~~~yaml
-production:
-  ciphers:
-    - key_filename: /etc/keys/my_app_production_v1.encrypted_key
-      permissions: "0644"
-      owner: root
-      group: root
-      iv: aFhScC9maXNHTFhBaFZjS3M=
-      key_encrypting_key:
-        encrypted_key: TWpBeE9UQXhNRE10TWpFNU1UUTVMVGM9
-        iv: WVRJNU1UUTVMVGM1TFRJd01UZz0=
-        key_encrypting_key:
-          key_filename: /etc/keys/my_app_production_v1.kekek
-          permissions: "0644"
-          owner: root
-          group: root
-          iv: TVRrMk1UUTVMVGM1TFRJd01UZz0=
-~~~
-
-Notes:
-
-* All three apply to one key file, so supply them for every `key_filename` entry, including the
-  key encrypting key files nested below it. Generate a configuration with the permissions already in
-  place, and key files already created with them, using `--key-permissions`:
-
-      symmetric-encryption --generate --app-name my_app --key-permissions 0644
-
-  `--rotate-keys` and `--rotate-kek` carry all three settings into the entries they write, so they
-  only have to be supplied once. There is no equivalent option for `owner` and `group`, because
-  `symmetric-encryption` cannot give a file away to another user. Add them to the configuration
-  file by hand: they describe the environment the key files are deployed into, not the machine the
-  keys were generated on.
-* Supply `permissions` as an octal file mode without the file type bits, either as a String,
-  `"0644"`, or as an Integer, `0644`.
-* Supply `owner` and `group` as a name, `root`, or as a numeric id, `0`. Use the numeric id when the
-  name does not resolve on every machine that loads this configuration.
-* `owner` replaces the default check that the key file is owned by the user running the application.
-  `group` adds a check that is not performed at all by default. Naming them is not the same as
-  skipping them, the key file still has to match what the configuration says.
-* Supply a list to any of them when more than one value is acceptable. New key files are created
-  with the first permission in the list, so list the most restrictive one first:
-
-  ~~~yaml
-    - key_filename: /etc/keys/my_app_production_v1.encrypted_key
-      permissions:
-        - "0600"
-        - "0644"
-      owner:
-        - deploy
-        - root
-  ~~~
-
-* The configuration file is evaluated with ERB, so a value can come from the environment when it
-  differs per deployment: `permissions: "<%= ENV['KEY_FILE_PERMISSIONS'] %>"`.
-* Only relax these where something outside of the application controls the key file and the
-  surrounding environment supplies the protection instead. On a shared machine, widening the
-  permissions lets every other user on it read the encryption key.
-* The same three settings apply to the AWS KMS and Google Cloud KMS keystores, which also hold their
-  encrypted data encryption key in a local file. Supply them alongside `key_files` or `key_file`:
-
-  ~~~yaml
-  production:
-    ciphers:
-      - keystore: aws
-        master_key_alias: alias/symmetric-encryption/my_app/production
-        permissions: "0644"
-        owner: root
-        group: root
-        key_files:
-          - region: us-east-1
-            file_name: /etc/keys/my_app_production_us-east-1_v1.encrypted_key
-          - region: us-west-2
-            file_name: /etc/keys/my_app_production_us-west-2_v1.encrypted_key
-  ~~~
-
-  One entry covers every region, since those key files are all created the same way.
-
-### Heroku Keystore
-
-Specify Heroku as the keystore so that the encrypted encryption keys can be stored in Heroku instead of in files.
-
-    symmetric-encryption --generate --keystore heroku --app-name my_app --environments "development,test,production"
-
-Follow the displayed `heroku config:add` instructions to set the encrypted encryption key for each
-environment.
-
-#### One configuration file for every environment
-
-The keystore is a per environment setting, so a single configuration file can hold a different keystore
-for every environment. There is nothing to combine by hand: `--keystore` applies to the deployed
-environments, while `development` and `test` always receive a key held in the configuration file itself,
-so that a new developer needs no keys and no key files to run the application or its test suite.
-
-The command above generates:
-
-~~~yaml
-development:
-  ciphers:
-  - key: 1234567890ABCDEF
-    iv: 1234567890ABCDEF
-    cipher_name: aes-128-cbc
-    version: 1
-test:
-  ciphers:
-  - key: 1234567890ABCDEF
-    iv: 1234567890ABCDEF
-    cipher_name: aes-128-cbc
-    version: 1
-production:
-  ciphers:
-  - keystore: :heroku
-    cipher_name: aes-256-cbc
-    version: 1
-    key_env_var: MY_APP_PRODUCTION_V1
-    iv: !binary |-
-      k7jzJiVAWfUTCcJd2QXr8A==
-    key_encrypting_key:
-      key: !binary |-
-        WTfUx7X3WiwJ8zWqC+0wnCzhxngB7/RSrKWhrMFyykQ=
-      iv: !binary |-
-        igiEwwHM8ukpX3zwQT+LDw==
-~~~
-
-The development key is not a secret, it is the same in every generated configuration file. Do not use
-that environment for any data that has to stay private.
-
-To hold the development keys in files on the developer machine instead, replace the `development` entry
-with a `key_filename` entry as shown under [File Keystore](#file-keystore) above. The
-`symmetric-encryption` command always generates the key above for `development` and `test`, so this is
-one of the few changes to make by hand.
-
-#### Choosing the environment on Heroku
-
-The environment that is loaded from the configuration file is `Rails.env` by default. When several
-Heroku applications run with `RAILS_ENV=production` and each needs its own encryption key, name the
-Symmetric Encryption environment separately:
-
-    heroku config:add SYMMETRIC_ENCRYPTION_ENV=release
-
-`SYMMETRIC_ENCRYPTION_ENV` selects which entry of `symmetric-encryption.yml` is loaded, and leaves
-`RAILS_ENV` alone so that Rails still applies its production settings. The `symmetric-encryption`
-command honors the same variable when generating or rotating keys.
-
-### AWS KMS keystore
-
-Symmetric Encryption can use the [AWS Key Management Service (KMS)](https://aws.amazon.com/kms/) to hold and manage
-the Key Encrypting Key (Customer Master Key).
-
-This is the most secure keystore that Symmetric Encryption currently supports. By storing the master key
-in AWS KMS it cannot be read or exported, only used to encrypt or decrypt the data encryption keys. The encrypted
-data encryption key is stored locally on the file system since it has been secured by encrypting it with the
-AWS KMS Customer Master key.
-
-Symmetric Encryption creates a new Customer Master Key in AWS KMS in every AWS Region and for every environment
-so that they can be managed and rotated directly from within the AWS KMS management interface.
-
-#### AWS Dependencies
-
-The AWS KMS gem is a soft dependency, which is only required when the AWS KMS keystore is being used by
-Symmetric Encryption. Add the following line to Gemfile when using bundler:
-
-    gem 'aws-sdk-kms'
-
-If not using Bundler, run the following from the command line:
-
-    gem install aws-sdk-kms
-
-#### Setting up the AWS Credentials:
-
-In order to create new keys, or to rotate new keys using the AWS KMS, it is necessary to create the necessary
-AWS Credentials.
-
-It is recommended to use a separate _management_ AWS KMS credential to manage the keys. These credentials should
-be granted access to all KMS operations. See Access Control below for securing runtime privileges by environment.
-
-Follow the AWS instructions for [creating and setting the AWS credentials](https://docs.aws.amazon.com/sdk-for-ruby/v3/developer-guide/setup-config.html)
-
-#### Generating new data keys:
-
-Once the AWS _management_ credentials have been created and set, the new keys can now be generated.
-
-When new keys are generated or rotated, they will be encrypted with the master key for every region
-specified. This allows data to be encrypted in one region and to be decrypted in another region during a disaster
-scenario.
-
-By default the following regions are configured: `us-east-1,us-east-2,us-west-1,us-west-2`
-
-The configured regions can be overriden by setting the `--regions` flag above.
-
-Example: Generate New Keys for the first time, targeting the AWS keystore:
-
-    symmetric-encryption --generate --keystore aws --app-name my_app --environments "development,test,production"
-
-Example:  Rotate existing keys migrating to AWS for the new keys:
-
-    symmetric-encryption --rotate-keys --keystore aws --app-name my_app --environments production
-
-Example: Rotate the keys of an existing AWS KMS configuration:
-
-    symmetric-encryption --rotate-keys --app-name my_app --environments production
-
-When rotating an existing AWS KMS configuration, the new data key is encrypted for the same regions as the
-current key files, and the new key files are written to the same path. Supply `--regions` or `--key-path` to
-change either of them.
-
-Once the new keys have been generated, they should be moved to the relevant servers. By default the files
-are generated in `~/.symmetric-encryption` unless the flag `--key-path` was used to change the path.
-
-#### Setting a Region
-
-The AWS region must be set on every server that uses Symmetric Encryption so that it uses the AWS KMS service
-in that region.
-
-The simplest way to set the region is to set the `AWS_REGION` environment variable.
-
-    export AWS_REGION=us-west-2
-
-See the AWS documentation for more options in [setting the AWS Region](https://docs.aws.amazon.com/sdk-for-ruby/v3/developer-guide/setup-config.html).
-
-#### Access Control
-
-Each environment should have its own credentials and those credentials should be restricted to decrypting using
-the Customer Master Key (CMK) for that environment only. This prevents different environments from being able
-to decrypt the data encryption key (DEK) from another environment.
-
-For each key, in each region change the permissions on the key itself so that only that environment's
-AWS API user can access that key. For example, create a user `rails_release` for the release environment
-and limit it to decrypt authorization on the `release` key.
-
-### Google Cloud Platform KMS
-
-Symmetric Encryption can use the Google Cloud Platform [Key Management Service (KMS)](https://cloud.google.com/kms) to hold and manage the Key Encrypting Key.
-
-Symmetric Encryption expects that you have already created a key and a keyring in GCP KSM. It is expected that the keyring name matches your application name and that your key name matches your environment name.
-
-#### GCP KMS Dependencies
-
-The GCP KMS gem is a soft dependency, which is only required when the GCP KMS keystore is being used by
-Symmetric Encryption. Add the following line to Gemfile when using bundler:
-
-    gem 'google-cloud-kms'
-
-If not using Bundler, run the following from the command line:
-
-    gem install google-cloud-kms
-
-#### Setting up the GCP Credentials:
-
-You're expected to have a service account with permissions for encryption/decryption using GCP KMS keys. Follow the GCP instructions for [creating and setting credentials](https://cloud.google.com/docs/authentication/getting-started#auth-cloud-implicit-ruby).
-
-#### Setting GCP environment variables
-
-You have to set `GOOGLE_CLOUD_PROJECT` environment variable to the value of your project id at GCP console.
-
-There is also an optional variable `GOOGLE_CLOUD_LOCATION` which can be set to your key location. If not set it is assumed that your key location is `global`.
-
-#### Generating a key
-
-You can generate a new key with the following command:
-
-    symmetric-encryption --generate --keystore gcp --app-name my_app --environments "development,test,production"
-
-### Next => [Command Line](cli.html)
+the cipher and the number of bytes supplied. Never truncate a key to make that error go away: a
+truncated key is a *different* key, and nothing already encrypted can be read with it.
+
+## Cipher options
+
+Options that can be set on any cipher entry:
+
+* `cipher_name` — the OpenSSL cipher. Default: `aes-256-cbc`. See [Security](security.html) for
+  `aes-256-gcm`.
+* `version` — 0 to 255. Identifies this key in the header of every value it encrypts.
+* `always_add_header` — whether to add the header when nothing else requires it. Default: `true`, and
+  strongly recommended, since it is what makes key rotation work.
+* `encoding` — how the binary result is encoded. One of `base64strict` (default), `base64`,
+  `base64urlsafe`, `base16`, `none`.
+
+Every cipher in one configuration file has to use an encoding the others can read, since a value is
+decoded with the primary cipher's encoder before its header says which cipher encrypted it. Only
+`base64` and `base64strict` can be mixed with each other; loading a configuration that mixes anything
+else raises.
+
+## Next steps
+
+* [Command Line](cli.html): every option of the `symmetric-encryption` command.
+* [Key Rotation](key_rotation.html): introducing a new key without downtime.
+* [Security](security.html): authenticated encryption, threat model, and PCI compliance.
+* [Guide](guide.html): using the library once it is configured.

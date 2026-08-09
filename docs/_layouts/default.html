@@ -1,53 +1,60 @@
 <!DOCTYPE html>
 <html lang="en-us">
+
 <head>
   <meta charset="UTF-8">
   <meta name="description"
-        content="Symmetric Encryption for Ruby, ActiveRecord, and Mongoid. Encrypt passwords in configuration files. Encrypt entire files at rest.">
-  <title>Symmetric Encryption for Ruby, ActiveRecord, and Mongoid. Encrypt passwords in configuration files. Encrypt entire files at rest.</title>
+    content="Symmetric Encryption for Ruby and Rails. Encrypt Active Record attributes, Mongoid fields, passwords in configuration files, and entire files at rest, with keys held outside of the source code.">
+  <title>Symmetric Encryption for Ruby and Rails. Encrypt attributes, files, and passwords in configuration files.</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="images/favicon.ico">
+  <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
   <link rel="stylesheet" type="text/css" href="stylesheets/normalize.css" media="screen">
-  <link href='http://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
+  <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
   <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
   <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
-  <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen"/>
-  <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print"/>
-  <link rel="stylesheet" type="text/css" href="stylesheets/table.css" media="print"/>
+  <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
+  <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+  <link rel="stylesheet" type="text/css" href="stylesheets/table.css" media="print" />
 </head>
+
 <body>
-<section class="page-header">
-  <table style="width:100%">
-    <td>
-    <td>
-      <a href="https://rocketjob.reidmorrison.com/">
-        <img src="images/rocket/rocket-icon-256.png" alt="Rocket Job" class="header-image">
+  <section class="page-header">
+    <div class="header-inner">
+      <a class="header-logo" href="https://rocketjob.reidmorrison.com/">
+        <img src="images/header-rocket-256.png" alt="Rocket Job" class="header-image">
       </a>
-    </td>
-    <td>
-      <a href="index.html" class="btn">Home</a>
-      <a href="frameworks.html" class="btn">Frameworks</a>
-      <a href="files.html" class="btn">Files</a>
-      <a href="configuration.html" class="btn">Configuration</a>
-      <a href="cli.html" class="btn">Command Line</a>
-      <a href="authenticated_encryption.html" class="btn">Authenticated Encryption</a>
-      <a href="pci_compliance.html" class="btn">PCI Compliance</a>
-      <a href="key_rotation.html" class="btn">Key Rotation</a>
-      <a href="multiple_ciphers.html" class="btn">Multiple Ciphers</a>
-      <a href="rails_encryption.html" class="btn">Rails Encryption</a>
-      <a href="api.html" class="btn">API</a>
-      <a href="https://github.com/reidmorrison/symmetric-encryption" class="btn">View on GitHub</a>
+      <div class="header-body">
+        {% assign current_page = page.name | replace: '.md', '.html' %}
+        {% assign nav_items = "index.html=Home,guide.html=Guide,configuration.html=Configuration,rails.html=Rails,mongoid.html=Mongoid,files.html=Files,cli.html=Command Line,key_rotation.html=Key Rotation,security.html=Security,migrating.html=Migrating,api.html=API" | split: ',' %}
+        {% for item in nav_items %}{% assign pair = item | split: '=' %}
+        <a href="{{ pair[0] }}" class="btn{% if pair[0] == current_page %} active{% endif %}">{{ pair[1] }}</a>{% endfor %}
+        <a href="https://github.com/reidmorrison/symmetric-encryption" class="btn">GitHub</a>
+        <h1 class="project-name"><span class="brand-symmetric">Symmetric</span> <span class="brand-encryption">Encryption</span></h1>
+        <h2 class="project-tagline">Encrypt Active Record attributes, Mongoid fields, passwords in
+          configuration files, and entire files at rest.</h2>
+      </div>
+    </div>
+  </section>
 
-      <h1 class="project-name">Symmetric Encryption</h1>
-      <h2 class="project-tagline">Symmetric Encryption for Ruby, ActiveRecord, and Mongoid. Encrypt passwords in configuration files. Encrypt entire files at rest.</h2>
-    </td>
-    </tr>
-  </table>
+  <section class="main-content">
+    {{content}}
+  </section>
 
-</section>
-
-<section class="main-content">
-  {{content}}
-</section>
+  <script>
+    // Keep anchor / TOC jumps clear of the sticky header by matching
+    // scroll-padding-top to the header's actual height (it varies by breakpoint).
+    (function () {
+      var header = document.querySelector(".page-header");
+      if (!header) return;
+      function setOffset() {
+        document.documentElement.style.scrollPaddingTop = header.offsetHeight + "px";
+      }
+      setOffset();
+      window.addEventListener("resize", setOffset);
+      window.addEventListener("load", setOffset);
+    })();
+  </script>
 </body>
-</html>
 
+</html>

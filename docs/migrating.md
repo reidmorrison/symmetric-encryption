@@ -1,8 +1,21 @@
 ---
 layout: default
+redirect_from:
+  - /rails_encryption.html
 ---
 
-## Migrating to Active Record encryption
+## Migrating
+{:.no_toc}
+
+**Contents**
+
+* TOC
+{:toc}
+
+Moving to Symmetric Encryption from an older version of it, or away from it to Active Record
+encryption.
+
+## To Active Record encryption
 
 Rails 7 added [Active Record encryption](https://guides.rubyonrails.org/active_record_encryption.html).
 For a Rails application whose encrypted data is nothing but Active Record attributes, it is the
@@ -16,7 +29,7 @@ If the application also encrypts Mongoid fields, files, or passwords in configur
 this gem for those. Active Record encryption does not cover them. See
 [the home page](index.html) for what is and is not worth migrating.
 
-### 1. Configure Active Record encryption
+### Step 1: Configure Active Record encryption
 
 ~~~bash
 bin/rails db:encryption:init
@@ -25,7 +38,7 @@ bin/rails db:encryption:init
 Add the generated keys to the Rails credentials, as the Rails guide describes. This is entirely
 separate from `symmetric-encryption.yml`. Both sets of keys are in use during the migration.
 
-### 2. Declare the attributes
+### Step 2: Declare the attributes
 
 Replace the `attribute ... :encrypted` declaration with `encrypts`, and name this gem's encryptor
 as a previous encryption scheme:
@@ -46,7 +59,7 @@ encrypted by Active Record are read by Active Record. Both work from the first d
 `SymmetricEncryption.load!`, or the Railtie in a Rails application, still has to run, since the
 keys are still read from `symmetric-encryption.yml`.
 
-### 3. Attributes that are queried
+### Step 3: Attributes that are queried
 
 An attribute declared `random_iv: false` so that it can be used in a `where` clause becomes a
 deterministic attribute, and it needs one extra option:
@@ -74,7 +87,7 @@ only decrypts, ...
 Note that queries only find values that Active Record encrypted. A row still holding a value that
 this gem encrypted will not match, so finish step 4 before relying on the query.
 
-### 4. Migrate the data
+### Step 4: Migrate the data
 
 Values move over as records are saved. To migrate the rest, re-save them:
 
@@ -96,7 +109,7 @@ User.find_each.count { |user| SymmetricEncryption.encrypted?(user.ssn_before_typ
 # => 0
 ~~~
 
-### 5. Remove the previous scheme
+### Step 5: Remove the previous scheme
 
 Once no value in the database was encrypted by this gem, drop the `previous:` option:
 
@@ -119,6 +132,10 @@ proves nothing still needs them.
   Active Record encryption expects.
 * Active Record encryption cannot rotate its deterministic key, while this gem can. If an
   attribute has to be both queryable and re-keyed, that is a reason not to migrate it. See
-  [Authenticated Encryption](authenticated_encryption.html).
+  [Security](security.html).
 
-### Next => [PCI Compliance](pci_compliance.html)
+## Next steps
+
+* [Rails](rails.html): encrypted Active Record attributes in depth.
+* [Key Rotation](key_rotation.html): rotating keys without downtime.
+* [Configuration](configuration.html): the configuration file and the keystores.

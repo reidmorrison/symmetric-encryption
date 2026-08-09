@@ -3,6 +3,12 @@ layout: default
 ---
 
 ## Files and Streams
+{:.no_toc}
+
+**Contents**
+
+* TOC
+{:toc}
 
 `SymmetricEncryption::Writer` and `SymmetricEncryption::Reader` encrypt and decrypt entire files
 and IO streams. Data is processed a block at a time, so files larger than available memory are
@@ -15,14 +21,14 @@ same file twice produces different output, and `Reader` needs nothing beyond the
 read it back. Key rotation does not invalidate existing files: the version in the header selects
 the cipher used to decrypt.
 
-For encrypting and decrypting files from a shell, see the [Command Line Interface](cli.html),
+For encrypting and decrypting files from a shell, see the [Command Line](cli.html),
 which uses the same classes.
 
 If encryption is one step in a larger pipeline, reach for
 [IOStreams](https://iostreams.reidmorrison.com/) instead of using `Writer` and `Reader` directly.
 See [Streaming with IOStreams](#streaming-with-iostreams) below.
 
-### Encrypting a file
+## Step 1: Encrypt a file
 
 Encrypt an existing file on disk. The contents are streamed, so the file is never fully loaded
 into memory:
@@ -48,7 +54,7 @@ Write a string that is already in memory:
 SymmetricEncryption::Writer.write("secret.enc", "Keep this safe")
 ~~~
 
-### Decrypting a file
+## Step 2: Decrypt a file
 
 Decrypt an entire file to another file:
 
@@ -70,7 +76,7 @@ Read the entire decrypted file into memory. Not recommended for large files:
 data = SymmetricEncryption::Reader.read("customers.csv.enc")
 ~~~
 
-### Compression
+## Step 3: Compress before encrypting
 
 Compression is applied before encryption, and is on by default. `Reader` decompresses
 automatically: the header records whether the data was compressed, so nothing needs to be
@@ -85,7 +91,7 @@ Set `compress` explicitly to override either default:
 SymmetricEncryption::Writer.encrypt(source: "photo.jpg", target: "photo.jpg.enc", compress: false)
 ~~~
 
-### Detecting changes to an encrypted file
+## Step 4: Detect changes to an encrypted file
 
 `aes-256-cbc`, the default cipher, keeps a file secret but does not detect changes to it. Anyone
 who can write to the file can change it, and what comes back out is whatever those changed bytes
@@ -94,10 +100,10 @@ decrypt to.
 Configuring an authenticated cipher, `aes-256-gcm`, changes that: a file that has been tampered
 with, or truncated, fails to decrypt instead of returning data. Nothing about the code above
 changes, files are simply written and read as before. See
-[Authenticated Encryption](authenticated_encryption.html) for how a stream of any size is
+[Security](security.html) for how a stream of any size is
 verified as it is read.
 
-### Streams instead of files
+## Step 5: Use a stream instead of a file
 
 Anywhere a file name is accepted, an IO stream can be supplied instead. This is how encrypted
 data is produced for, or consumed by, a library that works with streams rather than paths.
@@ -123,7 +129,7 @@ Decrypt from a stream:
 SymmetricEncryption::Reader.read(StringIO.new(encrypted))
 ~~~
 
-#### Who closes what
+### Who closes what
 
 * `Writer.open` and `Reader.open` **with a block** close both the encrypted stream and the
   underlying file or stream when the block completes.
@@ -132,7 +138,7 @@ SymmetricEncryption::Reader.read(StringIO.new(encrypted))
 * `close(false)` closes only the encryption layer and leaves the underlying stream open. `Writer`
   must be closed before the stream beneath it, since closing is what writes the final block.
 
-### What `Reader.open` yields
+## What `Reader.open` yields
 
 `Reader.open` yields one of two objects, depending on whether the data was compressed:
 
@@ -157,9 +163,9 @@ a `Tempfile` first and hand it a real `File`.
 `seek` also differs in cost. On a stream encrypted with `aes-256-gcm` it jumps straight to the
 chunk holding the offset, however far into the file that is. On any other stream it re-reads the
 file up to that point, and `IO::SEEK_END` reads the whole file to find out how long it is. See
-[Seeking](authenticated_encryption.html#seeking).
+[Seeking](security.html#seeking).
 
-#### Encoding
+### Encoding
 
 The decrypted bytes are always exact, but the encoding they are tagged with depends on which of
 the two objects produced them. `SymmetricEncryption::Reader#read` returns `ASCII-8BIT` for data
@@ -188,7 +194,7 @@ end
 Where a String is unavoidable, call `.b` on it before comparing it with, or appending it to, other
 binary data.
 
-### Sending encrypted data to an HTTP client
+## Sending encrypted data to an HTTP client
 
 Most HTTP clients accept a readable IO as the request body. `Net::HTTP` requires either a
 `Content-Length` or `Transfer-Encoding: chunked` when `body_stream` is used.
@@ -233,7 +239,7 @@ Net::HTTP.start(uri.host, uri.port, use_ssl: true) { |http| http.request(request
 producer.join
 ~~~
 
-### Sending decrypted data to another library
+## Sending decrypted data to another library
 
 To pass the decrypted contents of a file to a library or method that reads a stream, hand it the
 reader itself. Nothing is written to disk and the whole file is not held in memory:
@@ -271,7 +277,7 @@ Setting `request.content_length = File.size("customers.csv.enc")` here silently 
 upload to the size of the encrypted file, which is smaller than the plaintext whenever the file
 was compressed.
 
-### CSV files
+## CSV files
 
 `CSV` accepts the reader and the writer directly. Supply `row_sep` when writing, otherwise `CSV`
 attempts to read from and rewind the output stream:
@@ -290,7 +296,7 @@ SymmetricEncryption::Reader.open("customers.csv.enc") do |file|
 end
 ~~~
 
-### Streaming with IOStreams
+## Streaming with IOStreams
 
 `Writer` and `Reader` encrypt and decrypt. They do not know about compression formats other than
 gzip, file formats, or where the file lives. The sister project
@@ -343,7 +349,7 @@ Use `Writer` and `Reader` from this gem directly when encryption is all that is 
 encrypted data has no file name to infer a pipeline from, or when adding another dependency is not
 worthwhile.
 
-### Reading files encrypted without a header
+## Reading files encrypted without a header
 
 Files written by other tools, or by `Writer` with `header: false`, carry no version information.
 Supply the cipher version explicitly when reading them:
@@ -355,3 +361,10 @@ SymmetricEncryption::Reader.read("legacy.enc", version: 0)
 Symmetric Encryption never guesses which cipher to use. Decrypting with the wrong key can appear
 to succeed and return meaningless data, so a file with no header and no `version` uses the
 current primary cipher and fails loudly if that is not the one it was encrypted with.
+
+## Next steps
+
+* [Security](security.html): authenticated encryption, and verifying a stream as it is read.
+* [Command Line](cli.html): encrypting and decrypting files from a shell.
+* [Guide](guide.html): the library, one step at a time.
+* [API](api.html): the full `Writer` and `Reader` reference.
