@@ -79,10 +79,27 @@ html {
   background-size: cover;
   background-position: center; }
 
+/* The header lays the logo out beside the nav, title and tagline. Flexbox rather than the table
+   this template used to use: a table cannot shrink below the combined width of its cells, so on a
+   phone the nav and the title overflowed to the right and were cut off. */
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem; }
+
+.header-body {
+  flex: 1 1 auto;
+  /* Without this a flex item refuses to shrink below its content's width, which is what put the
+     nav back off the right edge. */
+  min-width: 0; }
+
+.header-logo {
+  flex: 0 0 auto; }
+
 .header-image {
-  align: middle;
-  height: 140px;
-}
+  display: block;
+  height: 140px; }
 
 @media screen and (min-width: 64em) {
   .page-header {
@@ -94,7 +111,16 @@ html {
 
 @media screen and (max-width: 42em) {
   .page-header {
-    padding: 0rem 0rem; } }
+    padding: 0rem 0rem; }
+  /* No room for the logo beside the nav on a phone, and it is decoration rather than navigation.
+     With it gone there is only one item left, so drop out of flex layout entirely: an ordinary
+     block fills the header exactly, with none of the flex base-size sizing. */
+  .header-inner {
+    display: block; }
+  .header-logo {
+    display: none; }
+  .header-body {
+    padding: 0 0.5rem; } }
 
 .project-name {
   margin-top: 0;
@@ -102,6 +128,23 @@ html {
   font-weight: bold;
   letter-spacing: 0.01em;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6)); }
+
+/* Two-tone glossy title echoing the key art: blue "Symmetric", orange "Encryption".
+   Falls back to solid white where background-clip:text is unsupported. */
+.brand-symmetric, .brand-encryption {
+  color: #fff;
+  -webkit-text-stroke: 0.4px rgba(255, 255, 255, 0.12); }
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .brand-symmetric, .brand-encryption {
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent; }
+  .brand-symmetric {
+    background-image: linear-gradient(180deg, #9ad4ff 0%, #3a9bff 55%, #0d5ad6 100%); }
+  .brand-encryption {
+    background-image: linear-gradient(180deg, #ffd27a 0%, #ff9e3d 55%, #f3700f 100%); } }
 
 @media screen and (min-width: 64em) {
   .project-name {
@@ -270,3 +313,20 @@ html {
 @media screen and (max-width: 42em) {
   .site-footer {
     font-size: 0.9rem; } }
+
+/* Phone layout overrides.
+   Deliberately last in the file: the rules above repeat the same selectors inside their own
+   max-width media blocks, so anything placed earlier loses to them on source order. */
+@media screen and (max-width: 42em) {
+  /* `max-width: 100%` rather than `100vw`: vw includes the vertical scrollbar, which is what was
+     pushing the header a scrollbar's width past the right edge. */
+  .page-header {
+    max-width: 100%;
+    overflow-x: hidden; }
+  .project-name {
+    font-size: 1.4rem;
+    padding: 0 0.5rem;
+    overflow-wrap: break-word; }
+  .project-tagline {
+    font-size: 0.9rem;
+    padding: 0 0.5rem; } }

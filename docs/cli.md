@@ -1,91 +1,183 @@
 ---
 layout: default
+redirect_from:
+  - /rake_tasks.html
 ---
 
-## Command Line Interface
+## Command Line
+{:.no_toc}
 
-If running Symmetric Encryption v3, see [Rake Tasks](rake_tasks.html)
+**Contents**
 
-Symmetric Encryption v4 now uses a standalone command line interface to:
-* Encrypt files
-* Decrypt files
-* Generate new passwords
-* Generate a new configuration file
-* Perform Key rotation
+* TOC
+{:toc}
 
-If running Symmetric Encryption v3 or earlier, instead use: [Rake Tasks](rake_tasks.html)
+The `symmetric-encryption` command generates configuration files and keys, rotates keys, and
+encrypts and decrypts files and strings.
 
-For the complete list of commands run:
+~~~
+symmetric-encryption --help
+~~~
 
-    symmetric-encryption --help
+Each environment has its own keys, so most commands must be run in the environment they apply to.
+Generating a configuration file and rotating keys are the exceptions: run those once and copy the
+result to the environments that need it.
 
-Since each environment has its own encryption keys it is necessary to run the these commands in the corresponding
-environment. However, this does not apply to generating the configuration file and to key rotation which can be
-run once in one environment and then moved/copied to the relevant environments.
+## Step 1: Point it at your configuration
 
-#### Examples
+The command reads `config/symmetric-encryption.yml` in the current directory, for the environment in
+`SYMMETRIC_ENCRYPTION_ENV`, `RACK_ENV` or `RAILS_ENV`, defaulting to `development`.
 
-Encrypt a file:
+Override either per invocation:
 
-    symmetric-encryption --encrypt large_file.csv --output large_file.csv.enc
+~~~
+symmetric-encryption --config path/to/symmetric-encryption.yml --env production --decrypt secret.enc
+~~~
 
-Encrypt and compress a file (_Recommended_):
+Or set them in the environment, so they do not have to be repeated:
 
-    symmetric-encryption --encrypt large_file.csv --output large_file.csv.enc --compress
+~~~shell
+export SYMMETRIC_ENCRYPTION_CONFIG="~/application/common/config/symmetric-encryption.yml"
+export SYMMETRIC_ENCRYPTION_ENV="production"
+~~~
 
-Decrypt a file:
+## Step 2: Encrypt and decrypt files
 
-    symmetric-encryption --decrypt large_file.csv.enc --output large_file.csv
-    
-Count the lines in an encrypted file, without creating an unencrypted copy on disk:
+~~~
+symmetric-encryption --encrypt large_file.csv --output large_file.csv.enc
+~~~
 
-    symmetric-encryption --decrypt large_file.csv.enc | wc -l
+Compression is applied by default when encrypting a file. Turn it off with `--no-compress`:
 
-Search for lines in an encrypted file, without creating an unencrypted copy on disk:
+~~~
+symmetric-encryption --encrypt photo.jpg --output photo.jpg.enc --no-compress
+~~~
 
-    symmetric-encryption --decrypt large_file.csv.enc | grep "Hello"
+Decrypt:
 
-Display the first few lines in an encrypted file, without creating an unencrypted copy on disk:
+~~~
+symmetric-encryption --decrypt large_file.csv.enc --output large_file.csv
+~~~
 
-    symmetric-encryption --decrypt large_file.csv.enc | head
+Without `--output`, the result goes to stdout, so an encrypted file can be inspected without ever
+writing a decrypted copy to disk:
 
-Display the last few lines in an encrypted file, without creating an unencrypted copy on disk:
+~~~
+symmetric-encryption --decrypt large_file.csv.enc | wc -l
+symmetric-encryption --decrypt large_file.csv.enc | grep "Hello"
+symmetric-encryption --decrypt large_file.csv.enc | head
+~~~
 
-    symmetric-encryption --decrypt large_file.csv.enc | tail
+Without a file name, input is read from stdin, so the command composes with a pipeline:
 
-Generate a random password and display its encrypted form for use in config files, etc.:
+~~~
+cat large_file.csv | symmetric-encryption --encrypt --output large_file.csv.enc
+~~~
 
-    symmetric-encryption --new-password
+## Step 3: Encrypt strings for configuration files
 
-Prompt to enter a masked string and then encrypt it:
+Prompt for a value, masked, and print its encrypted form:
 
-    symmetric-encryption --encrypt --prompt
-    
-Prompt to enter an encrypted string and then decrypt it:
+~~~
+symmetric-encryption --encrypt --prompt
+~~~
 
-    symmetric-encryption --decrypt --prompt
-    
-#### Notes
+You are asked for the value twice, so a typo cannot be encrypted unnoticed. Decrypt one the same way:
 
-##### Highline
+~~~
+symmetric-encryption --decrypt --prompt
+~~~
 
-For the `--prompt` option above to work, the `highline` gem must be added to `Gemfile` first and
-then installed by running `bundle.
+Both need the `highline` gem, which is not a dependency of this gem:
 
 ~~~ruby
-gem install 'highline'
+gem "highline"
 ~~~
 
-##### Specify configuration file location
+Generate a random password and print it with its encrypted form, ready to paste into a
+configuration file:
 
-If the Symmetric Encryption configuration file has a different name or is stored in a directory other than
-the standard `config/symmetric-encryption.yml`, then it can be set using the environment variable 
-`SYMMETRIC_ENCRYPTION_CONFIG`.
-
-For example set the location of the Symmetric Encryption config file:
-~~~shell
-# Specify Symmetric Encryption config file so that it does not need to be specified at the command line every time.
-export SYMMETRIC_ENCRYPTION_CONFIG="~/application/common/config/symmetric-encryption.yml"
+~~~
+symmetric-encryption --new-password
+symmetric-encryption --new-password 32
 ~~~
 
-### Next => [Authenticated Encryption](authenticated_encryption.html)
+Once keys have been rotated, re-encrypt the values already sitting in your configuration files.
+Values that cannot be decrypted in the current environment are left alone:
+
+~~~
+symmetric-encryption --re-encrypt "**/*.yml"
+~~~
+
+## Step 4: Manage keys
+
+See [Key Rotation](key_rotation.html) for when and why to run these.
+
+~~~
+symmetric-encryption --generate --app-name my_app     # New configuration file and keys
+symmetric-encryption --rotate-keys                    # New data encryption key
+symmetric-encryption --rotate-kek                     # New key encrypting keys only
+symmetric-encryption --activate-key                   # Make the highest version primary
+symmetric-encryption --cleanup-keys                   # Remove all but the highest version
+~~~
+
+`--cleanup-keys` names the versions it is about to remove and asks before removing them, because
+data encrypted with a removed key can no longer be read. Use `--force` to skip the prompt in a
+script. When stdin is not a terminal it does not prompt at all, but it still names the versions.
+
+## Option reference
+
+### Files and strings
+
+| Option | Description |
+|---|---|
+| `-e`, `--encrypt [FILE]` | Encrypt a file, or read from stdin when no file is supplied. |
+| `-d`, `--decrypt [FILE]` | Decrypt a file, or read from stdin when no file is supplied. |
+| `-o`, `--output FILE` | Write the result to this file. Default: stdout. |
+| `-P`, `--prompt` | Prompt for a string to encrypt or decrypt instead of using a file. |
+| `-z`, `--compress` | Compress the output. Default when encrypting files. |
+| `-Z`, `--no-compress` | Do not compress. Default when encrypting strings. |
+| `-n`, `--new-password [SIZE]` | Generate a random URL-safe base64 password. Default size: 22. |
+| `-r`, `--re-encrypt [PATTERN]` | Re-encrypt matching files. Default: `**/*.{yml,rb}` |
+| `-V`, `--key-version NUMBER` | Cipher version to encrypt or re-encrypt with. Default: the primary cipher. |
+
+### Configuration and keys
+
+| Option | Description |
+|---|---|
+| `-g`, `--generate` | Generate a new configuration file and keys for every environment. |
+| `-s`, `--keystore NAME` | `file`, `environment`, `heroku`, `aws` or `gcp`. Default: `file`. |
+| `-a`, `--app-name NAME` | Application name, used in key file and variable names. Default: `symmetric-encryption`. |
+| `-S`, `--environments LIST` | Comma separated. Default: `development,test,release,production`. |
+| `-C`, `--cipher-name NAME` | Default: `aes-256-cbc`. |
+| `-K`, `--key-path PATH` | Where key files are written. Default: `~/.symmetric-encryption`. |
+| `--key-permissions LIST` | Octal permissions the generated key files may have. Default: `0600,0400`. |
+| `-B`, `--regions LIST` | AWS KMS regions to encrypt the data key with. |
+| `-m`, `--migrate` | Migrate an older configuration file to the current format. |
+
+### Key rotation
+
+| Option | Description |
+|---|---|
+| `-R`, `--rotate-keys` | Generate a new key version and update the configuration file. |
+| `-U`, `--rotate-kek` | Replace the key encrypting keys only; the data encryption key is unchanged. |
+| `-D`, `--rolling-deploy` | Add the new key second so it can be deployed before it is activated. |
+| `-A`, `--activate-key` | Move the highest version key to the top, making it the primary. |
+| `-X`, `--cleanup-keys` | Remove every key except the highest version. |
+| `--force` | Do not ask before removing keys with `--cleanup-keys`. |
+
+### General
+
+| Option | Description |
+|---|---|
+| `-c`, `--config PATH` | Configuration file. Default: `config/symmetric-encryption.yml`. |
+| `-E`, `--env NAME` | Environment to use from the configuration file. |
+| `-L`, `--ciphers` | List the OpenSSL ciphers available on this machine. |
+| `-v`, `--version` | Print the Symmetric Encryption and OpenSSL versions. |
+| `-h`, `--help` | Print the full option list. |
+
+## Next steps
+
+* [Key Rotation](key_rotation.html): introducing a new key without downtime.
+* [Configuration](configuration.html): the configuration file and the keystores.
+* [Files](files.html): the same operations from Ruby.

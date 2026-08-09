@@ -20,26 +20,21 @@
 
 <body>
   <section class="page-header">
-    <table style="width:100%">
-      <td>
-      <td>
-        <a href="https://rocketjob.reidmorrison.com/">
-          <img src="images/header-rocket-256.png" alt="Rocket Job" class="header-image">
-        </a>
-      </td>
-      <td>
+    <div class="header-inner">
+      <a class="header-logo" href="https://rocketjob.reidmorrison.com/">
+        <img src="images/header-rocket-256.png" alt="Rocket Job" class="header-image">
+      </a>
+      <div class="header-body">
         {% assign current_page = page.name | replace: '.md', '.html' %}
-        {% assign nav_items = "index.html=Home,frameworks.html=Frameworks,files.html=Files,configuration.html=Configuration,cli.html=Command Line,authenticated_encryption.html=Authenticated Encryption,pci_compliance.html=PCI Compliance,key_rotation.html=Key Rotation,multiple_ciphers.html=Multiple Ciphers,rails_encryption.html=Rails Encryption,api.html=API" | split: ',' %}
+        {% assign nav_items = "index.html=Home,guide.html=Guide,configuration.html=Configuration,rails.html=Rails,mongoid.html=Mongoid,files.html=Files,cli.html=Command Line,key_rotation.html=Key Rotation,security.html=Security,migrating.html=Migrating,api.html=API" | split: ',' %}
         {% for item in nav_items %}{% assign pair = item | split: '=' %}
         <a href="{{ pair[0] }}" class="btn{% if pair[0] == current_page %} active{% endif %}">{{ pair[1] }}</a>{% endfor %}
         <a href="https://github.com/reidmorrison/symmetric-encryption" class="btn">GitHub</a>
-        <h1 class="project-name">Symmetric Encryption</h1>
+        <h1 class="project-name"><span class="brand-symmetric">Symmetric</span> <span class="brand-encryption">Encryption</span></h1>
         <h2 class="project-tagline">Encrypt Active Record attributes, Mongoid fields, passwords in
           configuration files, and entire files at rest.</h2>
-      </td>
-      </tr>
-    </table>
-
+      </div>
+    </div>
   </section>
 
   <section class="main-content">

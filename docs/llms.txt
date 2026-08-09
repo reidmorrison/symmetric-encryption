@@ -1,0 +1,33 @@
+# Symmetric Encryption
+
+> Symmetric Encryption encrypts data at rest in Ruby and Rails applications using OpenSSL, with the encryption keys held outside of the source code in a keystore. It encrypts Active Record attributes, Mongoid fields, passwords in configuration files, and entire files and streams of any size. Every encrypted value records which key version encrypted it, so keys can be rotated without re-encrypting existing data or taking the application down.
+
+Key facts:
+
+- Install with `gem install symmetric-encryption` or `gem "symmetric-encryption"` in a Gemfile. Requires Ruby 3.2 or later, and Rails 7.2 or later when used with Rails.
+- If everything you need to encrypt is an Active Record attribute, prefer Rails' built-in [Active Record encryption](https://guides.rubyonrails.org/active_record_encryption.html). This gem covers what that does not: Mongoid fields, whole files and streams, standalone Ruby, passwords in `database.yml`, keys in AWS KMS or Google Cloud KMS, and rotating the key of a queryable (deterministic) value.
+- Generate a configuration file and keys with `symmetric-encryption --generate --app-name my_app`. `config/symmetric-encryption.yml` belongs in source control; the key files it points at never do.
+- Encrypted Active Record attributes are declared `attribute :ssn, :encrypted`. The database column is always `string` or `text`, whatever the attribute's declared type.
+- The default cipher is `aes-256-cbc`, which keeps data secret but does not detect tampering. `aes-256-gcm` is authenticated and does.
+- Human-readable documentation lives at https://encryption.reidmorrison.com. The links below point at the raw markdown sources of the same pages.
+- The complete documentation concatenated into a single file: https://encryption.reidmorrison.com/llms-full.txt
+- Source code: https://github.com/reidmorrison/symmetric-encryption
+
+## Documentation
+
+- [Introduction](https://raw.githubusercontent.com/reidmorrison/symmetric-encryption/main/docs/index.md): What Symmetric Encryption is, whether you need it given Active Record encryption exists, a quick start, and how ciphers, the binary header, and keystores fit together.
+- [Guide](https://raw.githubusercontent.com/reidmorrison/symmetric-encryption/main/docs/guide.md): The library one step at a time, from encrypting a single string to model attributes, choosing a type, making a value searchable, keeping values out of logs and JSON, encrypting a password in a configuration file, and encrypting a file.
+- [Configuration](https://raw.githubusercontent.com/reidmorrison/symmetric-encryption/main/docs/configuration.md): `symmetric-encryption.yml`, deploying keys, and every keystore: file, environment variable, Heroku, AWS KMS, and Google Cloud KMS. Includes key file permissions and ownership for environments such as Kubernetes secret volumes.
+- [Rails](https://raw.githubusercontent.com/reidmorrison/symmetric-encryption/main/docs/rails.md): Encrypted Active Record attributes, type casting rules, `filter_attributes`, excluding values from JSON, validations, encrypting an existing column, and why primary and foreign keys must not be encrypted.
+- [Mongoid](https://raw.githubusercontent.com/reidmorrison/symmetric-encryption/main/docs/mongoid.md): The `encrypted: true` field option, generated accessors, options, and querying encrypted fields.
+- [Files](https://raw.githubusercontent.com/reidmorrison/symmetric-encryption/main/docs/files.md): `Writer` and `Reader` for files and IO streams of any size, compression, streams, CSV, HTTP uploads, encoding pitfalls, and IOStreams integration.
+- [Command Line](https://raw.githubusercontent.com/reidmorrison/symmetric-encryption/main/docs/cli.md): Every option of the `symmetric-encryption` command: encrypting and decrypting files and strings, generating configuration and keys, and key rotation.
+- [Key Rotation](https://raw.githubusercontent.com/reidmorrison/symmetric-encryption/main/docs/key_rotation.md): Introducing a new key without downtime, re-encrypting existing data and files, retiring old keys, and using more than one key at a time including a key per customer with `with_cipher`.
+- [Security](https://raw.githubusercontent.com/reidmorrison/symmetric-encryption/main/docs/security.md): Authenticated encryption with `aes-256-gcm`, what it protects against, chunked authenticated streams, and PCI DSS compliance procedures.
+- [API](https://raw.githubusercontent.com/reidmorrison/symmetric-encryption/main/docs/api.md): Method reference for `encrypt`, `decrypt`, `try_decrypt`, `encrypted?`, `with_cipher`, `Writer`, `Reader`, `Cipher`, and the coercion types.
+
+## Optional
+
+- [Migrating](https://raw.githubusercontent.com/reidmorrison/symmetric-encryption/main/docs/migrating.md): Moving to Active Record encryption while continuing to read data this gem encrypted, and upgrading from earlier versions.
+- [README](https://raw.githubusercontent.com/reidmorrison/symmetric-encryption/main/README.md): Project overview.
+- [CHANGELOG](https://raw.githubusercontent.com/reidmorrison/symmetric-encryption/main/CHANGELOG.md): What changed in each release.

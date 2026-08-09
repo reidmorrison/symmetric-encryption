@@ -1,0 +1,3218 @@
+# Symmetric Encryption - Complete Documentation
+
+> Symmetric Encryption encrypts data at rest in Ruby and Rails applications using OpenSSL, with the encryption keys held outside of the source code.
+
+This file concatenates every page of https://encryption.reidmorrison.com for consumption by AI assistants.
+It is generated from the markdown sources in docs/ by `bundle exec rake llms_full`; do not edit it directly.
+A per-page index is available at https://encryption.reidmorrison.com/llms.txt
+
+
+---
+
+<!-- source: docs/index.md -->
+
+## What is Symmetric Encryption?
+
+
+
+Symmetric Encryption encrypts data at rest in Ruby and Rails applications, using OpenSSL, with the
+encryption keys held outside of the source code.
+
+It covers four things:
+
+1. **Model attributes.** Active Record attributes and Mongoid fields that are encrypted in the
+   database and decrypted transparently when read.
+2. **Passwords in configuration files.** Including the database password in `database.yml`, which is
+   decrypted before Rails has finished booting.
+3. **Whole files and streams.** Of any size, encrypted and decrypted as they are read or written,
+   without loading them into memory.
+4. **Key rotation.** Every encrypted value records which key encrypted it, so a new key can be
+   introduced and the old one retired without taking the application down.
+
+## Do you need it?
+
+Rails 7 added [Active Record encryption](https://guides.rubyonrails.org/active_record_encryption.html),
+which encrypts model attributes with no gem at all. **If everything you need to encrypt is an Active
+Record attribute, use Active Record encryption.** It is built in, it is maintained by the Rails team,
+and this gem does not do that job better.
+
+Symmetric Encryption is for the encryption Active Record encryption does not cover:
+
+* **Mongoid fields**, without deploying MongoDB's client side field level encryption, which needs
+  `libmongocrypt` and a key management service before it will encrypt anything.
+* **Whole files and streams**, of any size, without reading them into memory.
+* **Standalone Ruby**, with no Rails and no Active Record.
+* **Passwords in `database.yml`** and other configuration files, decrypted before Rails has finished
+  booting, which is what makes an encrypted database password possible.
+* **Data encryption keys held in AWS KMS or Google Cloud KMS.**
+* **Rotating the key for a value that has to encrypt to the same ciphertext every time** so that it
+  can be queried. Active Record encryption cannot rotate its deterministic key.
+
+Already using this gem for Active Record attributes and want to move to Active Record encryption?
+See [Migrating](migrating.html), which reads the data already in the database while Active Record
+encryption writes every new value.
+
+## Quick start
+
+### 1. Install
+
+~~~ruby
+gem "symmetric-encryption"
+~~~
+
+Then `bundle install`. Ruby 3.2 or later is required, and Rails 7.2 or later if you are using Rails.
+
+### 2. Encrypt something
+
+Before generating any keys, you can try the library with a throwaway key. Paste this into `irb`:
+
+~~~ruby
+require "symmetric_encryption"
+
+SymmetricEncryption.cipher = SymmetricEncryption::Cipher.new(
+  key:         "1234567890ABCDEF",
+  iv:          "1234567890ABCDEF",
+  cipher_name: "aes-128-cbc"
+)
+
+encrypted = SymmetricEncryption.encrypt("Hello World")
+# => "QEVuQwAANIuPIXv/ii1IP1dF6T0NpQ=="
+
+SymmetricEncryption.decrypt(encrypted)
+# => "Hello World"
+~~~
+
+That key is in this documentation, so it is not a secret. It is only for seeing the library work.
+
+### 3. Generate real keys
+
+~~~
+symmetric-encryption --generate --app-name my_app
+~~~
+
+This writes `config/symmetric-encryption.yml`, which belongs in source control, and one key file per
+environment under `~/.symmetric-encryption`, which does not. See
+[Configuration](configuration.html).
+
+### 4. Encrypt a database column
+
+The column is a `string`, whatever the attribute's type, because the encrypted value is always text:
+
+~~~ruby
+class AddSsnToPeople < ActiveRecord::Migration[8.0]
+  def change
+    add_column :people, :ssn, :string
+  end
+end
+~~~
+
+~~~ruby
+class Person < ActiveRecord::Base
+  attribute :ssn, :encrypted
+end
+~~~
+
+That is the whole change. Reads and writes look exactly like an unencrypted attribute:
+
+~~~ruby
+person = Person.create!(name: "Jack", ssn: "123456789")
+person.ssn
+# => "123456789"
+~~~
+
+While the database holds ciphertext:
+
+~~~sql
+SELECT ssn FROM people;
+-- QEVuQwJAEACOYREfF1cAXU0B8Xre7bISBCV415agBWeiX6cF1boT2g==
+~~~
+
+Continue with the [Guide](guide.html), which builds up from here one step at a time.
+
+## A tour of the features
+
+**Encrypted model attributes**, cast to the type you declare, so an encrypted integer is still an
+integer when you read it back:
+
+~~~ruby
+attribute :age, :encrypted, type: :integer
+~~~
+
+**Values kept out of logs and JSON.** Encrypted attributes are added to the model's
+`filter_attributes` automatically, so `inspect` and the Rails logs show `[FILTERED]` rather than the
+decrypted value. See [Rails](rails.html).
+
+**Authenticated encryption** with `aes-256-gcm`, which detects any change to an encrypted value
+rather than decrypting whatever it is given. Files and streams are authenticated a chunk at a time,
+so they are verified as they are read rather than only once all of the data has been read. See
+[Security](security.html).
+
+**Encrypted files and streams:**
+
+~~~ruby
+SymmetricEncryption::Writer.open("secure.enc") do |file|
+  file.write("Hello World")
+end
+~~~
+
+See [Files](files.html).
+
+**Keys in a cloud KMS.** AWS KMS and Google Cloud KMS can hold the master key, so the key that
+protects your data never exists in a file on your servers. See [Configuration](configuration.html).
+
+**Key rotation without downtime**, driven from the command line. See
+[Key Rotation](key_rotation.html).
+
+**Encrypted passwords in configuration files**, including `database.yml`, decrypted early enough in
+the Rails boot that the database connection can use them.
+
+## How it works
+
+Three pieces explain most of the library.
+
+**The cipher.** A cipher pairs an encryption key with a version number and an encoding. The version
+is what makes rotation possible. `symmetric-encryption.yml` lists the ciphers for an environment; the
+first is the one that encrypts, and the rest exist so that data encrypted by earlier keys can still
+be read.
+
+**The header.** An encrypted value normally starts with a small binary header, `@EnC` followed by the
+cipher version and a flags byte, before the value is base64 encoded. Decryption reads the version out
+of the header and looks up the matching cipher, which is why introducing a new key does not require
+re-encrypting anything. The header is 6 bytes, growing when it also carries a random initialization
+vector or an encrypted key.
+
+Because the version travels with the value, decryption never guesses. It will not try other keys when
+one fails, since decrypting with the wrong key can quietly succeed and return garbage.
+
+**The keystore.** The encryption key itself lives outside the application, in a keystore: a file on
+disk, an environment variable, AWS KMS, or Google Cloud KMS. The configuration file in source control
+holds only a pointer to it, or an encrypted copy of it that the keystore can unlock.
+
+## Next steps
+
+* [Guide](guide.html): the library, one step at a time. Start here.
+* [Configuration](configuration.html): the configuration file and the keystores.
+* [Rails](rails.html) and [Mongoid](mongoid.html): encrypted model attributes and fields.
+* [Files](files.html): encrypted files and streams.
+* [Security](security.html): authenticated encryption, threat model, and PCI compliance.
+
+## Support
+
+* Questions and bug reports: [GitHub Issues](https://github.com/reidmorrison/symmetric-encryption/issues)
+* Source: [github.com/reidmorrison/symmetric-encryption](https://github.com/reidmorrison/symmetric-encryption)
+
+
+---
+
+<!-- source: docs/guide.md -->
+
+## Guide
+
+
+
+This guide builds up from encrypting a single string to encrypting model attributes, configuration
+file passwords, and whole files. Each step assumes the ones before it, so you can read it top to
+bottom, or jump to the part you need.
+
+Every example is runnable. Steps 1 and 2 need nothing but the gem installed.
+
+## Step 1: Encrypt your first value
+
+You do not need a configuration file to try the library. Set a cipher by hand with a throwaway key:
+
+~~~ruby
+require "symmetric_encryption"
+
+SymmetricEncryption.cipher = SymmetricEncryption::Cipher.new(
+  key:         "1234567890ABCDEF",
+  iv:          "1234567890ABCDEF",
+  cipher_name: "aes-128-cbc"
+)
+~~~
+
+Now encrypt and decrypt:
+
+~~~ruby
+encrypted = SymmetricEncryption.encrypt("Hello World")
+# => "QEVuQwAANIuPIXv/ii1IP1dF6T0NpQ=="
+
+SymmetricEncryption.decrypt(encrypted)
+# => "Hello World"
+~~~
+
+The result is base64 text, safe to put in a database column, a YAML file, or an HTTP header.
+
+You can ask whether a value came from this library. It reads the header rather than attempting to
+decrypt, so it is cheap and does not need the right key:
+
+~~~ruby
+SymmetricEncryption.encrypted?(encrypted)
+# => true
+
+SymmetricEncryption.encrypted?("Hello World")
+# => false
+~~~
+
+`nil` and `""` pass through both methods untouched, so you never have to guard against them:
+
+~~~ruby
+SymmetricEncryption.encrypt(nil)
+# => nil
+SymmetricEncryption.encrypt("")
+# => ""
+~~~
+
+That key is published here, so it protects nothing. Step 2 replaces it.
+
+## Step 2: Generate real keys
+
+Generate a configuration file and a key for every environment:
+
+~~~
+symmetric-encryption --generate --app-name my_app
+~~~
+
+~~~
+New configuration file created at: config/symmetric-encryption.yml
+~~~
+
+Two kinds of file come out of this, and keeping them apart is the entire point:
+
+* `config/symmetric-encryption.yml` belongs **in source control**. It names the ciphers and says
+  where their keys live. On its own it decrypts nothing.
+* The key files under `~/.symmetric-encryption` **never go into source control**. Deploy each
+  environment's key only to that environment's servers.
+
+In Rails, that is all the setup there is. The railtie loads the configuration during boot, early
+enough that `database.yml` can itself contain an encrypted password.
+
+Outside Rails, load it yourself:
+
+~~~ruby
+SymmetricEncryption.load!("config/symmetric-encryption.yml", "production")
+~~~
+
+See [Configuration](configuration.html) for the keystores, including AWS KMS and Google Cloud KMS.
+
+## Step 3: Encrypt a model attribute
+
+Add a `string` column. It holds base64 text, so it is a string whatever the attribute's type:
+
+~~~ruby
+class AddSsnToPeople < ActiveRecord::Migration[8.0]
+  def change
+    add_column :people, :ssn, :string
+  end
+end
+~~~
+
+Declare the attribute with the `:encrypted` type:
+
+~~~ruby
+class Person < ActiveRecord::Base
+  attribute :ssn, :encrypted
+end
+~~~
+
+It now behaves like any other attribute:
+
+~~~ruby
+person = Person.create!(name: "Jack", ssn: "123456789")
+person.ssn
+# => "123456789"
+
+person.reload.ssn
+# => "123456789"
+~~~
+
+The database holds only ciphertext:
+
+~~~sql
+SELECT name, ssn FROM people;
+-- Jack | QEVuQwJAEACOYREfF1cAXU0B8Xre7bISBCV415agBWeiX6cF1boT2g==
+~~~
+
+Using Mongoid instead? See [Mongoid](mongoid.html), which uses a `field ... encrypted: true` option
+rather than an attribute type.
+
+## Step 4: Choose the type
+
+An encrypted attribute is stored as text, but it does not have to *be* text. Declare a type and the
+value is cast on the way in and on the way out:
+
+~~~ruby
+class Person < ActiveRecord::Base
+  attribute :ssn,           :encrypted
+  attribute :age,           :encrypted, type: :integer
+  attribute :date_of_birth, :encrypted, type: :date
+end
+~~~
+
+~~~ruby
+person = Person.create!(ssn: "123456789", age: 21, date_of_birth: "1998-03-04")
+
+person.age
+# => 21               (Integer, not "21")
+person.date_of_birth
+# => Wed, 04 Mar 1998 (Date)
+~~~
+
+The available types are:
+
+| Type | Ruby class |
+|---|---|
+| `:string` (default) | `String` |
+| `:integer` | `Integer` |
+| `:float` | `Float` |
+| `:decimal` | `BigDecimal` |
+| `:datetime` | `DateTime` |
+| `:time` | `Time` |
+| `:date` | `Date` |
+| `:boolean` | `TrueClass` or `FalseClass` |
+| `:json` | Serialized with JSON, for hashes and arrays |
+| `:yaml` | Serialized with YAML, for hashes and arrays |
+
+Casting deliberately matches Active Record exactly, so an encrypted attribute is indistinguishable
+from an unencrypted one apart from the encryption. That includes the parts that surprise people:
+
+~~~ruby
+Person.new(age: "abc").age
+# => 0     Exactly what ActiveModel::Type::Integer does. It does not raise, and it is not nil.
+
+Person.new(age: "").age
+# => nil   A blank string is nil for every type except :string.
+~~~
+
+Casting never raises. To reject input that could not be cast, validate against
+`*_before_type_cast`, which is how you would do it for an unencrypted attribute.
+
+## Step 5: Decide whether the value must be searchable
+
+By default each write produces a *different* ciphertext for the same input, because a new random
+initialization vector is generated every time. That is what you want: it stops an attacker learning
+that two rows hold the same value.
+
+~~~ruby
+a = Person.create!(ssn: "123456789")
+b = Person.create!(ssn: "123456789")
+# The two rows hold completely different ciphertext.
+~~~
+
+The cost is that you cannot look the value up, because you cannot reproduce the ciphertext to search
+for:
+
+~~~ruby
+Person.where(ssn: "123456789")   # Finds nothing. Never will.
+~~~
+
+When a column has to be searchable, turn the random IV off. The same input then always encrypts to
+the same output, and equality lookups work:
+
+~~~ruby
+class Person < ActiveRecord::Base
+  attribute :ssn, :encrypted, random_iv: false
+end
+
+Person.where(ssn: "123456789").first   # Works.
+~~~
+
+Understand the trade: anyone who can read the table can now see which rows share a value, even
+without the key. Use `random_iv: false` only on columns you genuinely query, and prefer an
+authenticated cipher when you do. See [Security](security.html).
+
+Only equality works. `LIKE`, ranges, and ordering operate on ciphertext and are meaningless.
+
+## Step 6: Keep decrypted values out of logs and JSON
+
+Encrypting the column does nothing if the decrypted value is written to the log a moment later.
+
+**Logs and `inspect` are handled for you.** Every attribute declared `:encrypted` is added to the
+model's `filter_attributes` when it is declared:
+
+~~~ruby
+person.inspect
+# => #<Person id: 1, name: "Jack", ssn: [FILTERED], age: [FILTERED]>
+
+Person.filter_attributes
+# => [:ssn, :age]
+~~~
+
+This also adds `"person.ssn"` to the application's `config.filter_parameters`, so the value is
+filtered out of request parameters in the logs too.
+
+**JSON is not, and that is deliberate.** `as_json` still returns decrypted values, because an
+encrypted attribute that is deliberately rendered into an API response has to keep working:
+
+~~~ruby
+person.as_json
+# => {"id" => 1, "name" => "Jack", "ssn" => "123456789"}
+~~~
+
+To exclude them, include the module:
+
+~~~ruby
+class Person < ActiveRecord::Base
+  include SymmetricEncryption::ActiveRecord::ExcludeFromJson
+
+  attribute :ssn, :encrypted
+end
+~~~
+
+~~~ruby
+person.as_json
+# => {"id" => 1, "name" => "Jack"}
+~~~
+
+Rendering one then takes asking for it by name, which is hard to do by accident:
+
+~~~ruby
+person.as_json(methods: :ssn)
+# => {"id" => 1, "name" => "Jack", "ssn" => "123456789"}
+~~~
+
+See [Rails](rails.html) for both in detail.
+
+## Step 7: Encrypt a password in a configuration file
+
+Encrypt the value from the command line:
+
+~~~
+symmetric-encryption --encrypt --prompt
+~~~
+
+You are prompted twice, and the encrypted value is printed. Paste it into the configuration file:
+
+~~~yaml
+production:
+  adapter:  postgresql
+  database: my_app_production
+  username: my_app
+  password: <%= SymmetricEncryption.try_decrypt("QEVuQwJAEACOYREfF1cAXU0B8Xre7bISBCV415agBWeiX6cF1boT2g==") %>
+~~~
+
+`try_decrypt` rather than `decrypt`: it returns `nil` instead of raising when the value cannot be
+decrypted, so a developer machine without the production key can still load the file.
+
+This works in `database.yml` because the railtie loads the configuration in `before_configuration`,
+deliberately earlier than Active Record.
+
+When you rotate keys, re-encrypt every value already sitting in your configuration files:
+
+~~~
+symmetric-encryption --re-encrypt "**/*.yml"
+~~~
+
+## Step 8: Encrypt a file
+
+`Writer` and `Reader` behave like Ruby's `IO`, encrypting and decrypting as data flows through them,
+so file size is not a constraint:
+
+~~~ruby
+SymmetricEncryption::Writer.open("secure.enc") do |file|
+  file.write("Hello World\n")
+  file.write("Second line\n")
+end
+~~~
+
+~~~ruby
+SymmetricEncryption::Reader.open("secure.enc") do |file|
+  file.each_line { |line| puts line }
+end
+# Hello World
+# Second line
+~~~
+
+Or encrypt a whole file in one call:
+
+~~~ruby
+SymmetricEncryption::Writer.encrypt(source: "plain.txt", target: "secure.enc")
+~~~
+
+Each file gets its own random key, encrypted with your configured key and stored in the file's
+header, so the file is self-describing. Compression is on by default for file names that are not
+already compressed.
+
+See [Files](files.html) for streams, CSV, seeking, and tamper detection.
+
+## Going further
+
+**Detect tampering.** `aes-256-cbc` will decrypt a modified value and return garbage. `aes-256-gcm`
+refuses. See [Security](security.html).
+
+**Rotate keys** without downtime, and read data encrypted by keys you retired years ago. See
+[Key Rotation](key_rotation.html).
+
+**Use a different key for some of your data**, for example a key per customer held in your database
+rather than in `symmetric-encryption.yml`:
+
+~~~ruby
+SymmetricEncryption.with_cipher(cipher_for(customer)) do
+  person.save!
+end
+~~~
+
+See [Key Rotation](key_rotation.html#a-key-per-customer).
+
+**Encrypt one attribute with a different key** from everything else:
+
+~~~ruby
+attribute :api_key, :encrypted, version: 3
+~~~
+
+## Next steps
+
+* [Configuration](configuration.html): the configuration file, and every keystore.
+* [Rails](rails.html): validations, filtering, JSON, and migrations in depth.
+* [Files](files.html): streams, CSV, and large file handling.
+* [Command Line](cli.html): every `symmetric-encryption` option.
+* [API](api.html): the full method reference.
+
+
+---
+
+<!-- source: docs/configuration.md -->
+
+## Configuration
+
+
+
+There are two things to configure: **which ciphers** an environment uses, and **where their keys
+live**. The first goes in `config/symmetric-encryption.yml`, which belongs in source control. The
+second is a keystore, and the key itself never goes into source control.
+
+Start at Step 1 and stop when your setup works. Most applications never get past Step 4.
+
+## Step 1: Add the gem
+
+~~~ruby
+gem "symmetric-encryption"
+~~~
+
+In Rails, add it *after* the rails gems. Then:
+
+~~~
+bundle install
+~~~
+
+## Step 2: Generate the configuration and keys
+
+~~~
+symmetric-encryption --generate --app-name my_app
+~~~
+
+~~~
+New configuration file created at: config/symmetric-encryption.yml
+~~~
+
+Useful options:
+
+* `--app-name NAME` — used in key file names and environment variable names. In Rails, use the
+  application name, lowercase. Default: `symmetric-encryption`
+* `--environments LIST` — comma separated. Default: `development,test,release,production`
+* `--key-path PATH` — where key files are written. Default: `~/.symmetric-encryption`
+* `--keystore NAME` — one of `file`, `environment`, `heroku`, `aws`, `gcp`. Default: `file`
+* `--cipher-name NAME` — Default: `aes-256-cbc`. Use `aes-256-gcm` for
+  [authenticated encryption](security.html).
+* `--config PATH` — Default: `config/symmetric-encryption.yml`
+* `--regions LIST` — AWS KMS only. Default: `us-east-1,us-east-2,us-west-1,us-west-2`
+
+Every option is listed on the [Command Line](cli.html) page.
+
+## Step 3: Understand what was generated
+
+A configuration file has one entry per environment, and each entry lists one or more ciphers:
+
+~~~yaml
+development:
+  ciphers:
+  - key: 1234567890ABCDEF
+    iv: 1234567890ABCDEF
+    cipher_name: aes-128-cbc
+    version: 1
+test:
+  ciphers:
+  - key: 1234567890ABCDEF
+    iv: 1234567890ABCDEF
+    cipher_name: aes-128-cbc
+    version: 1
+production:
+  ciphers:
+  - keystore: :file
+    cipher_name: aes-256-cbc
+    version: 1
+    key_filename: /home/deploy/.symmetric-encryption/my_app_production_v1.encrypted_key
+    iv: !binary |-
+      k7jzJiVAWfUTCcJd2QXr8A==
+    key_encrypting_key:
+      encrypted_key: !binary |-
+        WTfUx7X3WiwJ8zWqC+0wnCzhxngB7/RSrKWhrMFyykQ=
+      iv: !binary |-
+        igiEwwHM8ukpX3zwQT+LDw==
+~~~
+
+Three things are worth noticing.
+
+**Development and test hold their key in the file itself.** That key is the same in every generated
+configuration file and is published in this documentation, so it is not a secret. It means a new
+developer needs no key files to run the application or its test suite. Never put private data through
+those environments.
+
+**The keystore is a per environment setting.** One configuration file can use a different keystore in
+every environment. There is nothing to merge by hand.
+
+**The first cipher encrypts; the rest only decrypt.** New values are always encrypted with the first
+cipher in the list. The others exist so that data encrypted by earlier keys can still be read. This
+is what makes [key rotation](key_rotation.html) possible.
+
+## Step 4: Deploy the keys
+
+The generated files divide in two, and keeping them apart is the whole point:
+
+| File | Source control | Deployed to |
+|---|---|---|
+| `config/symmetric-encryption.yml` | **Yes** | Every environment |
+| `~/.symmetric-encryption/my_app_production_v1.encrypted_key` | **Never** | Production servers only |
+
+Deploy each environment's key file only to that environment's servers, so that one environment cannot
+decrypt another's data. Every server *within* an environment gets the same key file.
+
+Lock the key files down. Symmetric Encryption refuses to read a key file that other users on the
+machine can read:
+
+~~~
+chmod -R 0400 ~/.symmetric-encryption
+~~~
+
+Do this **after** running `symmetric-encryption`, not before, or generation cannot write the files.
+
+To meet PCI compliance these steps are performed by an operations administrator, not by a developer.
+Developers should never have copies of production key files. See [Security](security.html).
+
+### Loading the configuration
+
+In Rails there is nothing to do. The railtie loads the configuration during boot, in
+`before_configuration`, deliberately earlier than Active Record so that `database.yml` can itself
+contain an encrypted password.
+
+Outside Rails, load it yourself:
+
+~~~ruby
+require "symmetric_encryption"
+
+SymmetricEncryption.load!("config/symmetric-encryption.yml", "production")
+~~~
+
+Two environment variables override the defaults, in Rails and out of it:
+
+* `SYMMETRIC_ENCRYPTION_CONFIG` — path to the configuration file.
+* `SYMMETRIC_ENCRYPTION_ENV` — which environment entry to load. Useful when several deployments run
+  with `RAILS_ENV=production` but each needs its own key.
+
+## Keystores
+
+### File keystore
+
+The default. The data encryption key lives in a file on disk, itself encrypted by a key encrypting
+key. Suitable for any environment where you control the file system.
+
+~~~
+mkdir ~/.symmetric-encryption
+symmetric-encryption --generate --app-name my_app --environments "development,test,preprod,production"
+~~~
+
+Generated:
+
+~~~
+config/symmetric-encryption.yml
+
+~/.symmetric-encryption/my_app_preprod_v1.encrypted_key
+~/.symmetric-encryption/my_app_production_v1.encrypted_key
+~~~
+
+If you generated the keys on a development machine, edit `symmetric-encryption.yml` so that
+`key_filename` points at wherever the key files actually live on each server.
+
+If you see a "Permission denied" error when running `symmetric-encryption`, confirm you can read,
+write, and access (that is, execute) the directory.
+
+#### Key file permissions and ownership
+
+Symmetric Encryption refuses to read a key file that other users on the machine can read, since
+anyone who can read the key file can decrypt everything that was encrypted with it. By default a key
+file has to be `0600` or `0400`, and has to be owned by the user running the application.
+
+Some environments dictate the permissions and ownership of the key file and cannot be asked for
+`0600` owned by the application user. The most common is a Kubernetes secret volume mounted with
+`readOnly: true`, which mounts its files as `0644` owned by `root`, whatever user the container runs
+as. Supply the permissions, owner, and group those key files will have, and Symmetric Encryption
+verifies against those instead of the defaults:
+
+~~~yaml
+production:
+  ciphers:
+    - key_filename: /etc/keys/my_app_production_v1.encrypted_key
+      permissions: "0644"
+      owner: root
+      group: root
+      iv: aFhScC9maXNHTFhBaFZjS3M=
+      key_encrypting_key:
+        encrypted_key: TWpBeE9UQXhNRE10TWpFNU1UUTVMVGM9
+        iv: WVRJNU1UUTVMVGM1TFRJd01UZz0=
+        key_encrypting_key:
+          key_filename: /etc/keys/my_app_production_v1.kekek
+          permissions: "0644"
+          owner: root
+          group: root
+          iv: TVRrMk1UUTVMVGM1TFRJd01UZz0=
+~~~
+
+Notes:
+
+* All three apply to one key file, so supply them for every `key_filename` entry, including the key
+  encrypting key files nested below it. Generate a configuration with the permissions already in
+  place using `--key-permissions`:
+
+      symmetric-encryption --generate --app-name my_app --key-permissions 0644
+
+  `--rotate-keys` and `--rotate-kek` carry all three settings into the entries they write, so they
+  only have to be supplied once. There is no equivalent option for `owner` and `group`, because
+  `symmetric-encryption` cannot give a file away to another user. Add them by hand: they describe the
+  environment the key files are deployed into, not the machine the keys were generated on.
+* Supply `permissions` as an octal file mode without the file type bits, either as a String,
+  `"0644"`, or as an Integer, `0644`.
+* Supply `owner` and `group` as a name, `root`, or as a numeric id, `0`. Use the numeric id when the
+  name does not resolve on every machine that loads this configuration.
+* `owner` replaces the default check that the key file is owned by the user running the application.
+  `group` adds a check that is not performed at all by default. Naming them is not the same as
+  skipping them: the key file still has to match what the configuration says.
+* Supply a list when more than one value is acceptable. New key files are created with the first
+  permission in the list, so list the most restrictive one first:
+
+  ~~~yaml
+    - key_filename: /etc/keys/my_app_production_v1.encrypted_key
+      permissions:
+        - "0600"
+        - "0644"
+      owner:
+        - deploy
+        - root
+  ~~~
+
+* The configuration file is evaluated with ERB, so a value can come from the environment when it
+  differs per deployment: `permissions: "<%= ENV['KEY_FILE_PERMISSIONS'] %>"`.
+* Only relax these where something outside the application controls the key file and the surrounding
+  environment supplies the protection instead. On a shared machine, widening the permissions lets
+  every other user read the encryption key.
+* The same three settings apply to the AWS KMS and Google Cloud KMS keystores, which also hold their
+  encrypted data encryption key in a local file. Supply them alongside `key_files` or `key_file`:
+
+  ~~~yaml
+  production:
+    ciphers:
+      - keystore: aws
+        master_key_alias: alias/symmetric-encryption/my_app/production
+        permissions: "0644"
+        owner: root
+        group: root
+        key_files:
+          - region: us-east-1
+            file_name: /etc/keys/my_app_production_us-east-1_v1.encrypted_key
+          - region: us-west-2
+            file_name: /etc/keys/my_app_production_us-west-2_v1.encrypted_key
+  ~~~
+
+  One entry covers every region, since those key files are all created the same way.
+
+### Environment variable keystore
+
+Holds the encrypted encryption key in an environment variable instead of a file. For platforms with
+no writable file system, or where secrets are injected as environment variables.
+
+~~~
+symmetric-encryption --generate --keystore environment --app-name my_app
+~~~
+
+The command prints the `export` line to set in each environment. Nothing is written for you: setting
+the variable is the deploy's job, which is the point.
+
+### Heroku keystore
+
+The same as the environment keystore, with Heroku-shaped instructions:
+
+~~~
+symmetric-encryption --generate --keystore heroku --app-name my_app --environments "development,test,production"
+~~~
+
+Follow the displayed `heroku config:add` instructions to set the encrypted encryption key for each
+environment.
+
+When several Heroku applications run with `RAILS_ENV=production` and each needs its own encryption
+key, name the Symmetric Encryption environment separately:
+
+~~~
+heroku config:add SYMMETRIC_ENCRYPTION_ENV=release
+~~~
+
+`SYMMETRIC_ENCRYPTION_ENV` selects which entry of `symmetric-encryption.yml` is loaded and leaves
+`RAILS_ENV` alone, so Rails still applies its production settings. The `symmetric-encryption` command
+honors the same variable when generating or rotating keys.
+
+### AWS KMS
+
+The most secure keystore supported. The master key lives in
+[AWS KMS](https://aws.amazon.com/kms/) and cannot be read or exported, only used to encrypt and
+decrypt data encryption keys. The encrypted data encryption key is stored locally, safe because only
+KMS can unlock it.
+
+Symmetric Encryption creates a Customer Master Key in every configured region and for every
+environment, so they can be managed and rotated from the AWS KMS console.
+
+**Dependency.** A soft dependency, only needed when this keystore is used:
+
+~~~ruby
+gem "aws-sdk-kms"
+~~~
+
+**Credentials.** Use a separate *management* credential, granted access to all KMS operations, to
+create and rotate keys. Follow the AWS instructions for
+[creating and setting AWS credentials](https://docs.aws.amazon.com/sdk-for-ruby/v3/developer-guide/setup-config.html).
+
+**Generate:**
+
+~~~
+symmetric-encryption --generate --keystore aws --app-name my_app --environments "development,test,production"
+~~~
+
+New keys are encrypted with the master key in every configured region, so data encrypted in one
+region can be decrypted in another during a disaster. Default regions:
+`us-east-1,us-east-2,us-west-1,us-west-2`, overridden with `--regions`.
+
+**Migrate an existing configuration to AWS:**
+
+~~~
+symmetric-encryption --rotate-keys --keystore aws --app-name my_app --environments production
+~~~
+
+**Rotate an existing AWS configuration:**
+
+~~~
+symmetric-encryption --rotate-keys --app-name my_app --environments production
+~~~
+
+When rotating an existing AWS KMS configuration, the new data key is encrypted for the same regions
+as the current key files, and the new key files are written to the same path. Supply `--regions` or
+`--key-path` to change either.
+
+**Set the region** on every server, so the right KMS endpoint is used:
+
+~~~
+export AWS_REGION=us-west-2
+~~~
+
+**Access control.** Each environment should have its own credentials, restricted to decrypting with
+the Customer Master Key for that environment only, so one environment cannot decrypt another's data
+encryption key. For each key in each region, restrict the key policy to that environment's AWS API
+user: create a user `rails_release` for the release environment and limit it to decrypt authorization
+on the `release` key.
+
+### Google Cloud KMS
+
+Uses Google Cloud [KMS](https://cloud.google.com/kms) to hold the key encrypting key.
+
+Symmetric Encryption expects the key and keyring to exist already, with the **keyring named after
+your application** and the **key named after your environment**.
+
+**Dependency:**
+
+~~~ruby
+gem "google-cloud-kms"
+~~~
+
+**Credentials.** A service account with encrypt and decrypt permission on the KMS key. Follow the GCP
+instructions for
+[creating and setting credentials](https://cloud.google.com/docs/authentication/getting-started#auth-cloud-implicit-ruby).
+
+**Environment variables:**
+
+* `GOOGLE_CLOUD_PROJECT` — required, your GCP project id.
+* `GOOGLE_CLOUD_LOCATION` — optional, defaults to `global`.
+
+**Generate:**
+
+~~~
+symmetric-encryption --generate --keystore gcp --app-name my_app --environments "development,test,production"
+~~~
+
+## Supplying the key in the configuration file
+
+The key can be supplied directly in the configuration file, which is how `development` and `test` are
+generated, and is usually how existing keys are carried over when migrating an application:
+
+~~~yaml
+development:
+  ciphers:
+    - key: 1234567890ABCDEF
+      iv: 1234567890ABCDEF
+      cipher_name: aes-128-cbc
+      version: 1
+~~~
+
+Only do this where the configuration file itself is not a secret. Anyone who can read the file can
+decrypt everything encrypted with that key, so use a keystore in production.
+
+`key` and `iv` are raw binary data, not text, and each has to be *exactly* the number of bytes that
+`cipher_name` requires:
+
+| `cipher_name` | `key`    | `iv`     |
+|---------------|----------|----------|
+| `aes-128-cbc` | 16 bytes | 16 bytes |
+| `aes-192-cbc` | 24 bytes | 16 bytes |
+| `aes-256-cbc` | 32 bytes | 16 bytes |
+| `aes-256-gcm` | 32 bytes | not used |
+
+A random binary key cannot be written into YAML as an ordinary quoted string. Most of its bytes are
+not printable, and an escape such as `"\xB1"` is read back as the *character* `U+00B1`, which is two
+bytes in UTF-8 rather than the single byte intended. Base64 encode the key instead and let YAML decode
+it back to binary with its `!!binary` tag:
+
+~~~yaml
+development:
+  ciphers:
+    - key: !!binary |
+        scfTCGywW1BWprMPXlUYDOxvso7xZQ3tlJR3h9qViMI=
+      iv: !!binary |
+        8FOTJUJAbbd/Ovy7163hOQ==
+      cipher_name: aes-256-cbc
+      version: 1
+~~~
+
+To move a hex encoded key into the configuration file, convert it to the base64 that `!!binary`
+expects:
+
+~~~ruby
+require "base64"
+
+puts Base64.strict_encode64(["b1c7d3086cb05b5056a6b30f5e55180cec6fb28ef1650ded94947787da9588c2"].pack("H*"))
+# => scfTCGywW1BWprMPXlUYDOxvso7xZQ3tlJR3h9qViMI=
+~~~
+
+When a key or iv is not the right length, loading the configuration raises an `ArgumentError` naming
+the cipher and the number of bytes supplied. Never truncate a key to make that error go away: a
+truncated key is a *different* key, and nothing already encrypted can be read with it.
+
+## Cipher options
+
+Options that can be set on any cipher entry:
+
+* `cipher_name` — the OpenSSL cipher. Default: `aes-256-cbc`. See [Security](security.html) for
+  `aes-256-gcm`.
+* `version` — 0 to 255. Identifies this key in the header of every value it encrypts.
+* `always_add_header` — whether to add the header when nothing else requires it. Default: `true`, and
+  strongly recommended, since it is what makes key rotation work.
+* `encoding` — how the binary result is encoded. One of `base64strict` (default), `base64`,
+  `base64urlsafe`, `base16`, `none`.
+
+Every cipher in one configuration file has to use an encoding the others can read, since a value is
+decoded with the primary cipher's encoder before its header says which cipher encrypted it. Only
+`base64` and `base64strict` can be mixed with each other; loading a configuration that mixes anything
+else raises.
+
+## Next steps
+
+* [Command Line](cli.html): every option of the `symmetric-encryption` command.
+* [Key Rotation](key_rotation.html): introducing a new key without downtime.
+* [Security](security.html): authenticated encryption, threat model, and PCI compliance.
+* [Guide](guide.html): using the library once it is configured.
+
+
+---
+
+<!-- source: docs/rails.md -->
+
+## Rails
+
+
+
+Encrypted attributes are declared with the
+[Active Record Attributes API](https://api.rubyonrails.org/classes/ActiveRecord/Attributes/ClassMethods.html),
+using the `:encrypted` type this gem registers.
+
+New to the library? Work through the [Guide](guide.html) first; this page covers the Rails specifics
+in depth.
+
+## Declaring an encrypted attribute
+
+~~~ruby
+class Person < ActiveRecord::Base
+  attribute :name, :encrypted
+end
+~~~
+
+The column name matches the attribute name. There is no `encrypted_` prefix.
+
+### The column type
+
+The column is `string`, or `text` when the value can be long. It is never the type the attribute
+returns, because what is stored is always base64 encoded ciphertext:
+
+~~~ruby
+create_table :people, force: true do |t|
+  t.string :name
+  t.string :age       # An :integer attribute, but a string column.
+  t.text   :address   # Long values.
+end
+~~~
+
+Encryption also makes values longer: base64 expands by a third, plus a header of 6 bytes, plus the
+initialization vector when one is stored. Size the column accordingly.
+
+### Options
+
+~~~ruby
+class Person < ActiveRecord::Base
+  attribute :name,    :encrypted, random_iv: false
+  attribute :age,     :encrypted, type: :integer
+  attribute :address, :encrypted, compress: true
+  attribute :api_key, :encrypted, version: 3
+end
+~~~
+
+* `type:` — what the attribute returns in Ruby. See the table in the [Guide](guide.html#step-4-choose-the-type).
+  Default: `:string`
+* `random_iv:` — a new random initialization vector on every write. Default: `true`. Set to `false`
+  only when the column must be searchable.
+* `compress:` — compress before encrypting. Worth it only for large values. Default: `false`
+* `version:` — encrypt with a specific configured cipher rather than the primary one. Default: the
+  primary cipher.
+
+## Type casting
+
+The value is cast when it is assigned, using the same rules Active Record applies to an unencrypted
+attribute of that type:
+
+~~~ruby
+person.age = "124"
+person.age
+# => 124
+~~~
+
+This is deliberate: an encrypted attribute should be indistinguishable from an unencrypted one apart
+from the encryption. It also means the surprising parts of Active Record casting are inherited:
+
+* A blank string becomes `nil` for every type other than `:string`.
+* A value that cannot be cast is **not rejected**. It becomes `0` for `:integer` and `:float`, `nil`
+  for `:date`, `:datetime` and `:time`, and `true` for `:boolean`.
+
+Casting never raises. Reject bad input with a validation, exactly as for any other attribute:
+
+~~~ruby
+class Person < ActiveRecord::Base
+  attribute :age, :encrypted, type: :integer
+
+  validates :age, numericality: {allow_nil: true}
+end
+~~~
+
+The validation reports on the value that was assigned rather than the cast one, since the assigned
+value is still available in `age_before_type_cast`.
+
+`:json` and `:yaml` values are left exactly as assigned, which is what Active Record's own `:json`
+type does. They are serialized when the record is saved and parsed when it is read back.
+
+### Multiparameter assignment
+
+A `:date`, `:datetime` or `:time` attribute can be assigned from a form built with `date_select`,
+`datetime_select` or `time_select`, which submit one field per part:
+
+~~~erb
+<%= form.date_select :date_of_birth %>
+~~~
+
+Active Record collects `date_of_birth(1i)`, `date_of_birth(2i)` and `date_of_birth(3i)` and assigns
+them in one go. They are cast exactly as for an unencrypted date column: parts that were not
+submitted take the same defaults, an incomplete date becomes `nil`, and validations report on the cast
+value rather than on `date_of_birth_before_type_cast`.
+
+## Keeping values out of logs
+
+An encrypted attribute returns its decrypted value, so anything that renders the whole record would
+otherwise write that value out. Encrypted attributes are added to the model's
+[filter_attributes](https://api.rubyonrails.org/classes/ActiveRecord/Core/ClassMethods.html#method-i-filter_attributes)
+as they are declared, so `inspect`, `attribute_for_inspect`, and the request parameters in the Rails
+logs show `[FILTERED]`:
+
+~~~ruby
+class Person < ActiveRecord::Base
+  attribute :ssn, :encrypted
+end
+
+Rails.logger.info(person)
+# => #<Person id: 1, name: "Jack", ssn: [FILTERED]>
+~~~
+
+This is what Active Record's own `encrypts` does. To turn it off, set it before the models are
+loaded, since the filter is applied when the attribute is declared:
+
+~~~ruby
+# config/application.rb
+config.symmetric_encryption.filter_encrypted_attributes = false
+~~~
+
+### One caveat about load order
+
+Adding to a model's `filter_attributes` takes a copy of the list it inherits from
+`ActiveRecord::Base`, which is where Rails puts the application's `config.filter_parameters`. A model
+loaded before Rails has set those, from a gem's railtie or from an initializer that references the
+model, therefore filters its encrypted attributes but not the attributes named in
+`config.filter_parameters`. Set `filter_attributes` in the model itself when it is loaded that early:
+
+~~~ruby
+class Person < ActiveRecord::Base
+  self.filter_attributes += %i[password]
+
+  attribute :ssn, :encrypted
+end
+~~~
+
+Models loaded the usual way, eager loaded on boot or autoloaded on first use, are unaffected. Active
+Record's own `encrypts` copies the list at declaration time in exactly the same way.
+
+## Rendering JSON
+
+Filtering covers `inspect` and the logs, which is as far as Active Record itself goes. It does not
+cover `as_json`, so an encrypted attribute is rendered in full by `render json:`:
+
+~~~ruby
+Person.create(name: "Jack", ssn: "top_secret").as_json
+# => {"id" => 1, "name" => "Jack", "ssn" => "top_secret"}
+~~~
+
+That is deliberate: an encrypted attribute meant to be part of an API response has to keep working.
+When the value should never reach a response, include `ExcludeFromJson`:
+
+~~~ruby
+class Person < ActiveRecord::Base
+  include SymmetricEncryption::ActiveRecord::ExcludeFromJson
+
+  attribute :ssn, :encrypted
+end
+
+Person.create(name: "Jack", ssn: "top_secret").as_json
+# => {"id" => 1, "name" => "Jack"}
+~~~
+
+Every encrypted attribute in that model is then left out of `as_json`, `to_json` and
+`serializable_hash`, including when `as_json(only: %i[ssn])` asks for it. Rendering one becomes a
+deliberate act, by asking for it by name:
+
+~~~ruby
+person.as_json(methods: :ssn)
+# => {"id" => 1, "name" => "Jack", "ssn" => "top_secret"}
+~~~
+
+Reading the attribute is unaffected, as are `attributes` and anything else that does not go through
+`serializable_hash`.
+
+## Validations
+
+To ensure a value is encrypted before it is saved, use the bundled validator. This is only needed when
+assigning an encrypted value to a column directly, since an attribute declared with the `:encrypted`
+type is always encrypted on assignment:
+
+~~~ruby
+class Person < ActiveRecord::Base
+  validates :encrypted_name, symmetric_encryption: true
+end
+~~~
+
+## Encrypting an existing column
+
+Declaring an attribute as `:encrypted` over a column that is not `string` or `text` fails when the
+record is saved, because the encrypted value is a string:
+
+~~~ruby
+create_table :people, force: true do |t|
+  t.integer :age
+end
+
+class Person < ActiveRecord::Base
+  attribute :age, :encrypted, type: :integer
+end
+
+Person.create!(age: 2019)
+# => PG::InvalidTextRepresentation: ERROR: invalid input syntax for integer: "QEVuQwJAEABHjHWXKblm..."
+~~~
+
+MySQL raises a similar error in strict mode, and quietly stores a zero when it is not. SQLite accepts
+the value without complaint because of its dynamic typing, so a test suite running on SQLite will not
+report this.
+
+Changing the column type to `string` is not enough on its own: the values already in the column are
+unencrypted, and reading one back through the encrypted attribute raises
+`OpenSSL::Cipher::CipherError`. Encrypt them as part of the migration:
+
+~~~ruby
+class EncryptPersonAge < ActiveRecord::Migration[8.0]
+  # A local model, so that the migration does not depend on how `Person` declares its attributes.
+  class MigratedPerson < ActiveRecord::Base
+    self.table_name = "people"
+  end
+
+  def up
+    add_column :people, :encrypted_age, :string
+    MigratedPerson.reset_column_information
+
+    MigratedPerson.find_each do |person|
+      person.update_column(:encrypted_age, SymmetricEncryption.encrypt(person.age))
+    end
+
+    remove_column :people, :age
+    rename_column :people, :encrypted_age, :age
+  end
+end
+~~~
+
+`nil` values are left as `nil`, since `SymmetricEncryption.encrypt` returns `nil` for them. Add
+`attribute :age, :encrypted, type: :integer` to the model only once the migration has run, since the
+model reads the column as an encrypted value from that point on.
+
+## Do not encrypt primary keys or foreign keys
+
+An `id`, primary key, or foreign key column must not be declared `:encrypted`. Active Record builds
+association queries from the encrypted value, so the query looks for the encrypted id rather than the
+id itself:
+
+~~~ruby
+class Request < ActiveRecord::Base
+  belongs_to :organisation
+  attribute :organisation_id, :encrypted, type: :integer
+end
+
+organisation.requests.count
+# SELECT COUNT(*) FROM "requests" WHERE "requests"."organisation_id" = $1
+#   [["organisation_id", "QEVuQwJAEAADf7A6+JiS1XNImGA6PldIrRSddbiZiz1NiSxw2KikLA=="]]
+~~~
+
+Against the `integer` column a foreign key normally has, PostgreSQL rejects that value with
+`PG::InvalidTextRepresentation`. After the column has been changed to a `string` the query is
+accepted, but with the default `random_iv: true` it matches nothing, since the id encrypts to a
+different value every time.
+
+Adding `random_iv: false` makes `belongs_to` and `has_many` work, because Active Record passes the
+value through the attribute type in both directions, but joins still return nothing:
+
+~~~ruby
+Organisation.joins(:requests).count
+# => 0
+~~~
+
+The join compares `requests.organisation_id` against `organisations.id` in the database, where the
+encrypted value on one side and the id on the other can never match. Neither can a foreign key
+constraint, an index shared with an unencrypted column, or any query written in SQL.
+
+Encrypt the attributes that hold personal data, and leave the columns that identify the row alone.
+
+## Next steps
+
+* [Migrating](migrating.html): from `attr_encrypted`, and to Active Record encryption.
+* [Key Rotation](key_rotation.html): introducing a new key without downtime.
+* [Mongoid](mongoid.html): the equivalent for Mongoid documents.
+* [Security](security.html): authenticated encryption and PCI compliance.
+
+
+---
+
+<!-- source: docs/mongoid.md -->
+
+## Mongoid
+
+
+
+Symmetric Encryption adds an `encrypted:` option to Mongoid fields. Declaring it generates a getter,
+a setter, and a `_changed?` method for the decrypted value, so the document is worked with in the
+clear while MongoDB only ever holds ciphertext.
+
+Encrypting Active Record attributes instead? See [Rails](rails.html).
+
+## Step 1: Encrypt a field
+
+The field holds the encrypted value, so it is declared `type: String` and named with an
+`encrypted_` prefix:
+
+~~~ruby
+class User
+  include Mongoid::Document
+
+  field :name,                             type: String
+  field :encrypted_bank_account_number,    type: String, encrypted: true
+end
+~~~
+
+Symmetric Encryption generates accessors for the name with the prefix removed:
+
+~~~ruby
+user = User.create!(name: "Jack", bank_account_number: "12345")
+
+user.bank_account_number
+# => "12345"
+~~~
+
+MongoDB holds only the encrypted value:
+
+~~~javascript
+{
+  "name" : "Jack",
+  "encrypted_bank_account_number" : "QEVuQwJAEACOYREfF1cAXU0B8Xre7bISBCV415agBWeiX6cF1boT2g=="
+}
+~~~
+
+Reading the field is what decrypts it. A document that is loaded but never asked for the decrypted
+value never decrypts anything, and the decrypted value is cached until the encrypted one changes.
+
+### Naming the accessors yourself
+
+The field name must start with `encrypted_`, or `:decrypt_as` must say what to call the accessors:
+
+~~~ruby
+field :ssn_encrypted, type: String, encrypted: {decrypt_as: :ssn}
+~~~
+
+Without either, declaring the field raises an `ArgumentError`.
+
+## Step 2: Pass options
+
+`encrypted: true` accepts the defaults. Supply a Hash to change them:
+
+~~~ruby
+class User
+  include Mongoid::Document
+
+  field :name,                             type: String
+  field :encrypted_bank_account_number,    type: String, encrypted: true
+  field :encrypted_social_security_number, type: String, encrypted: true
+  field :encrypted_life_history,           type: String, encrypted: {compress: true, random_iv: true}
+  field :encrypted_age,                    type: String, encrypted: {type: :integer}
+end
+~~~
+
+* `type:` — what the decrypted value is coerced to. See the table in the
+  [Guide](guide.html#step-4-choose-the-type). Default: `:string`
+* `random_iv:` — a new random initialization vector on every write. Default: `false`
+* `compress:` — compress before encrypting. Worth it only for large values. Default: `false`
+* `version:` — encrypt with a specific configured cipher rather than the primary one.
+* `decrypt_as:` — the name to give the generated accessors.
+
+Note that `random_iv` defaults to **`false`** here, the opposite of the Active Record attribute type.
+Turn it on for any field you do not query:
+
+~~~ruby
+field :encrypted_life_history, type: String, encrypted: {random_iv: true}
+~~~
+
+The field is stored as a `String` whatever `type:` says, because the encrypted value is always text.
+`type:` only decides what the getter coerces the decrypted value back into, so `user.age` returns an
+`Integer`.
+
+## Step 3: Query an encrypted field
+
+Only the encrypted field exists in MongoDB, so queries use the encrypted name and the encrypted
+value:
+
+~~~ruby
+user = User.where(encrypted_bank_account_number: SymmetricEncryption.encrypt("12345")).first
+~~~
+
+This works only when the field was encrypted with `random_iv: false`, the default here. With a random
+initialization vector the same input encrypts to a different value every time, so nothing matches.
+
+Querying by the decrypted name finds nothing, and does not raise:
+
+~~~ruby
+User.where(bank_account_number: "12345").first
+# => nil, always. There is no such field in MongoDB.
+~~~
+
+Only equality works. Ranges, ordering, and regular expressions operate on ciphertext and are
+meaningless.
+
+## Validations
+
+To ensure a value is encrypted before it is saved:
+
+~~~ruby
+class User
+  include Mongoid::Document
+
+  field :encrypted_ssn, type: String, encrypted: true
+
+  validates :encrypted_ssn, symmetric_encryption: true
+end
+~~~
+
+## Standalone Mongoid
+
+Outside Rails, initialize both libraries yourself:
+
+~~~ruby
+require "mongoid"
+require "symmetric-encryption"
+
+Mongoid.logger = Logger.new($stdout)
+Mongoid.load!("config/mongoid.yml")
+
+SymmetricEncryption.load!("config/symmetric-encryption.yml", "production")
+~~~
+
+## Next steps
+
+* [Guide](guide.html): the library, one step at a time.
+* [Configuration](configuration.html): the configuration file and the keystores.
+* [Security](security.html): authenticated encryption and PCI compliance.
+
+
+---
+
+<!-- source: docs/files.md -->
+
+## Files and Streams
+
+
+
+`SymmetricEncryption::Writer` and `SymmetricEncryption::Reader` encrypt and decrypt entire files
+and IO streams. Data is processed a block at a time, so files larger than available memory are
+handled without loading them into memory.
+
+Every file or stream written by `Writer` begins with a header that carries a randomly generated
+key and initialization vector, encrypted with the configured cipher, along with the cipher version
+and whether the data was compressed. Because the key and iv are random per file, encrypting the
+same file twice produces different output, and `Reader` needs nothing beyond the configuration to
+read it back. Key rotation does not invalidate existing files: the version in the header selects
+the cipher used to decrypt.
+
+For encrypting and decrypting files from a shell, see the [Command Line](cli.html),
+which uses the same classes.
+
+If encryption is one step in a larger pipeline, reach for
+[IOStreams](https://iostreams.reidmorrison.com/) instead of using `Writer` and `Reader` directly.
+See [Streaming with IOStreams](#streaming-with-iostreams) below.
+
+## Step 1: Encrypt a file
+
+Encrypt an existing file on disk. The contents are streamed, so the file is never fully loaded
+into memory:
+
+~~~ruby
+SymmetricEncryption::Writer.encrypt(source: "customers.csv", target: "customers.csv.enc")
+~~~
+
+Returns the number of unencrypted bytes read from the source.
+
+Write data directly, instead of copying an existing file:
+
+~~~ruby
+SymmetricEncryption::Writer.open("customers.csv.enc") do |file|
+  file.write "id,name\n"
+  file.write "1,Jack\n"
+end
+~~~
+
+Write a string that is already in memory:
+
+~~~ruby
+SymmetricEncryption::Writer.write("secret.enc", "Keep this safe")
+~~~
+
+## Step 2: Decrypt a file
+
+Decrypt an entire file to another file:
+
+~~~ruby
+SymmetricEncryption::Reader.decrypt(source: "customers.csv.enc", target: "customers.csv")
+~~~
+
+Read a line at a time, without writing an unencrypted copy to disk:
+
+~~~ruby
+SymmetricEncryption::Reader.open("customers.csv.enc") do |file|
+  file.each_line { |line| puts line }
+end
+~~~
+
+Read the entire decrypted file into memory. Not recommended for large files:
+
+~~~ruby
+data = SymmetricEncryption::Reader.read("customers.csv.enc")
+~~~
+
+## Step 3: Compress before encrypting
+
+Compression is applied before encryption, and is on by default. `Reader` decompresses
+automatically: the header records whether the data was compressed, so nothing needs to be
+supplied when reading.
+
+The default is `false` only when the target file name ends in an extension that indicates the
+data is already compressed (`.zip`, `.gz`, `.gzip`, and the zip based Excel formats such as
+`.xlsx`). A stream has no file name to go by, so it is always compressed unless told otherwise.
+Set `compress` explicitly to override either default:
+
+~~~ruby
+SymmetricEncryption::Writer.encrypt(source: "photo.jpg", target: "photo.jpg.enc", compress: false)
+~~~
+
+## Step 4: Detect changes to an encrypted file
+
+`aes-256-cbc`, the default cipher, keeps a file secret but does not detect changes to it. Anyone
+who can write to the file can change it, and what comes back out is whatever those changed bytes
+decrypt to.
+
+Configuring an authenticated cipher, `aes-256-gcm`, changes that: a file that has been tampered
+with, or truncated, fails to decrypt instead of returning data. Nothing about the code above
+changes, files are simply written and read as before. See
+[Security](security.html) for how a stream of any size is
+verified as it is read.
+
+## Step 5: Use a stream instead of a file
+
+Anywhere a file name is accepted, an IO stream can be supplied instead. This is how encrypted
+data is produced for, or consumed by, a library that works with streams rather than paths.
+
+Encrypt a file on disk into memory:
+
+~~~ruby
+require "stringio"
+
+buffer = StringIO.new(+"".b)
+SymmetricEncryption::Writer.encrypt(source: "customers.csv", target: buffer)
+
+encrypted = buffer.string
+~~~
+
+Note that `buffer` is closed when the block completes, since `Writer` closes the stream it was
+given. `StringIO#string` is still readable afterwards. To keep the stream open, build the writer
+with `.new` instead of `.open` and call `close(false)`.
+
+Decrypt from a stream:
+
+~~~ruby
+SymmetricEncryption::Reader.read(StringIO.new(encrypted))
+~~~
+
+### Who closes what
+
+* `Writer.open` and `Reader.open` **with a block** close both the encrypted stream and the
+  underlying file or stream when the block completes.
+* **Without a block** they return the reader or writer and closing it is the caller's
+  responsibility. Calling `close` on it also closes the underlying stream.
+* `close(false)` closes only the encryption layer and leaves the underlying stream open. `Writer`
+  must be closed before the stream beneath it, since closing is what writes the final block.
+
+## What `Reader.open` yields
+
+`Reader.open` yields one of two objects, depending on whether the data was compressed:
+
+* `Zlib::GzipReader` for compressed data, which is the default for anything this gem writes.
+* `SymmetricEncryption::Reader` otherwise.
+
+Both support `read`, `read(length)`, `read(length, outbuf)`, `gets`, `readline`, `each_line`,
+`eof?`, `pos`, `rewind`, `close` and `closed?`, which is enough for `IO.copy_stream` and for most
+libraries that accept a stream. Neither is a complete IO implementation, and beyond that common
+set they differ:
+
+| Method | `SymmetricEncryption::Reader` | `Zlib::GzipReader` |
+|---|---|---|
+| `seek`, `size`, `flush` | yes | no |
+| `readpartial`, `getc`, `readbyte`, `getbyte`, `readlines`, `to_io`, `external_encoding` | no | yes |
+| `path`, `fileno`, `binmode`, `set_encoding` | no | no |
+
+Since compression is the default, code that works against an encrypted file written by this gem
+should not rely on `seek` or `size`. If a library needs a method that neither provides, decrypt to
+a `Tempfile` first and hand it a real `File`.
+
+`seek` also differs in cost. On a stream encrypted with `aes-256-gcm` it jumps straight to the
+chunk holding the offset, however far into the file that is. On any other stream it re-reads the
+file up to that point, and `IO::SEEK_END` reads the whole file to find out how long it is. See
+[Seeking](security.html#seeking).
+
+### Encoding
+
+The decrypted bytes are always exact, but the encoding they are tagged with depends on which of
+the two objects produced them. `SymmetricEncryption::Reader#read` returns `ASCII-8BIT` for data
+containing non-ASCII bytes, while `Zlib::GzipReader#read` tags its result with the default
+external encoding, usually `UTF-8`, even for data that is not text at all. So a compressed read
+compares unequal to the original binary string despite holding identical bytes, and an
+uncompressed read raises `Encoding::UndefinedConversionError` when written to a file opened with a
+text encoding.
+
+Avoid both by never routing binary content through a String. Decrypt straight to the target:
+
+~~~ruby
+SymmetricEncryption::Reader.decrypt(source: "photo.jpg.enc", target: "photo.jpg")
+~~~
+
+Or, when the target is a stream, open it in binary mode:
+
+~~~ruby
+SymmetricEncryption::Reader.open("photo.jpg.enc") do |input|
+  File.open("photo.jpg", "wb") do |output|
+    IO.copy_stream(input, output)
+  end
+end
+~~~
+
+Where a String is unavoidable, call `.b` on it before comparing it with, or appending it to, other
+binary data.
+
+## Sending encrypted data to an HTTP client
+
+Most HTTP clients accept a readable IO as the request body. `Net::HTTP` requires either a
+`Content-Length` or `Transfer-Encoding: chunked` when `body_stream` is used.
+
+Encrypt to a temporary file, then upload it. The encrypted size is known up front, so
+`Content-Length` can be set:
+
+~~~ruby
+require "tempfile"
+
+Tempfile.create(["upload", ".enc"]) do |encrypted|
+  SymmetricEncryption::Writer.encrypt(source: "customers.csv", target: encrypted.path)
+
+  File.open(encrypted.path, "rb") do |io|
+    request                 = Net::HTTP::Post.new(uri)
+    request["Content-Type"] = "application/octet-stream"
+    request.content_length  = File.size(encrypted.path)
+    request.body_stream     = io
+
+    Net::HTTP.start(uri.host, uri.port, use_ssl: true) { |http| http.request(request) }
+  end
+end
+~~~
+
+To avoid writing the encrypted copy to disk at all, encrypt through a pipe and send it chunked.
+Nothing larger than the pipe buffer is held in memory:
+
+~~~ruby
+read_io, write_io = IO.pipe
+
+producer = Thread.new do
+  SymmetricEncryption::Writer.open(write_io) do |file|
+    IO.copy_stream("customers.csv", file)
+  end
+end
+
+request                      = Net::HTTP::Post.new(uri)
+request["Transfer-Encoding"] = "chunked"
+request.body_stream          = read_io
+
+Net::HTTP.start(uri.host, uri.port, use_ssl: true) { |http| http.request(request) }
+producer.join
+~~~
+
+## Sending decrypted data to another library
+
+To pass the decrypted contents of a file to a library or method that reads a stream, hand it the
+reader itself. Nothing is written to disk and the whole file is not held in memory:
+
+~~~ruby
+SymmetricEncryption::Reader.open("customers.csv.enc") do |io|
+  other_library(io)
+end
+~~~
+
+The same applies to a Rails controller that streams a decrypted file to the browser:
+
+~~~ruby
+def download
+  SymmetricEncryption::Reader.open(document.path) do |io|
+    send_data io.read, filename: "customers.csv", type: "text/csv"
+  end
+end
+~~~
+
+When uploading a decrypted stream, use chunked encoding. The decrypted size is not known before
+the file has been read, and in particular it is **not** the size of the encrypted file:
+
+~~~ruby
+SymmetricEncryption::Reader.open("customers.csv.enc") do |io|
+  request                      = Net::HTTP::Post.new(uri)
+  request["Transfer-Encoding"] = "chunked"
+  request.body_stream          = io
+
+  Net::HTTP.start(uri.host, uri.port, use_ssl: true) { |http| http.request(request) }
+end
+~~~
+
+Setting `request.content_length = File.size("customers.csv.enc")` here silently truncates the
+upload to the size of the encrypted file, which is smaller than the plaintext whenever the file
+was compressed.
+
+## CSV files
+
+`CSV` accepts the reader and the writer directly. Supply `row_sep` when writing, otherwise `CSV`
+attempts to read from and rewind the output stream:
+
+~~~ruby
+require "csv"
+
+SymmetricEncryption::Writer.open("customers.csv.enc") do |file|
+  csv = CSV.new(file, row_sep: "\n")
+  csv << %w[id name]
+  csv << [1, "Jack"]
+end
+
+SymmetricEncryption::Reader.open("customers.csv.enc") do |file|
+  CSV.new(file).each { |row| p row }
+end
+~~~
+
+## Streaming with IOStreams
+
+`Writer` and `Reader` encrypt and decrypt. They do not know about compression formats other than
+gzip, file formats, or where the file lives. The sister project
+[IOStreams](https://iostreams.reidmorrison.com/) does, and has direct support for Symmetric
+Encryption built in. Prefer it whenever encryption is one step among several.
+
+Add both gems to the `Gemfile`. IOStreams treats `symmetric-encryption` as a soft dependency and
+only loads it when a `.enc` file is read or written:
+
+~~~ruby
+gem "iostreams"
+gem "symmetric-encryption"
+~~~
+
+IOStreams derives the pipeline from the file name extensions, so `.enc` alone selects Symmetric
+Encryption, using the same configuration this gem already loaded:
+
+~~~ruby
+require "iostreams"
+
+IOStreams.path("customers.csv.enc").writer do |io|
+  io.write("id,name\n")
+end
+
+IOStreams.path("customers.csv.enc").read
+~~~
+
+Extensions combine, and are applied in order. Reading `customers.csv.gz.enc` decrypts first and
+then decompresses, and writing it does the reverse:
+
+~~~ruby
+IOStreams.path("customers.csv.gz.enc").reader { |io| io.read }
+~~~
+
+The file format and the storage location are extensions of the same idea, which is what makes
+IOStreams worth reaching for. A record at a time out of an encrypted, compressed CSV held in S3,
+never landing on local disk and never held in memory in full:
+
+~~~ruby
+IOStreams.path("s3://my-bucket/customers.csv.gz.enc").each(:hash) do |record|
+  puts record["name"]
+end
+~~~
+
+IOStreams also handles PGP, Zip and BZip2, reads Excel spreadsheets, and reads and writes over
+SFTP and HTTP. See the [IOStreams tutorial](https://iostreams.reidmorrison.com/tutorial) and the
+[list of supported extensions](https://iostreams.reidmorrison.com/extensions).
+
+Use `Writer` and `Reader` from this gem directly when encryption is all that is needed, when the
+encrypted data has no file name to infer a pipeline from, or when adding another dependency is not
+worthwhile.
+
+## Reading files encrypted without a header
+
+Files written by other tools, or by `Writer` with `header: false`, carry no version information.
+Supply the cipher version explicitly when reading them:
+
+~~~ruby
+SymmetricEncryption::Reader.read("legacy.enc", version: 0)
+~~~
+
+Symmetric Encryption never guesses which cipher to use. Decrypting with the wrong key can appear
+to succeed and return meaningless data, so a file with no header and no `version` uses the
+current primary cipher and fails loudly if that is not the one it was encrypted with.
+
+## Next steps
+
+* [Security](security.html): authenticated encryption, and verifying a stream as it is read.
+* [Command Line](cli.html): encrypting and decrypting files from a shell.
+* [Guide](guide.html): the library, one step at a time.
+* [API](api.html): the full `Writer` and `Reader` reference.
+
+
+---
+
+<!-- source: docs/cli.md -->
+
+## Command Line
+
+
+
+The `symmetric-encryption` command generates configuration files and keys, rotates keys, and
+encrypts and decrypts files and strings.
+
+~~~
+symmetric-encryption --help
+~~~
+
+Each environment has its own keys, so most commands must be run in the environment they apply to.
+Generating a configuration file and rotating keys are the exceptions: run those once and copy the
+result to the environments that need it.
+
+## Step 1: Point it at your configuration
+
+The command reads `config/symmetric-encryption.yml` in the current directory, for the environment in
+`SYMMETRIC_ENCRYPTION_ENV`, `RACK_ENV` or `RAILS_ENV`, defaulting to `development`.
+
+Override either per invocation:
+
+~~~
+symmetric-encryption --config path/to/symmetric-encryption.yml --env production --decrypt secret.enc
+~~~
+
+Or set them in the environment, so they do not have to be repeated:
+
+~~~shell
+export SYMMETRIC_ENCRYPTION_CONFIG="~/application/common/config/symmetric-encryption.yml"
+export SYMMETRIC_ENCRYPTION_ENV="production"
+~~~
+
+## Step 2: Encrypt and decrypt files
+
+~~~
+symmetric-encryption --encrypt large_file.csv --output large_file.csv.enc
+~~~
+
+Compression is applied by default when encrypting a file. Turn it off with `--no-compress`:
+
+~~~
+symmetric-encryption --encrypt photo.jpg --output photo.jpg.enc --no-compress
+~~~
+
+Decrypt:
+
+~~~
+symmetric-encryption --decrypt large_file.csv.enc --output large_file.csv
+~~~
+
+Without `--output`, the result goes to stdout, so an encrypted file can be inspected without ever
+writing a decrypted copy to disk:
+
+~~~
+symmetric-encryption --decrypt large_file.csv.enc | wc -l
+symmetric-encryption --decrypt large_file.csv.enc | grep "Hello"
+symmetric-encryption --decrypt large_file.csv.enc | head
+~~~
+
+Without a file name, input is read from stdin, so the command composes with a pipeline:
+
+~~~
+cat large_file.csv | symmetric-encryption --encrypt --output large_file.csv.enc
+~~~
+
+## Step 3: Encrypt strings for configuration files
+
+Prompt for a value, masked, and print its encrypted form:
+
+~~~
+symmetric-encryption --encrypt --prompt
+~~~
+
+You are asked for the value twice, so a typo cannot be encrypted unnoticed. Decrypt one the same way:
+
+~~~
+symmetric-encryption --decrypt --prompt
+~~~
+
+Both need the `highline` gem, which is not a dependency of this gem:
+
+~~~ruby
+gem "highline"
+~~~
+
+Generate a random password and print it with its encrypted form, ready to paste into a
+configuration file:
+
+~~~
+symmetric-encryption --new-password
+symmetric-encryption --new-password 32
+~~~
+
+Once keys have been rotated, re-encrypt the values already sitting in your configuration files.
+Values that cannot be decrypted in the current environment are left alone:
+
+~~~
+symmetric-encryption --re-encrypt "**/*.yml"
+~~~
+
+## Step 4: Manage keys
+
+See [Key Rotation](key_rotation.html) for when and why to run these.
+
+~~~
+symmetric-encryption --generate --app-name my_app     # New configuration file and keys
+symmetric-encryption --rotate-keys                    # New data encryption key
+symmetric-encryption --rotate-kek                     # New key encrypting keys only
+symmetric-encryption --activate-key                   # Make the highest version primary
+symmetric-encryption --cleanup-keys                   # Remove all but the highest version
+~~~
+
+`--cleanup-keys` names the versions it is about to remove and asks before removing them, because
+data encrypted with a removed key can no longer be read. Use `--force` to skip the prompt in a
+script. When stdin is not a terminal it does not prompt at all, but it still names the versions.
+
+## Option reference
+
+### Files and strings
+
+| Option | Description |
+|---|---|
+| `-e`, `--encrypt [FILE]` | Encrypt a file, or read from stdin when no file is supplied. |
+| `-d`, `--decrypt [FILE]` | Decrypt a file, or read from stdin when no file is supplied. |
+| `-o`, `--output FILE` | Write the result to this file. Default: stdout. |
+| `-P`, `--prompt` | Prompt for a string to encrypt or decrypt instead of using a file. |
+| `-z`, `--compress` | Compress the output. Default when encrypting files. |
+| `-Z`, `--no-compress` | Do not compress. Default when encrypting strings. |
+| `-n`, `--new-password [SIZE]` | Generate a random URL-safe base64 password. Default size: 22. |
+| `-r`, `--re-encrypt [PATTERN]` | Re-encrypt matching files. Default: `**/*.{yml,rb}` |
+| `-V`, `--key-version NUMBER` | Cipher version to encrypt or re-encrypt with. Default: the primary cipher. |
+
+### Configuration and keys
+
+| Option | Description |
+|---|---|
+| `-g`, `--generate` | Generate a new configuration file and keys for every environment. |
+| `-s`, `--keystore NAME` | `file`, `environment`, `heroku`, `aws` or `gcp`. Default: `file`. |
+| `-a`, `--app-name NAME` | Application name, used in key file and variable names. Default: `symmetric-encryption`. |
+| `-S`, `--environments LIST` | Comma separated. Default: `development,test,release,production`. |
+| `-C`, `--cipher-name NAME` | Default: `aes-256-cbc`. |
+| `-K`, `--key-path PATH` | Where key files are written. Default: `~/.symmetric-encryption`. |
+| `--key-permissions LIST` | Octal permissions the generated key files may have. Default: `0600,0400`. |
+| `-B`, `--regions LIST` | AWS KMS regions to encrypt the data key with. |
+| `-m`, `--migrate` | Migrate an older configuration file to the current format. |
+
+### Key rotation
+
+| Option | Description |
+|---|---|
+| `-R`, `--rotate-keys` | Generate a new key version and update the configuration file. |
+| `-U`, `--rotate-kek` | Replace the key encrypting keys only; the data encryption key is unchanged. |
+| `-D`, `--rolling-deploy` | Add the new key second so it can be deployed before it is activated. |
+| `-A`, `--activate-key` | Move the highest version key to the top, making it the primary. |
+| `-X`, `--cleanup-keys` | Remove every key except the highest version. |
+| `--force` | Do not ask before removing keys with `--cleanup-keys`. |
+
+### General
+
+| Option | Description |
+|---|---|
+| `-c`, `--config PATH` | Configuration file. Default: `config/symmetric-encryption.yml`. |
+| `-E`, `--env NAME` | Environment to use from the configuration file. |
+| `-L`, `--ciphers` | List the OpenSSL ciphers available on this machine. |
+| `-v`, `--version` | Print the Symmetric Encryption and OpenSSL versions. |
+| `-h`, `--help` | Print the full option list. |
+
+## Next steps
+
+* [Key Rotation](key_rotation.html): introducing a new key without downtime.
+* [Configuration](configuration.html): the configuration file and the keystores.
+* [Files](files.html): the same operations from Ruby.
+
+
+---
+
+<!-- source: docs/key_rotation.md -->
+
+## Key Rotation
+
+
+
+According to the PCI Compliance documentation: "Cryptographic keys must be changed on an annual basis."
+
+During the transition period of moving from one encryption key to another symmetric-encryption supports multiple 
+Symmetric Encryption keys. Since every encrypted value has a header that contains the version number of the key
+that was used to encrypt it, that key will be used to decrypt it, even though a new key is already active and
+is being used to encrypt new values.
+
+The active key is the first key in the list in `symmetric-encryption.yml`. Other keys are only used to decrypt
+values that were encrypted with those keys.
+
+Encryption keys are secured (encrypted) using a Key Encryption Key (RSA Private key). New keys are secured using the
+same Key Encryption Key, so that multiple encryption keys can be secured at the same time.
+
+
+## Recommended steps
+
+Below are the recommended steps to perform "hot" key rotation, so that the encryption key can be changed without
+requiring system downtime or maintenance window.
+
+The steps can be reduced if they are being performed during a maintenance window. In this case do not supply
+the `--deploy` option below so that new key will be active immediately, and skip step 4 below.
+
+## Step 1: Add the new key as secondary key
+
+During a rolling deploy it is possible for servers to encrypt data using a new
+key before the other servers have been updated. This would result in cipher
+errors should any of the servers try to decrypt the data since they do not have
+the new key.
+
+To avoid this race-condition add the new key as the second key in the configuration
+file. That way it will continue decrypting using the current key, but can also
+decrypt with the new key during the rolling deploy.
+
+For example, with Symmetric Encryption v4, use the command line interface to update the config file 
+and generate the new keys:
+
+    symmetric-encryption --rotate-keys --rolling-deploy  --app-name my_app
+
+The `--rolling-deploy` option stores the new key as the second key so that it will not be activated yet.
+
+Replace `my_app` with the name of the application that is going to use this key. Recommend using lower case.
+
+By default a new key is generated for every environment, to limit it to just production:
+
+    symmetric-encryption --rotate-keys --rolling-deploy  --app-name my_app --environments production
+    
+The command names the environments it rotated. Development and test hold their key in the configuration file
+itself, so there is no keystore to generate a new key from and they are left unchanged.
+
+Copy the key file to every server in that particular environment that runs the application or uses Symmetric Encryption.
+
+If the keys for multiple environments are generated above, then move the relevant key files to the servers for that environment.
+
+New key files are written alongside the current ones, wherever the configuration file says they are. Supply
+`--key-path` to write them somewhere else. By default the key files are located in `/etc/symmetric-encryption`.
+
+    
+## Step 2: Re-encrypt all passwords in the source repository
+
+Passwords, such as those for the database, need to be re-encrypted using the new key.
+Scan the source code repository for YAML files or other files that contain any encrypted passwords or
+other encrypted values.
+
+Since the new key is the secondary key, its version must be supplied when re-encrypting.
+
+For example, with Symmetric Encryption v4, re-encrypt yaml files:
+
+    symmetric-encryption --re-encrypt --key-version 5
+    
+Where key-version `5` above must be the version of the new key generated above.
+
+Note:
+* Since the keys for each environment are different, the above step must be run in each
+  environment and then the modified files committed back into version control. 
+    
+## Step 3: Deploy
+
+Deploy the updated source code to each environment so that the new key is available to all
+servers for decryption purposes.
+
+## Step 4: Activate the new key
+
+Once the new key has been deployed as a secondary key, the next deploy can move
+the new key to the top of the list so that it will be the active key for encrypting new data.
+The previous key should be kept as the second key in the list so that it can continue to
+decrypt old data using the previous key(s).
+
+Move the new key ( the key with the highest version ) to the top of the list so that all 
+new data is encrypted with this key.
+
+    symmetric-encryption --activate-key
+
+Restart the application so that it will encrypt using the new encryption key.
+
+## Step 5: Re-encrypting existing data
+
+For PCI Compliance it is necessary to re-encrypt old data with the new key and
+then to destroy the old key so that it cannot be used again.
+
+The sister project [RocketJob](https://rocketjob.reidmorrison.com) comes with a batch job to re-encrypt
+all the data in a relational database for you. Uses multiple workers concurrently to spread the load, 
+and is capable of re-encrypting terabytes of data. With built-in throttling mechanisms to allow
+re-encryption to continue while live traffic is being processed.
+
+To kick off the re-encryption job, run this from the console or via a migration:
+
+~~~ruby
+RocketJob::Jobs::ReEncrypt::RelationalJob.start
+~~~
+    
+A job is created for every database table that contains a column starting with `encrypted_`.
+The job is throttled in 2 ways:
+* Only one job instance is permitted to run at a time.
+* For each job at most 100 workers will work on that table at a time.
+
+Both of the above throttle are configurable and can be tuned for your environment,
+by modifying the values below:
+
+~~~ruby
+RocketJob::Jobs::ReEncrypt::RelationalJob.throttle_running_jobs   = 1
+RocketJob::Jobs::ReEncrypt::RelationalJob.throttle_running_slices = 100
+~~~
+
+Custom throttles can be added to the jobs, for example to throttle based on database slave delay, etc.
+
+## Step 6: Re-encrypting Files
+
+Remember to re-encrypt any files on disk that were encrypted with Symmetric Encryption
+if they need to be kept after the old encryption key has been destroyed.
+
+For example, with Symmetric Encryption v4, re-encrypt files:
+
+    symmetric-encryption --re-encrypt "/export/**/*"
+    
+Replace `"/export/**/*"` above as needed to point to where the encrypted files are that
+should be re-encrypted using the new key.
+    
+## Step 7: Remove old key from configuration file
+
+Once all data and files have been re-encrypted using the new key, remove the
+old key from the configuration file. 
+
+    symmetric-encryption --cleanup-keys
+
+If you get cipher errors, you can restore the old key in the configuration file and 
+then re-encrypt that data too.
+
+## Step 8: Destroying old key
+
+Once sufficient time has passed and you are 100% certain that there is no data
+around that is still encrypted with the old key, wipe the old key from all the production
+servers.
+## Using more than one key at a time
+
+The same versioning that makes rotation work also makes it possible to encrypt different data with
+different keys at the same time. There are two quite different things people want here, and they
+have different answers.
+
+
+### Different keys for different data
+
+Give each key its own version in the configuration file, and name the version when encrypting:
+
+~~~ruby
+encrypted = SymmetricEncryption.encrypt("Hello World", version: 3)
+
+SymmetricEncryption.decrypt(encrypted)
+# => "Hello World"
+~~~
+
+Decryption needs nothing extra. The version is in the header, so the right cipher is chosen
+automatically.
+
+Files and streams take the same option:
+
+~~~ruby
+SymmetricEncryption::Writer.open("archive.enc", version: 3) { |file| file.write(data) }
+~~~
+
+Active Record attributes and Mongoid fields take it when they are declared:
+
+~~~ruby
+class Person < ActiveRecord::Base
+  attribute :ssn,     :encrypted
+  attribute :api_key, :encrypted, version: 3
+end
+
+class Person
+  include Mongoid::Document
+
+  field :encrypted_ssn,     type: String, encrypted: true
+  field :encrypted_api_key, type: String, encrypted: {version: 3}
+end
+~~~
+
+Changing the version of an attribute leaves values that were already written readable, since each
+value records the version it was encrypted with. New values are written with the new key, so the
+data moves over as records are saved.
+
+Two things to know before relying on this:
+
+* The command line interface treats every version as a rotation of the same key.
+  `--activate-key` moves the highest version to the top, and `--cleanup-keys` removes everything
+  except the highest. `--cleanup-keys` names the versions it is about to remove and asks first,
+  but `--activate-key` will still reorder a configuration file that holds keys for more than one
+  purpose, which changes which key new data is encrypted with.
+* All of the ciphers have to use a compatible `encoding`, since a value is decoded before its
+  header is read. `:base64` and `:base64strict` work together, and mixing anything else is
+  refused when the configuration file is loaded.
+
+**If this is a Rails application, and the data is nothing but Active Record attributes, use
+[Active Record encryption](migrating.html) instead.** `encrypts :ssn, key: "..."` does the
+same job, without a version number to allocate and without the two warnings above.
+
+### A key per customer
+
+The version is a single byte, so a configuration file holds at most 256 ciphers. That is plenty
+for rotating a key, and nowhere near enough for a key per customer.
+
+Keys held somewhere else, usually a database table and each encrypted with the global cipher,
+are used with `with_cipher`:
+
+~~~ruby
+class Customer < ActiveRecord::Base
+  attribute :encryption_key, :encrypted
+
+  def cipher
+    @cipher ||= SymmetricEncryption::Cipher.new(
+      key:         encryption_key,
+      cipher_name: "aes-256-gcm",
+      version:     1
+    )
+  end
+end
+
+SymmetricEncryption.with_cipher(customer.cipher) do
+  person.update!(ssn: "123-45-6789")
+end
+~~~
+
+Everything encrypted or decrypted inside the block uses that customer's key: Active Record
+attributes, Mongoid fields, files and streams alike. Data encrypted with the configured ciphers
+is still readable inside the block, so a customer key does not cut the application off from
+everything else it encrypted.
+
+In a Rails application the natural place for it is around the request:
+
+~~~ruby
+class ApplicationController < ActionController::Base
+  around_action :with_customer_encryption_key
+
+  def with_customer_encryption_key(&block)
+    return yield if current_customer.nil?
+
+    SymmetricEncryption.with_cipher(current_customer.cipher, &block)
+  end
+end
+~~~
+
+Because the key is chosen by what is in scope rather than by what is in the data, versions no
+longer have to be unique across customers. Two customers can both use version 1.
+
+#### Use an authenticated cipher
+
+That is also the risk. Decrypting one customer's data while another customer's cipher is in
+scope decrypts it with the wrong key, and nothing in the value says which customer it belonged
+to.
+
+With `aes-256-gcm` that fails, loudly:
+
+~~~ruby
+SymmetricEncryption.with_cipher(other_customer.cipher) do
+  SymmetricEncryption.decrypt(value)
+end
+# OpenSSL::Cipher::CipherError
+~~~
+
+With `aes-256-cbc` it cannot be detected. Decryption occasionally succeeds with the wrong key and
+returns whatever that key produces. Use an authenticated cipher for anything encrypted this way.
+See [Security](security.html).
+
+#### Rotating a customer's key
+
+Supply the previous key so that data encrypted with it is still readable while new data is
+encrypted with the new one:
+
+~~~ruby
+SymmetricEncryption.with_cipher(customer.cipher, secondary_ciphers: [customer.previous_cipher]) do
+  Person.where(customer_id: customer.id).find_each { |person| person.update_column(:ssn, person.ssn) }
+end
+~~~
+
+Once nothing is left holding the old key, drop it from the call.
+
+#### Where the scope reaches
+
+The scope belongs to the current fiber. Threads and fibers started inside the block inherit it,
+which includes Enumerators, and what they do with it does not leak back out.
+
+A thread that already existed does not inherit it, because the scope is copied when a thread is
+created. Handing work to a thread pool, or to a background job, runs that work without the
+scope. Set it again there:
+
+~~~ruby
+class PersonJob < ApplicationJob
+  def perform(customer_id, person_id)
+    customer = Customer.find(customer_id)
+    SymmetricEncryption.with_cipher(customer.cipher) do
+      # ...
+    end
+  end
+end
+~~~
+
+## Next steps
+
+* [Command Line](cli.html): every option of the `symmetric-encryption` command.
+* [Configuration](configuration.html): the configuration file and the keystores.
+* [Security](security.html): authenticated encryption, which matters when using more than one key.
+
+
+---
+
+<!-- source: docs/security.md -->
+
+## Security
+
+
+
+This page covers detecting tampering with an authenticated cipher, and what Symmetric Encryption
+contributes towards PCI compliance.
+
+## Authenticated encryption
+`aes-256-cbc`, the default cipher, keeps data secret but does not detect changes to it. Anyone
+who can write to the encrypted value can change it, and the value that comes back out of
+`SymmetricEncryption.decrypt` is whatever those changed bytes decrypt to.
+
+An authenticated cipher, `aes-256-gcm`, produces an auth tag along with the encrypted data. The
+tag is checked when the value is decrypted, and decryption fails if anything at all has changed.
+
+~~~yaml
+production:
+  ciphers:
+    - key_filename:       /etc/symmetric-encryption/production_v2.key
+      cipher_name:        aes-256-gcm
+      version:            2
+      encoding:           :base64strict
+      always_add_header:  true
+      key_encrypting_key:
+        aws:
+          master_key_alias: alias/symmetric-encryption/production
+~~~
+
+Nothing else changes. `SymmetricEncryption.encrypt` and `attribute :ssn, :encrypted` behave
+exactly as before:
+
+~~~ruby
+encrypted = SymmetricEncryption.encrypt("Hello World")
+SymmetricEncryption.decrypt(encrypted)
+# => "Hello World"
+~~~
+
+## What is protected
+
+The auth tag covers the encrypted data _and_ the header, so the version, the compression flag,
+the initialization vector and the cipher name cannot be changed either. Decrypting a value that
+has been tampered with anywhere raises `OpenSSL::Cipher::CipherError` instead of returning data:
+
+~~~ruby
+SymmetricEncryption.decrypt(tampered_value)
+# OpenSSL::Cipher::CipherError
+~~~
+
+The auth tag is always the full 16 bytes. OpenSSL accepts a shorter one, and a truncated tag is
+not expensive to forge, so a value carrying a short tag is rejected rather than trusted.
+
+An authenticated cipher also refuses to decrypt a value that has no auth tag at all. Without
+that check, removing the tag would be enough to skip the check entirely.
+
+## Encrypted values are always larger
+
+An authenticated value always carries a header, whatever `always_add_header` is set to, because
+that is where the auth tag lives. Expect roughly 30 bytes more per value than `aes-256-cbc` with
+no header: 6 bytes of header, 2 + 12 bytes of initialization vector, and 2 + 16 bytes of auth tag.
+
+## Values that have to be queried
+
+A value that is used in a `where` clause has to encrypt to the same ciphertext every time, which
+is what `random_iv: false` is for:
+
+~~~ruby
+class User < ActiveRecord::Base
+  attribute :api_key, :encrypted, random_iv: false
+end
+
+User.where(api_key: SymmetricEncryption.encrypt("secret", random_iv: false))
+~~~
+
+This works with `aes-256-gcm`, but it does not work the way it does for `aes-256-cbc`. Re-using
+one initialization vector across different values is far more damaging for an authenticated
+cipher than it is for `aes-256-cbc`: it exposes the encrypted data and makes the auth tag
+forgeable. So the initialization vector is derived from the value being encrypted rather than
+taken from the configuration. The same value still encrypts to the same result, which is what
+makes the query work, and two different values never share an initialization vector.
+
+A configured `iv:` is therefore ignored by an authenticated cipher. Every value gets its own.
+
+Unlike Active Record encryption, the key for these values can still be rotated. See
+[Key Rotation](key_rotation.html).
+
+## Files and streams
+
+Files and streams work exactly as they do with any other cipher:
+
+~~~ruby
+SymmetricEncryption::Writer.open("file.enc") { |file| file.write("data") }
+SymmetricEncryption::Reader.open("file.enc", &:read)
+~~~
+
+There is a problem to solve behind that, though. The auth tag of an authenticated cipher only
+exists once everything has been encrypted, and it can only be checked once everything has been
+decrypted. Reading a large file as one encrypted value would mean handing out data long before
+there was any way to know whether it had been tampered with, which is the one thing the cipher
+is there to prevent.
+
+So a stream is split into chunks, each with its own auth tag, and each chunk is verified before
+any of it is returned. Which of the two forms a stream takes is decided by how much data there
+turns out to be, and needs nothing from the caller:
+
+* Up to one chunk of data, 64 KB by default, is written as a single encrypted value with its
+  auth tag in the header, exactly as an encrypted string is written. No chunk overhead at all.
+* More than that is written as a chunked stream, at a cost of 16 bytes per chunk. That is 0.02%
+  with the default chunk size.
+
+Nothing is written until that is known, not even the header, because the smaller form has to put
+its auth tag in the header.
+
+Reading decrypts a whole chunk at a time and holds it, handing out whatever the caller asks for,
+so `read`, `read(count)`, `gets` and `each_line` behave as they always have. Only one chunk is
+held in memory at a time, so the size of the file does not matter.
+
+## Seeking
+
+Chunking also makes a stream seekable. Each chunk is encrypted on its own, against a nonce
+derived from where it sits in the stream, so the chunk holding an offset can be decrypted without
+decrypting anything before it:
+
+~~~ruby
+SymmetricEncryption::Reader.open("file.enc") do |file|
+  file.seek(-1024, IO::SEEK_END)
+  file.read
+end
+~~~
+
+One chunk is read, however far into the file the offset is. `IO::SEEK_END` needs the size of the
+decrypted stream, and a chunked stream works that out from the size of the encrypted stream
+rather than by decrypting it, so this is how to ask how much data a stream holds:
+
+~~~ruby
+SymmetricEncryption::Reader.open("file.enc") do |file|
+  file.seek(0, IO::SEEK_END)
+  file.pos
+end
+~~~
+
+The size of the encrypted stream is the one thing here that no auth tag covers, and nothing is
+trusted to it. A stream that has been truncated leaves a chunk that was written as a middle chunk
+at the end, so reading after a seek fails exactly as reading from the beginning does.
+
+Write the file with `compress: false` if it has to be seekable. `Reader.open` yields a
+`Zlib::GzipReader` for a compressed stream, and that has no `seek` at all. See
+[What `Reader.open` yields](files.html#what-readeropen-yields).
+
+Every other stream is a single cipher text that can only be decrypted from its beginning, so
+seeking backwards re-reads the stream up to the point asked for, and `IO::SEEK_END` reads all of
+it to find out how long it is and then re-reads up to the point asked for.
+
+## What a chunked stream detects
+
+Each chunk is encrypted with a nonce derived from where it sits in the stream, rather than one
+stored next to it, and is authenticated against the bytes of the stream's header. A stored value
+is a value an attacker can change, a derived one is not. So a chunked stream detects:
+
+* Any change to the encrypted data, as any authenticated cipher does.
+* A chunk moved to another position in the stream, or repeated.
+* A chunk moved from a different stream.
+* Any change to the header, including to the version, the compression flag and the chunk size.
+* **Truncation.** Whether a chunk is the last one is part of what it is authenticated against, so
+  cutting the end off a file is detected: the chunk left at the end was encrypted as a middle
+  chunk. Without that, every chunk remaining after a truncation would verify perfectly.
+
+## Choosing the chunk size
+
+64 KB unless `chunk_size` says otherwise. It has to be a power of two between 1 KB and 16 MB:
+
+~~~ruby
+SymmetricEncryption::Writer.open("file.enc", chunk_size: 256 * 1024) do |file|
+  file.write(data)
+end
+~~~
+
+The reader takes the chunk size from the header, so a file written with one chunk size is read
+back without being told what it was. Larger chunks cost less per byte and hold more in memory at
+a time; smaller chunks return the first data sooner.
+
+## Moving existing data to an authenticated cipher
+
+Data already encrypted with `aes-256-cbc` cannot be decrypted by an `aes-256-gcm` cipher. Add
+the new cipher as described in [Key Rotation](key_rotation.html) and keep the old one in
+`symmetric-encryption.yml` as a secondary cipher. Every value carries the version of the cipher
+that encrypted it in its header, so old values continue to be read by the old cipher while new
+values are encrypted with the new one.
+
+Values written before headers were enabled carry no version, so they can only be read by
+supplying the version explicitly:
+
+~~~ruby
+SymmetricEncryption.decrypt(old_value, version: 1)
+~~~
+
+## PCI compliance
+The primary purpose of Symmetric Encryption is to secure data at rest and in-flight. It also
+secures encrypted fields in flight between the application servers and the backend
+databases, since the encryption/decryption occurs within the application.
+Additionally, it can be used to secure files containing PII data, securing both the
+network traffic generated while the file is being read/written to a network share
+as well as while the files are at rest locally or on a remote network share.
+
+Symmetric Encryption secures
+* fields/attributes/data at rest.
+* fields/attributes/data fields in flight since those values are encrypted within the application.
+* files at rest.
+* file data in flight when written across the network. 
+
+Key:
+* `data-encrypting key` is the key that is actually used to encrypt and decrypt data.
+* `key-encrypting key` is used to encrypt/decrypt the `data-encrypting key` to keep it secure.
+
+Since Symmetric Encryption is used to encrypt any sensitive data, such fields will
+be refered to as PII (Personally Identifiable Information) and not just PANs as
+mentioned in the PCI DSS.
+
+PCI DSS offers 3 different ways of securing the `data-encrypting key`:
+* "Encrypted with a key-encrypting key"
+* "Within a secure cryptographic device (such as a hardware (host) security module (HSM) or PTS-approved point-of-interaction device)"
+* "As key components or key shares, in accordance with an industry-accepted method"
+
+#### Key-encrypting Key
+
+By default, Symmetric Encryption uses the `key-encrypting key` approach to secure the `data-encrypting key` that
+is actually used to encrypt/decrypt data.
+
+Benefits:
+* Simple.
+* Great place to start.
+
+Disadvantages:
+* As the development team grows, the number of people with access to the source code and therefore the 
+`key-encrypting key` increases.
+* As the system administration team grows, the number of people with access to the `data-encrypting key` increases.
+* Every developer needs to acknowledge in writing that they are a key custodian.
+
+#### Secure cryptographic device
+
+Benefits:
+* `data-encrypting key` is never exposed.
+* Performs encryption with dedicated hardware.
+
+Disadvantages:
+* Usually requires purchasing additional hardware.
+* Cost.
+
+#### Secure centralized Keystore / key share:
+
+Benefits:
+* `key-encrypting key` is not required.
+* Reduces the number of key custodians.
+
+Disadvantages:
+* Access control cannot be secured by userid and password, since such credentials would be stored in the clear on the server.
+* Using a certificate stored in the clear on the system is not sufficient since such certificate could be used 
+  by an attacker to gain access to the `data-encrypting key` by connecting directly to the keystore.
+
+### PCI Procedures
+
+Note that Symmetric Encryption does not address the PCI DSS requirements relating to documentation.
+
+In order to assist with PCI DSS audits, below are some of the ways that Symmetric Encryption 
+assists with _v3.2_ of the [PCI DSS](https://www.pcisecuritystandards.org/security_standards/documents.php)
+
+#### Requirement 3: Protect stored cardholder data
+
+#### 3.4 Strong Cryptography of PII wherever it is stored (PCI DSS v3.2)
+
+3.4.a
+
+Strong Cryptography is used to secure PII data.
+
+The use of this strong cryptography is on a per attribute/column/field level. Not all data is encrypted, only that
+which is considered PII and marked for encryption by the developer.
+
+Testing Procedure:
+* All PII fields are marked for strong cryptography in the source code as follows: 
+
+~~~ruby
+# Rails ActiveRecord example of securing `bank_account_number`
+#
+# The `bank_account_number` column in the database holds the encrypted value.
+class User < ActiveRecord::Base
+  attribute :bank_account_number, :encrypted, random_iv: false
+  attribute :long_string, :encrypted, compress: true
+~~~
+
+~~~ruby
+# Mongoid example of securing `bank_account_number`
+#
+# A column called `encrypted_bank_account_number` should exist in MongoDB
+# that contains the encrypted bank account number. There should not be a column
+# called `bank_account_number`
+class User
+  include Mongoid::Document
+
+  field :encrypted_bank_account_number, type: String,  encrypted: true
+  field :encrypted_long_string,         type: String,  encrypted: {random_iv: true, compress: true}
+~~~
+
+Notes:
+
+* It is recommended to set `random_iv: true` for all fields that are encrypted, since
+the same data will always result in different encrypted output.
+    * However, it is not possible for any field that is used in lookups to use this option.
+    * For example, looking for all previous instances of a specific `bank_account_number` requires
+that the encrypted data always have the same output for the same input.
+    * When the `random_iv` is not set for any field it should be kept short as encrypting
+large amounts of data with the same `data-encrypting key` and `initialization-vector` (IV)
+can eventually expose the `data-encrypting key`
+    * Rotation policies to change the `data-encrypting key` can help mitigate this exposure
+
+3.4.b, 3.4.c
+
+* Browse the data stored in the Database, for example: MySQL, MongoDB, to confirm that
+identified fields are unreadable (not plain text)
+* For any files consumed or generated by the system confirm that
+the required fields, or that the entire file is unreadable (not plain text)
+    * This includes any files uploaded to the system, or made available for download from the system
+
+3.4.d
+
+* Active Record attributes declared with the `:encrypted` type are added to the model's
+`filter_attributes`, so their decrypted values are replaced with `[FILTERED]` in `inspect` and in
+the request parameters written to the Rails logs.
+* Include `SymmetricEncryption::ActiveRecord::ExcludeFromJson` in a model to keep its encrypted
+attributes out of `as_json`, and therefore out of any API response rendered from the model.
+* See the [Frameworks Guide](rails.html) for both.
+* Anywhere else that a decrypted value is written out is outside the scope of Symmetric Encryption.
+    * Use features built into Rails to filter logged PII fields.
+
+#### 3.5 Procedures to protect keys (PCI DSS v3.2)
+
+3.5.1
+
+Review the `production` environment setting in the file `symmetric-encryption.yml`:
+* `ciphers` is the list of encryption keys active in that environment.
+  * The first item in the list is the key being used to encrypt data.
+  * Subsequent items, each with their own version number, are used to decrypt older data.
+  * `key_encrypting_key` is the `key-encrypting key`.
+    * Usually a 2048 bit RSA private key.
+* `key_filename` is the file name of the `data-encrypting key`.
+  * This file was encrypted using the RSA public key contained in the `key-encrypting key` above. 
+* `cipher_name` is the encryption algorithm and block cipher in use.
+  * For example: `aes-256-cbc`, specifies AES 256 bit encryption and uses the CBC block cipher.
+* `encoding` specifies how the encrypted data is encoded into a text form for storage.
+  * For example:  `base64strict` specifies Base 64 encoding without the trailing newline.
+  
+3.5.2
+
+Maintain separation of key custodians so that anyone with access to the `data-encrypting key` 
+does _not_ also have access to the `key-encrypting key`.
+
+* The `data-encrypting key` is limited to the user under which the application runs and
+  to any production system administrator that has root / administrator access to override the read-only
+  restriction
+    * Verify that the `data-encrypting key` is only readable by the application user
+      and not by group or everyone (Example: rails)
+* The `key-encrypting key` is stored in the source code that should only be accessible to the application development team.
+
+3.5.3a
+
+* The `key-encrypting key` uses RSA 2048 bit encryption and therefore exceeds the strength
+  of the `data-encrypting key`.
+* The `data-encrypting key` is always encrypted with the `key-encrypting key`.
+* The `data-encrypting key` must be placed on the system directly by a system administrator
+  and must _not_ be included in the source code, or the source control repository.
+* The `key-encrypting key` is stored in the source code that should only be accessible to the application development team.
+
+3.5.3b
+
+* Verify that the file `key_filename` above is encrypted with the `key-encrypting key`. 
+
+3.5.3c
+
+* The `key-encrypting key` uses RSA 2048 bit encryption and therefore exceeds the strength
+  of the `data-encrypting key`.
+* The `data-encrypting key` is always encrypted with the `key-encrypting key`.
+* The `data-encrypting key` must be placed on the system directly by a system administrator
+  and must _not_ be included in the source code, or the source control repository.
+* The `key-encrypting key` is stored in the source code that should only be accessible to the application development team.
+
+3.5.4
+
+* The `data-encrypting key` is secured by the system administrators in key management repository with proper access controls.
+* The `key-encrypting key` is only stored in the source code accessible to the application development team.
+* Only servers actually running the application should contain the `data-encrypting key`.
+
+#### 3.6 Key Management Procedures (PCI DSS v3.2)
+
+3.6.1a Key Generation
+
+* See the `cipher_name` in `symmetric-encryption.yml` (per 3.5.1 above) and confirm that the encryption algorithm 
+  and strength meet or exceed minimum requirements.
+
+3.6.1b
+
+* Instructions on how new keys are [generated](configuration.html) for the very first time.
+* Instructions on how new keys are generated during the regular [key rotation](key_rotation.html).
+
+3.6.2 Key Distribution
+
+Verify the `data-encrypting key` is copied from a secure location with limited access and installed on the
+required servers. 
+  
+Verify the `key-encrypting key` is copied from the secured source code control system during deployment.
+  
+3.6.3 Key Storage
+
+Verify the `data-encrypting key` is
+* only readable by the application user and not by group or everyone on the production server(s).
+  * See `key_filename` in 3.5.1.
+* stored by the System Administrators in a secure location with limited access.
+  * Backups of the `data-encrypting key` need to be properly secured and controlled.
+  
+Verify the `key-encrypting key` is
+* only readable by the application user and not by group or everyone on the production server(s).
+  * The file `config/symmetric-encryption.yml`.
+* stored in the source code in a private, secure location with limited access.
+  * Backups of the source code need to be properly secured and controlled.
+
+3.6.4, 3.6.5 Key Rotation
+
+* Retiring or replacing active encryption keys: [key rotation](key_rotation.html).
+
+After key rotation the retired/compromised/old `data-encrypting keys` will no longer be used for encrypting data.
+
+The retired/compromised/old `data-encrypting keys` are retained to decrypt old or archived data.
+It is however recommended to remove these old keys once all data has been re-encrypted with the new keys and old
+archive data no longer needs these keys: 
+* Confirm that the prior `data-encrypting keys` are no longer listed in `config/symmetric-encryption.yml`.
+  * After key rotation and re-encryption of all data, there should only be one key listed under the
+    `ciphers` section identified in 3.5.1.
+* Confirm that the prior `data-encrypting keys` are no longer on any of the servers.
+
+3.6.6
+
+N/A, only applies to clear-text keys, whereas in Symmetric Encryption the `data-encrypting key` is secured 
+using a `key-encrypting key`
+
+3.6.7 Unauthorized key substitution
+
+Procedures in place to prevent unauthorized replacement of keys:
+* OS security must limit write access for `data-encryption-keys` to System Administrators only.
+* A `data-encrypting key` encrypted with a different `key-encrypting key` will
+  be rejected by the system on startup.
+
+Other:
+
+The PCI DSS also makes the following recommendation:
+
+"In addition to the above practices, organizations may also wish to consider implementing separation of duties for 
+their security functions so that security and/or audit functions are separated from operational functions. 
+In environments where one individual performs multiple roles (for example, administration and security operations), 
+duties may be assigned such that no single individual has end-to-end control of a process without an independent checkpoint. 
+For example, responsibility for configuration and responsibility for approving changes could be assigned to separate individuals." 
+
+Maintain separation of custodians so that anyone with access to the `data-encrypting key` 
+does _not_ also have access to the `key-encrypting key`.
+
+* The `data-encrypting key` is limited to the user under which the application runs and
+  to any production system administrator that has root / administrator access to override the read-only
+  restriction
+    * Verify that the `data-encrypting key` is only readable by the application user
+      and not by group or everyone (Example: rails)
+* The `key-encrypting key` is stored in the source code that should only be accessible to the application development team.
+
+Recommend that neither of the above key custodians have access to the database backups or media.
+
+## Next steps
+
+* [Configuration](configuration.html): keystores, including AWS KMS and Google Cloud KMS.
+* [Key Rotation](key_rotation.html): rotating keys without downtime.
+* [Files](files.html): encrypting files and streams.
+
+
+---
+
+<!-- source: docs/api.md -->
+
+## API
+
+
+
+Reference for the methods this gem exposes. For a walk through of how to use them, start with the
+[Guide](guide.html).
+
+## SymmetricEncryption.encrypt
+
+~~~ruby
+SymmetricEncryption.encrypt(value, random_iv: SymmetricEncryption.randomize_iv?, compress: false,
+                            type: :string, version: nil, header: nil)
+~~~
+
+Encrypts the supplied value and encodes the result.
+
+Returns the encoded, encrypted value. Base64 text for every encoding other than `:none`, which
+returns raw binary. Returns `nil` when the value is `nil`, and `""` when it is an empty string.
+
+| Parameter | Description |
+|---|---|
+| `value` | The value to encrypt. Anything that is not a String has `#to_s` called on it, unless `type:` says otherwise. |
+| `random_iv` | Use a new random initialization vector every time, so the same input does not encrypt to the same output. Set to `false` when the value must be searchable. Default: `SymmetricEncryption.randomize_iv?`, itself `false` unless configured otherwise. |
+| `compress` | Compress before encrypting. Worth it only for large values. Default: `false` |
+| `type` | The type of the value being encrypted. One of `SymmetricEncryption::COERCION_TYPES`. Default: `:string` |
+| `version` | Encrypt with the configured cipher that has this version, rather than the primary one. The version is written into the header, so nothing is needed when decrypting. Default: the primary cipher. |
+| `header` | Whether to add the header. Default: the cipher's `always_add_header`, itself `true`. |
+
+A header is added regardless of `header:` whenever it is needed to decrypt the value again: when
+`random_iv` or `compress` is true, or when the cipher is an authenticated one.
+
+~~~ruby
+SymmetricEncryption.encrypt("Hello World")
+# => "QEVuQwAANIuPIXv/ii1IP1dF6T0NpQ=="
+
+SymmetricEncryption.encrypt(21, type: :integer)
+SymmetricEncryption.encrypt("Hello World", random_iv: true, compress: true)
+~~~
+
+### Size
+
+An encrypted value is longer than its input. Base64 expands by roughly a third, and the header adds:
+
+| | Header size |
+|---|---|
+| Header only | 6 bytes |
+| With a random IV, `aes-256-cbc` | 24 bytes |
+
+`random_iv: true` adds 2 bytes for the length plus the initialization vector itself, which is 16
+bytes for `aes-256-cbc`. An encrypted key or cipher name in the header adds more again.
+
+## SymmetricEncryption.decrypt
+
+~~~ruby
+SymmetricEncryption.decrypt(encrypted_and_encoded_string, version: nil, type: :string)
+~~~
+
+Decodes and decrypts the supplied value.
+
+Returns the decrypted value, coerced to `type`. Returns `nil` when the value is `nil`, and `""` when
+it is an empty string.
+
+| Parameter | Description |
+|---|---|
+| `encrypted_and_encoded_string` | The value to decrypt. |
+| `version` | Which cipher to decrypt with, for a value that has **no header**. Ignored when the value has one, since the header names its own version. |
+| `type` | The type the value was encrypted as. Must match what was supplied to `encrypt`. Default: `:string` |
+
+Raises `OpenSSL::Cipher::CipherError` when the value cannot be decrypted, and
+`SymmetricEncryption::CipherError` when no configured cipher has the version the header asks for.
+
+**Decryption never falls back to another cipher when one fails.** Decrypting with the wrong key can
+quietly succeed and return meaningless data, so a failure is reported rather than guessed at.
+
+## SymmetricEncryption.try_decrypt
+
+~~~ruby
+SymmetricEncryption.try_decrypt(str)
+~~~
+
+As `decrypt`, but returns `nil` instead of raising when the value cannot be decrypted.
+
+Intended for configuration files that hold passwords for several environments, where the current
+environment holds the key for only one of them:
+
+~~~yaml
+password: <%= SymmetricEncryption.try_decrypt("QEVuQwJAEACOYREfF1cAXU0B...") %>
+~~~
+
+The value it returns should not be relied upon, since it is possible to decrypt data with the wrong
+key and get something back.
+
+## SymmetricEncryption.encrypted?
+
+~~~ruby
+SymmetricEncryption.encrypted?(value)
+~~~
+
+Returns whether the value was encrypted by this library, by looking for the header. It does not
+attempt to decrypt, so it is cheap and does not need the right key.
+
+~~~ruby
+SymmetricEncryption.encrypted?("QEVuQwAANIuPIXv/ii1IP1dF6T0NpQ==")
+# => true
+SymmetricEncryption.encrypted?("Hello World")
+# => false
+~~~
+
+Only reliable for values that carry a header, which is the default. `nil` and `""` return `false`.
+
+## SymmetricEncryption.with_cipher
+
+~~~ruby
+SymmetricEncryption.with_cipher(cipher, secondary_ciphers: []) { ... }
+~~~
+
+Uses the supplied cipher for the duration of the block instead of the configured primary cipher.
+
+Intended for data encrypted with a key of its own, held somewhere other than
+`symmetric-encryption.yml`, such as a key per customer read from a database table. See
+[Key Rotation](key_rotation.html#a-key-per-customer).
+
+~~~ruby
+SymmetricEncryption.with_cipher(customer.cipher) do
+  person.save!
+end
+~~~
+
+Everything encrypted or decrypted inside the block uses that cipher, including Active Record
+attributes, Mongoid fields, files and streams. The configured ciphers are still searched when
+decrypting, so data encrypted before the block is still readable inside it.
+
+Threads and fibers started inside the block inherit the scope. A thread that already existed does
+not, so handing work to a thread pool inside the block runs that work **without** the scope.
+
+## SymmetricEncryption.cipher
+
+~~~ruby
+SymmetricEncryption.cipher            # The primary cipher
+SymmetricEncryption.cipher(3)         # The configured cipher with version 3
+SymmetricEncryption.cipher?           # Whether a primary cipher has been set
+SymmetricEncryption.secondary_ciphers # Ciphers that are only ever decrypted with
+~~~
+
+`cipher(version)` raises `SymmetricEncryption::CipherError` when no configured cipher has that
+version, naming the versions that are available.
+
+## SymmetricEncryption.load!
+
+~~~ruby
+SymmetricEncryption.load!(file_name = nil, env = nil)
+~~~
+
+Loads the configuration. Not needed in Rails, where the railtie does it during boot.
+
+~~~ruby
+SymmetricEncryption.load!("config/symmetric-encryption.yml", "production")
+~~~
+
+Defaults to `Rails.root/config/symmetric-encryption.yml` and `Rails.env`, honouring
+`SYMMETRIC_ENCRYPTION_CONFIG` and `SYMMETRIC_ENCRYPTION_ENV`.
+
+## SymmetricEncryption.random_password
+
+~~~ruby
+SymmetricEncryption.random_password(size = 22)
+~~~
+
+Returns a random URL-safe base64 password.
+
+## Settings
+
+~~~ruby
+SymmetricEncryption.cipher = cipher            # Set the primary cipher directly
+SymmetricEncryption.secondary_ciphers = [...]  # Ciphers that are only decrypted with
+SymmetricEncryption.randomize_iv = true        # Default for random_iv:. Default: false
+SymmetricEncryption.filter_encrypted_attributes = false  # See below. Default: true
+SymmetricEncryption.select_cipher { |encoded, decoded| ... }  # For headerless values
+~~~
+
+`filter_encrypted_attributes` controls whether Active Record attributes declared `:encrypted` are
+added to the model's `filter_attributes`. It is applied when the attribute is declared, so it has to
+be set before the models are loaded. See [Rails](rails.html#keeping-values-out-of-logs).
+
+## Writer and Reader
+
+Encrypt and decrypt files and IO streams. See [Files](files.html) for the full treatment.
+
+~~~ruby
+SymmetricEncryption::Writer.open(file_name_or_stream, compress: nil, **args) { |file| ... }
+SymmetricEncryption::Writer.write(file_name_or_stream, data, **args)
+SymmetricEncryption::Writer.encrypt(source:, target:, **args)
+
+SymmetricEncryption::Reader.open(file_name_or_stream, buffer_size: 16_384, **args) { |file| ... }
+SymmetricEncryption::Reader.read(file_name_or_stream, **args)
+SymmetricEncryption::Reader.decrypt(source:, target:, **args)
+SymmetricEncryption::Reader.empty?(file_name_or_stream)
+SymmetricEncryption::Reader.header_present?(file_name)
+~~~
+
+`Writer.encrypt` and `Reader.decrypt` both return the number of **unencrypted** bytes that passed
+through them, not the size of the encrypted file.
+
+`Writer.new` accepts `version:`, `cipher_name:`, `header:`, `random_key:`, `random_iv:`, `compress:`
+and `chunk_size:`. `Reader.new` accepts `buffer_size:` and `version:`.
+
+## Cipher
+
+Building a cipher by hand, rather than loading one from the configuration file:
+
+~~~ruby
+SymmetricEncryption::Cipher.new(
+  key:               "...",              # Required. Raw binary, exactly the cipher's key length.
+  iv:                "...",              # Optional. Raw binary, exactly the cipher's iv length.
+  cipher_name:       "aes-256-cbc",      # Default: aes-256-cbc
+  version:           0,                  # 0..255. Default: 0
+  always_add_header: true,               # Default: true
+  encoding:          :base64strict       # Default: :base64strict
+)
+~~~
+
+Encodings: `:base64strict`, `:base64`, `:base64urlsafe`, `:base16`, `:none`.
+
+`key` and `iv` are raw binary data of an exact length, not text. See
+[Configuration](configuration.html#supplying-the-key-in-the-configuration-file).
+
+## Coercion types
+
+`SymmetricEncryption::COERCION_TYPES`:
+
+| Type | Ruby class |
+|---|---|
+| `:string` | `String` |
+| `:integer` | `Integer` |
+| `:float` | `Float` |
+| `:decimal` | `BigDecimal` |
+| `:datetime` | `DateTime` |
+| `:time` | `Time` |
+| `:date` | `Date` |
+| `:boolean` | `TrueClass` or `FalseClass` |
+| `:json` | Serialized with JSON |
+| `:yaml` | Serialized with YAML |
+
+## Next steps
+
+* [Guide](guide.html): these methods in context.
+* [Files](files.html): `Writer` and `Reader` in depth.
+* [Configuration](configuration.html): the configuration file and the keystores.
+
+
+---
+
+<!-- source: docs/migrating.md -->
+
+## Migrating
+
+
+
+Moving to Symmetric Encryption from an older version of it, or away from it to Active Record
+encryption.
+
+## To Active Record encryption
+
+Rails 7 added [Active Record encryption](https://guides.rubyonrails.org/active_record_encryption.html).
+For a Rails application whose encrypted data is nothing but Active Record attributes, it is the
+better choice: it is built in, and it is maintained by the Rails team.
+
+This page is for moving those attributes over without re-encrypting the database first, and
+without downtime. Values already in the database keep being read by Symmetric Encryption, while
+every value that is written from then on is encrypted by Active Record.
+
+If the application also encrypts Mongoid fields, files, or passwords in configuration files, keep
+this gem for those. Active Record encryption does not cover them. See
+[the home page](index.html) for what is and is not worth migrating.
+
+### Step 1: Configure Active Record encryption
+
+~~~bash
+bin/rails db:encryption:init
+~~~
+
+Add the generated keys to the Rails credentials, as the Rails guide describes. This is entirely
+separate from `symmetric-encryption.yml`. Both sets of keys are in use during the migration.
+
+### Step 2: Declare the attributes
+
+Replace the `attribute ... :encrypted` declaration with `encrypts`, and name this gem's encryptor
+as a previous encryption scheme:
+
+~~~ruby
+class User < ApplicationRecord
+  # Before
+  # attribute :ssn, :encrypted
+
+  encrypts :ssn, previous: [{encryptor: SymmetricEncryption::ActiveRecord::RailsEncryptor.new}]
+end
+~~~
+
+Active Record decrypts every value with its own encryptor first, and falls back to the previous
+schemes when that fails. Values encrypted by this gem are read by the previous scheme. Values
+encrypted by Active Record are read by Active Record. Both work from the first deploy.
+
+`SymmetricEncryption.load!`, or the Railtie in a Rails application, still has to run, since the
+keys are still read from `symmetric-encryption.yml`.
+
+### Step 3: Attributes that are queried
+
+An attribute declared `random_iv: false` so that it can be used in a `where` clause becomes a
+deterministic attribute, and it needs one extra option:
+
+~~~ruby
+class User < ApplicationRecord
+  # Before
+  # attribute :api_key, :encrypted, random_iv: false
+
+  encrypts :api_key,
+           deterministic: {fixed: false},
+           previous:      [{encryptor: SymmetricEncryption::ActiveRecord::RailsEncryptor.new}]
+end
+~~~
+
+`deterministic: true` on its own encrypts new values with the _oldest_ scheme, which is this
+gem's encryptor, and that encryptor refuses to write. `fixed: false` tells Active Record to
+encrypt with the current scheme instead. Without it, saving the record raises:
+
+~~~
+ActiveRecord::Encryption::Errors::Encryption: SymmetricEncryption::ActiveRecord::RailsEncryptor
+only decrypts, ...
+~~~
+
+Note that queries only find values that Active Record encrypted. A row still holding a value that
+this gem encrypted will not match, so finish step 4 before relying on the query.
+
+### Step 4: Migrate the data
+
+Values move over as records are saved. To migrate the rest, re-save them:
+
+~~~ruby
+User.find_each { |user| user.update_column(:ssn, user.ssn) }
+~~~
+
+`update_column` writes through the attribute type, so the value is decrypted by Symmetric
+Encryption and written back encrypted by Active Record, without running validations or callbacks.
+
+`update!(ssn: user.ssn)` does _not_ work. Assigning the value it already has is not a change, so
+Active Record writes nothing and the row is left as it was. Use `update_column` as above, or
+`user.ssn_will_change!` followed by `user.save!` when validations and callbacks should run.
+
+Check that nothing is left before moving on:
+
+~~~ruby
+User.find_each.count { |user| SymmetricEncryption.encrypted?(user.ssn_before_type_cast) }
+# => 0
+~~~
+
+### Step 5: Remove the previous scheme
+
+Once no value in the database was encrypted by this gem, drop the `previous:` option:
+
+~~~ruby
+class User < ApplicationRecord
+  encrypts :ssn
+end
+~~~
+
+If nothing else in the application uses Symmetric Encryption, remove the gem and
+`symmetric-encryption.yml`. Keep the keys somewhere safe until there is a restored backup that
+proves nothing still needs them.
+
+### Notes
+
+* The encryptor only decrypts. It never writes a value in this gem's format, so a partly migrated
+  application cannot silently go backwards.
+* Only ciphers using one of the base64 encodings are supported, which is the default. A cipher
+  configured with `encoding: :none` returns binary data, which does not belong in the text column
+  Active Record encryption expects.
+* Active Record encryption cannot rotate its deterministic key, while this gem can. If an
+  attribute has to be both queryable and re-keyed, that is a reason not to migrate it. See
+  [Security](security.html).
+
+## Next steps
+
+* [Rails](rails.html): encrypted Active Record attributes in depth.
+* [Key Rotation](key_rotation.html): rotating keys without downtime.
+* [Configuration](configuration.html): the configuration file and the keystores.

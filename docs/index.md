@@ -2,309 +2,196 @@
 layout: default
 ---
 
-## Symmetric Encryption for Ruby Projects using OpenSSL
+## What is Symmetric Encryption?
+{:.no_toc}
 
-Any project that wants to meet PCI compliance has to ensure that the data is encrypted
-whilst in flight and at rest. Amongst many other requirements all passwords
-in configuration files have to be encrypted.
+**Contents**
 
-Symmetric Encryption helps achieve compliance by supporting encryption of data in a simple
-and consistent way for Ruby and Rails projects.
+* TOC
+{:toc}
 
-Symmetric Encryption uses OpenSSL to encrypt and decrypt data, and can therefore
-expose all the encryption algorithms supported by OpenSSL.
+Symmetric Encryption encrypts data at rest in Ruby and Rails applications, using OpenSSL, with the
+encryption keys held outside of the source code.
 
-### Do you need this gem?
+It covers four things:
+
+1. **Model attributes.** Active Record attributes and Mongoid fields that are encrypted in the
+   database and decrypted transparently when read.
+2. **Passwords in configuration files.** Including the database password in `database.yml`, which is
+   decrypted before Rails has finished booting.
+3. **Whole files and streams.** Of any size, encrypted and decrypted as they are read or written,
+   without loading them into memory.
+4. **Key rotation.** Every encrypted value records which key encrypted it, so a new key can be
+   introduced and the old one retired without taking the application down.
+
+## Do you need it?
 
 Rails 7 added [Active Record encryption](https://guides.rubyonrails.org/active_record_encryption.html),
-which encrypts model attributes without any gem at all. For a Rails application whose encrypted
-data is nothing but Active Record attributes, use Active Record encryption. It is built in, it is
-maintained by the Rails team, and this gem does not do that job better.
+which encrypts model attributes with no gem at all. **If everything you need to encrypt is an Active
+Record attribute, use Active Record encryption.** It is built in, it is maintained by the Rails team,
+and this gem does not do that job better.
 
-Symmetric Encryption is for the encryption that Active Record encryption does not cover:
+Symmetric Encryption is for the encryption Active Record encryption does not cover:
 
-* Mongoid fields, without deploying MongoDB's client side field level encryption, which needs
+* **Mongoid fields**, without deploying MongoDB's client side field level encryption, which needs
   `libmongocrypt` and a key management service before it will encrypt anything.
-* Whole files and streams, of any size, without reading them into memory.
-* Standalone Ruby, with no Rails and no Active Record. See [Standalone](standalone.html).
-* Passwords in `database.yml` and other configuration files, decrypted before Rails has
-  finished booting, which is what makes an encrypted database password possible.
-* Data encryption keys held in AWS KMS or Google Cloud KMS. See [Configuration](configuration.html).
-* Rotating the key for a value that has to encrypt to the same ciphertext every time so that it
+* **Whole files and streams**, of any size, without reading them into memory.
+* **Standalone Ruby**, with no Rails and no Active Record.
+* **Passwords in `database.yml`** and other configuration files, decrypted before Rails has finished
+  booting, which is what makes an encrypted database password possible.
+* **Data encryption keys held in AWS KMS or Google Cloud KMS.**
+* **Rotating the key for a value that has to encrypt to the same ciphertext every time** so that it
   can be queried. Active Record encryption cannot rotate its deterministic key.
 
-Already using this gem for Active Record attributes and want to move them to Active Record
-encryption? See [Migrating to Active Record encryption](rails_encryption.html), which reads the
-data already in the database while Active Record encryption writes every new value.
+Already using this gem for Active Record attributes and want to move to Active Record encryption?
+See [Migrating](migrating.html), which reads the data already in the database while Active Record
+encryption writes every new value.
 
-### Examples
+## Quick start
 
-#### Encryption
-
-~~~ruby
-SymmetricEncryption.encrypt "Sensitive data"
-~~~
-
-#### Decryption
+### 1. Install
 
 ~~~ruby
-SymmetricEncryption.decrypt "JqLJOi6dNjWI9kX9lSL1XQ=="
+gem "symmetric-encryption"
 ~~~
 
-## Features
+Then `bundle install`. Ruby 3.2 or later is required, and Rails 7.2 or later if you are using Rails.
 
-### Encryption of
+### 2. Encrypt something
 
-* Passwords in configuration files.
-* ActiveRecord model attributes.
-* Mongoid model fields.
-* Files.
-
-### Security
-
-* Externalization of symmetric encryption keys so that they are not in the
-  source code, or the source code control system.
-* For maximum security uses randomized keys and initialization vectors extracted
-  from the entire encryption key space.
-* Option to generate a new initialization vector (IV) with every encrypted value.
-* Authenticated encryption with `aes-256-gcm`, which detects any change to an encrypted value
-  instead of decrypting whatever it is given. Files and streams of any size are authenticated a
-  chunk at a time, so that they are verified as they are read rather than only once all of the
-  data has been read. See [Authenticated Encryption](authenticated_encryption.html).
-
-### Validations
-
-* Validations for ActiveRecord Models to ensure fields contain encrypted data.
-
-### Files and Streams
-
-* Stream based encryption and decryption so that large files can be read or
-  written with encryption.
-* When selected, compress and decompress file streams on the fly.
-* Generate a new randomized key and initialization vector (IV) for every file.
-
-### Compression
-
-* Transparently compress data prior to encryption.
-* During decryption data is automatically decompressed.
-* Uses Ruby built-in support for OpenSSL and Zlib for high performance and
-  maximum portability without introducing any additional dependencies.
-
-### Streaming
-
-The sister-project [IOStreams](https://iostreams.reidmorrison.com) uses Symmetric Encryption
-to encrypt and decrypt any file whose name ends in `.enc`.
-* Combines encryption with compression, file formats, and storage locations such as S3 and SFTP,
-  driven entirely by the file name extensions.
-* Re-uses the existing Symmetric Encryption configuration and setup.
-* See the [Files and Streams Guide](files.html) for when to use it.
-
-### Backgound Job Processing
-
-The sister-project [Rocket Job](https://rocketjob.reidmorrison.com) uses Symmetric Encryption
-to encrypt job data to keep it secure.
-* Rocket Job can also read and write encrypted files created by Symmetric Encryption.
-* Rocket Job re-uses the existing Symmetric Encryption configuration and setup.
-
-### Command Line Interface
-
-Symmetric Encryption v4 introduces an extensive command line interface to:
-* Encrypt files
-* Decrypt files
-* Generate new passwords
-* Generate a new configuration file
-* Perform Key rotation
-
-### Encrypting Passwords in configuration files
-
-Passwords can be encrypted in any YAML configuration file.
-
-For example config/database.yml
-
-~~~yaml
----
-production:
-  adapter:  mysql
-  host:     db1w
-  database: myapp_production
-  username: admin
-  password: <%= SymmetricEncryption.try_decrypt "JqLJOi6dNjWI9kX9lSL1XQ==\n" %>
-~~~
-
-#### Notes
-
-* Use `SymmetricEncryption.try_decrypt` to return nil if it
-  fails to decrypt the value, which is essential when the encryption keys differ
-  between environments
-* In order for the above technique to work in non-rails YAML configuration files
-  the YAML file must be processed using `ERB` prior to passing to YAML. For example
+Before generating any keys, you can try the library with a throwaway key. Paste this into `irb`:
 
 ~~~ruby
-    config_file = Rails.root.join('config', 'redis.yml')
-    raise "redis config not found. Create a config file at: config/redis.yml" unless config_file.file?
+require "symmetric_encryption"
 
-    cfg = YAML.load(ERB.new(File.new(config_file).read).result)[Rails.env]
-    raise("Environment #{Rails.env} not defined in redis.yml") unless cfg
+SymmetricEncryption.cipher = SymmetricEncryption::Cipher.new(
+  key:         "1234567890ABCDEF",
+  iv:          "1234567890ABCDEF",
+  cipher_name: "aes-128-cbc"
+)
+
+encrypted = SymmetricEncryption.encrypt("Hello World")
+# => "QEVuQwAANIuPIXv/ii1IP1dF6T0NpQ=="
+
+SymmetricEncryption.decrypt(encrypted)
+# => "Hello World"
 ~~~
 
-### Large File Encryption
+That key is in this documentation, so it is not a secret. It is only for seeing the library work.
 
-Example: Read and decrypt a line at a time from a file
+### 3. Generate real keys
+
+~~~
+symmetric-encryption --generate --app-name my_app
+~~~
+
+This writes `config/symmetric-encryption.yml`, which belongs in source control, and one key file per
+environment under `~/.symmetric-encryption`, which does not. See
+[Configuration](configuration.html).
+
+### 4. Encrypt a database column
+
+The column is a `string`, whatever the attribute's type, because the encrypted value is always text:
 
 ~~~ruby
-SymmetricEncryption::Reader.open('encrypted_file') do |file|
-  file.each_line do |line|
-     puts line
+class AddSsnToPeople < ActiveRecord::Migration[8.0]
+  def change
+    add_column :people, :ssn, :string
   end
 end
 ~~~
 
-Example: Encrypt and write data to a file
-
 ~~~ruby
-SymmetricEncryption::Writer.open('encrypted_file') do |file|
-  file.write "Hello World\n"
-  file.write "Keep this secret"
+class Person < ActiveRecord::Base
+  attribute :ssn, :encrypted
 end
 ~~~
 
-Example: Compress, Encrypt and write data to a file
+That is the whole change. Reads and writes look exactly like an unencrypted attribute:
 
 ~~~ruby
-SymmetricEncryption::Writer.open('encrypted_compressed.zip', compress: true) do |file|
-  file.write "Hello World\n"
-  file.write "Compress this\n"
-  file.write "Keep this safe and secure\n"
+person = Person.create!(name: "Jack", ssn: "123456789")
+person.ssn
+# => "123456789"
+~~~
+
+While the database holds ciphertext:
+
+~~~sql
+SELECT ssn FROM people;
+-- QEVuQwJAEACOYREfF1cAXU0B8Xre7bISBCV415agBWeiX6cF1boT2g==
+~~~
+
+Continue with the [Guide](guide.html), which builds up from here one step at a time.
+
+## A tour of the features
+
+**Encrypted model attributes**, cast to the type you declare, so an encrypted integer is still an
+integer when you read it back:
+
+~~~ruby
+attribute :age, :encrypted, type: :integer
+~~~
+
+**Values kept out of logs and JSON.** Encrypted attributes are added to the model's
+`filter_attributes` automatically, so `inspect` and the Rails logs show `[FILTERED]` rather than the
+decrypted value. See [Rails](rails.html).
+
+**Authenticated encryption** with `aes-256-gcm`, which detects any change to an encrypted value
+rather than decrypting whatever it is given. Files and streams are authenticated a chunk at a time,
+so they are verified as they are read rather than only once all of the data has been read. See
+[Security](security.html).
+
+**Encrypted files and streams:**
+
+~~~ruby
+SymmetricEncryption::Writer.open("secure.enc") do |file|
+  file.write("Hello World")
 end
 ~~~
 
-Encrypted files and streams can also be passed to any library that reads or writes an IO stream,
-such as an HTTP client or a CSV parser. See the [Files and Streams Guide](files.html).
+See [Files](files.html).
 
-When encryption is one step in a larger pipeline, use
-[IOStreams](https://iostreams.reidmorrison.com), which layers compression, file formats, and
-storage locations on top of Symmetric Encryption:
+**Keys in a cloud KMS.** AWS KMS and Google Cloud KMS can hold the master key, so the key that
+protects your data never exists in a file on your servers. See [Configuration](configuration.html).
 
-~~~ruby
-IOStreams.path('s3://my-bucket/customers.csv.gz.enc').each(:hash) do |record|
-  puts record['name']
-end
-~~~
+**Key rotation without downtime**, driven from the command line. See
+[Key Rotation](key_rotation.html).
 
-### Ruby Platform Support
+**Encrypted passwords in configuration files**, including `database.yml`, decrypted early enough in
+the Rails boot that the database connection can use them.
 
-* Ruby v2.1, v2.2, v2.3, v2.4, or higher.
-* JRuby v1.7.23, v9.0.5.0, or higher.
+## How it works
 
-## Installation
+Three pieces explain most of the library.
 
-Add the following line to Gemfile
+**The cipher.** A cipher pairs an encryption key with a version number and an encoding. The version
+is what makes rotation possible. `symmetric-encryption.yml` lists the ciphers for an environment; the
+first is the one that encrypts, and the rest exist so that data encrypted by earlier keys can still
+be read.
 
-~~~ruby
-gem 'symmetric-encryption'
-~~~
+**The header.** An encrypted value normally starts with a small binary header, `@EnC` followed by the
+cipher version and a flags byte, before the value is base64 encoded. Decryption reads the version out
+of the header and looks up the matching cipher, which is why introducing a new key does not require
+re-encrypting anything. The header is 6 bytes, growing when it also carries a random initialization
+vector or an encrypted key.
 
-Install the Gem with bundler
+Because the version travels with the value, decryption never guesses. It will not try other keys when
+one fails, since decrypting with the wrong key can quietly succeed and return garbage.
 
-    bundle install
+**The keystore.** The encryption key itself lives outside the application, in a keystore: a file on
+disk, an environment variable, AWS KMS, or Google Cloud KMS. The configuration file in source control
+holds only a pointer to it, or an encrypted copy of it that the keystore can unlock.
 
-### Using without extensions
+## Next steps
 
-By default `symmetric-encryption` extends ORMs (ActiveRecord) and loads a Railstie to integrate with Rails configuration. However you may want to disable this behavior and instead use classes provided by Symmetric Encryption and perform configuration by yourself. To do this you should disable automatic require of the gem in your Gemfile:
-
-~~~ruby
-gem 'symmetric-encryption', require: false
-~~~
-
-And then you should manually require Symmetric Encryption library core module which just loads the library classes without any extensions at the place where you use it:
-
-~~~ruby
-require 'symmetric_encryption/core'
-~~~
+* [Guide](guide.html): the library, one step at a time. Start here.
+* [Configuration](configuration.html): the configuration file and the keystores.
+* [Rails](rails.html) and [Mongoid](mongoid.html): encrypted model attributes and fields.
+* [Files](files.html): encrypted files and streams.
+* [Security](security.html): authenticated encryption, threat model, and PCI compliance.
 
 ## Support
 
-* [Report bugs](https://github.com/reidmorrison/symmetric-encryption/issues)
-
-## Security
-
-Many solutions that encrypt data require the encryption keys to be stored in the
-applications source code or leave it up to the developer to secure the keys on
-the application servers. Symmetric Encryption takes care of securing the
-symmetric encryption keys.
-
-The following steps are used to secure the symmetric encryption keys using Symmetric Encryption:
-
-* Symmetric Encryption keys are stored in files that are not part of the application,
-its source code, or even stored in its source control system. These files can be
-created, managed and further secured by System Administrators. This prevents
-developers having or needing to have access to the symmetric encryption keys
-* The Operating System security features limit access to the Symmetric Encryption
-key files to System Administrators and the userid under which the Rails application runs.
-* The files in which the Symmetric Encryption keys are stored are further
-encrypted using RSA 2048 bit encryption
-
-In order for anyone to decrypt the data being encrypted in the database, they
-would need access to ALL of the following:
-* A copy of the files containing the Symmetric Encryption Keys which are secured
-by the Operating System
-* The application source code containing the RSA private key to decrypt the above files
-* The userid and password for the database to copy the encrypted data itself,
-or an unsecured copy or export of the database contents
-
-A major feature of symmetric encryption is that it makes the encryption and decryption
-automatically available when the Rails application is started. This includes all
-rake tasks and the Rails console. In this way data can be encrypted or decrypted as
-part of any rake task.
-
-From a security perspective it is important then to properly secure the system so that
-no hacker can switch to and run as the rails user and thereby gain access to the
-encryption and decryption capabilities
-
-It is not necessary to encrypt the initialization vector (IV), and it can be placed
-directly in the configuration file. The encryption key must be kept secure and
-must never be placed in the configuration file or other Rails source file in production.
-The IV should be generated using the rails generator described below to ensure
-it is a truly random key from the entire key space. Using a human readable text
-string is not considered secure.
-
-### Limitations
-
-By default symmetric encryption uses the same initialization vector (IV) and
-encryption key to encrypt data using the SymmetricEncryption.encrypt call.
-This technique is required in cases where the encrypted data is used as a key
-to lookup for example a Social Security Number, since for the same input data it
-must always return the same encrypted result. The drawback is that this
-technique is not considered secure when encypting large amounts of data.
-
-For non-key fields, such as storing encrypted raw responses,
-use the `random_iv: true` option where possible so that a
-randomly generated IV is used and included in every encrypted string.
-
-The Symmetric Encryption streaming interface `SymmetricEncryption::Writer` avoids this
-problem by automatically generating a randomized key and IV for every file or stream.
-The random IV and key are stored in the header of the output stream so that it
-is available when reading back the encrypted file/stream. The key is placed
-in the file header in encrypted form using the current global key.
-
-The ActiveRecord `:encrypted` attribute type supports the `random_iv: true` option.
-Similarly for Mongoid the `random_iv: true` option is available.
-
-Note that encrypting the same input string with the same key and `random_iv: true`
-option will result in different encrypted output every time it is encrypted.
-
-### Recommendations
-
-* Add the encryption header to all encrypted strings.
-  See the _always_add_header_ option in the configuration file.
-
-* Add `random_iv: true` for all ActiveRecord attributes, and
-  Mongoid fields which are not used in indexes and will not be used as part of a query.
-
-### Disclaimer
-
-Although this library has assisted in meeting PCI Compliance and has passed
-previous PCI audits, it in no way guarantees that PCI Compliance will be
-achieved by anyone using this library.
-
-### Next => [Supported Frameworks](frameworks.html)
+* Questions and bug reports: [GitHub Issues](https://github.com/reidmorrison/symmetric-encryption/issues)
+* Source: [github.com/reidmorrison/symmetric-encryption](https://github.com/reidmorrison/symmetric-encryption)
