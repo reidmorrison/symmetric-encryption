@@ -88,4 +88,4 @@ For example set the location of the Symmetric Encryption config file:
 export SYMMETRIC_ENCRYPTION_CONFIG="~/application/common/config/symmetric-encryption.yml"
 ~~~
 
-### Next => [Key Rotation](key_rotation.html)
+### Next => [Authenticated Encryption](authenticated_encryption.html)

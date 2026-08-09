@@ -72,6 +72,21 @@ module SymmetricEncryption
       end
     end
 
+    # Returns [String] the message for an attempt to use an authenticated cipher on a stream.
+    #
+    # An authenticated cipher only produces its auth tag once everything has been encrypted, and
+    # the tag can only be checked once everything has been decrypted. Streaming would therefore
+    # have to hand out data that has not been authenticated yet, which is what the cipher is
+    # there to prevent, so it is refused rather than quietly weakened.
+    def self.authenticated_cipher_message(cipher_name)
+      "#{cipher_name} is an authenticated cipher, which is not supported for files and streams. " \
+        "Its auth tag only exists once the whole stream has been written, so nothing could be " \
+        "verified until the entire file had been read. Encrypt the file with an unauthenticated " \
+        "cipher instead, by supplying `cipher_name: \"aes-256-cbc\"`, or `version:` of a cipher " \
+        "that uses one. The random key for the file is still encrypted with the global cipher, " \
+        "so an authenticated global cipher still protects it."
+    end
+
     # Write the contents of a string in memory to an encrypted file / stream.
     #
     # Notes:
@@ -128,6 +143,8 @@ module SymmetricEncryption
       end
 
       @stream_cipher = ::OpenSSL::Cipher.new(cipher_name || cipher.cipher_name)
+      raise(ArgumentError, self.class.authenticated_cipher_message(@stream_cipher.name)) if @stream_cipher.authenticated?
+
       @stream_cipher.encrypt
 
       if random_key

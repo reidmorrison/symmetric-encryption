@@ -84,6 +84,8 @@ module SymmetricEncryption
       self.encoding      = encoding.to_sym
       @version           = version.to_i
       @always_add_header = always_add_header
+      @authenticated     = openssl_cipher.authenticated?
+      @iv_length         = openssl_cipher.iv_len
 
       return unless (@version > 255) || @version.negative?
 
@@ -101,6 +103,21 @@ module SymmetricEncryption
     # Returns [SymmetricEncryption::Encoder] the encoder to use for the current encoding.
     def encoder
       @encoder ||= SymmetricEncryption::Encoder[encoding]
+    end
+
+    # Returns [true|false] whether this cipher is an authenticated cipher, such as `aes-256-gcm`.
+    #
+    # An authenticated cipher detects any change to the encrypted value, instead of returning
+    # data that was decrypted from something that had been tampered with. It produces an auth
+    # tag when encrypting, which has to be supplied again to decrypt, so encrypted values always
+    # carry a header, whatever `always_add_header` is set to.
+    #
+    # Notes:
+    # * A configured `iv` is not used by an authenticated cipher. Every encrypted value gets its
+    #   own iv, since re-using one across different values would expose the data.
+    # * Not supported by `Writer` and `Reader`, see their documentation.
+    def authenticated?
+      @authenticated
     end
 
     # Encrypt and then encode a string
@@ -259,6 +276,8 @@ module SymmetricEncryption
       string = str.to_s
       return string if string.empty?
 
+      return authenticated_binary_encrypt(string, random_iv: random_iv, compress: compress) if authenticated?
+
       # Header required when adding a random_iv or compressing
       header = Header.new(version: version, compress: compress) if header || random_iv || compress
 
@@ -326,9 +345,17 @@ module SymmetricEncryption
 
       openssl_cipher = ::OpenSSL::Cipher.new(header.cipher_name || cipher_name)
       openssl_cipher.decrypt
+      # Before the key and the iv, so that a value that disagrees with the cipher about whether it
+      # is authenticated is reported as such, rather than as whatever the mismatch breaks first.
+      verify_authentication!(openssl_cipher, header)
       openssl_cipher.key = header.key || @key
       if (iv = header.iv || @iv)
         openssl_cipher.iv = iv
+      end
+      # After the key and the iv, which OpenSSL requires to be set first.
+      if openssl_cipher.authenticated?
+        openssl_cipher.auth_tag  = header.auth_tag
+        openssl_cipher.auth_data = header.auth_data
       end
       result = openssl_cipher.update(data)
       result << openssl_cipher.final
@@ -369,5 +396,65 @@ module SymmetricEncryption
     private
 
     attr_reader :key
+
+    # Encrypt with an authenticated cipher, such as `aes-256-gcm`.
+    #
+    # The auth tag is only known once the data has been encrypted, and it is carried in the
+    # header, so the data is encrypted first and the header is built around it afterwards.
+    def authenticated_binary_encrypt(string, random_iv:, compress:)
+      header = Header.new(version: version, compress: compress, authenticated: true)
+
+      # Creates a new OpenSSL::Cipher with every call so that this call is thread-safe.
+      openssl_cipher = ::OpenSSL::Cipher.new(cipher_name)
+      openssl_cipher.encrypt
+      openssl_cipher.key = @key
+      header.iv          = openssl_cipher.iv = random_iv ? openssl_cipher.random_iv : deterministic_iv(string)
+
+      # Covers the header, so that the version, the flags, the iv and the cipher name cannot be
+      # changed without the auth tag check failing when the value is decrypted.
+      openssl_cipher.auth_data = header.auth_data
+
+      encrypted = openssl_cipher.update(compress ? Zlib::Deflate.deflate(string) : string)
+      encrypted << openssl_cipher.final
+      header.auth_tag = openssl_cipher.auth_tag(Header::AUTH_TAG_SIZE)
+
+      header.to_s + encrypted
+    end
+
+    # Returns [String] an iv derived from the value being encrypted, so that encrypting the same
+    # value twice returns the same encrypted value, which is what `random_iv: false` asks for.
+    #
+    # Re-using one iv across _different_ values would be far worse for an authenticated cipher
+    # than it is for `aes-256-cbc`: it exposes the encrypted data and makes the auth tag
+    # forgeable. Deriving the iv from the value means a repeated iv only ever accompanies
+    # repeated data, which is what was asked for. Active Record encryption derives the iv the
+    # same way for its deterministic attributes.
+    def deterministic_iv(string)
+      ::OpenSSL::HMAC.digest("SHA256", @key, string)[0, @iv_length]
+    end
+
+    # Rejects a value whose header does not agree with the cipher about whether it is
+    # authenticated. Without this an attacker could strip the auth tag, or name an
+    # unauthenticated cipher in the header, and have the value decrypted without being checked.
+    def verify_authentication!(openssl_cipher, header)
+      return if openssl_cipher.authenticated? == header.authenticated?
+
+      name = (header.cipher_name || cipher_name).inspect
+      if openssl_cipher.authenticated?
+        raise(
+          SymmetricEncryption::CipherError,
+          "Cipher #{name} is an authenticated cipher, but the encrypted value has no auth tag. Data encrypted " \
+          "with an unauthenticated cipher has to be decrypted with the cipher that encrypted it. Keep that cipher " \
+          "in `symmetric-encryption.yml` as a secondary cipher, so that it is selected by the version in the " \
+          "header of the values it encrypted."
+        )
+      end
+
+      raise(
+        SymmetricEncryption::CipherError,
+        "The encrypted value has an auth tag, but #{name} is not an authenticated cipher, so the tag cannot be " \
+        "verified."
+      )
+    end
   end
 end

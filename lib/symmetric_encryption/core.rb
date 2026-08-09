@@ -26,6 +26,7 @@ module SymmetricEncryption
     autoload :AutoFilteredAttributes, "symmetric_encryption/active_record/auto_filtered_attributes"
     autoload :EncryptedAttribute,     "symmetric_encryption/active_record/encrypted_attribute"
     autoload :ExcludeFromJson,        "symmetric_encryption/active_record/exclude_from_json"
+    autoload :RailsEncryptor,         "symmetric_encryption/active_record/rails_encryptor"
   end
 
   module Utils

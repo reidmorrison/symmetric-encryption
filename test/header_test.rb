@@ -134,6 +134,66 @@ class CipherTest < Minitest::Test
         assert_nil parsed.auth_tag
         refute_predicate parsed, :compressed?
       end
+
+      it "round trips an auth tag" do
+        auth_tag = "1234567890ABCDEF"
+        original = SymmetricEncryption::Header.new(version: 2, iv: "1234567890AB", auth_tag: auth_tag)
+
+        parsed = SymmetricEncryption::Header.new
+        parsed.parse(original.to_s)
+
+        assert_predicate parsed, :authenticated?
+        assert_equal auth_tag, parsed.auth_tag
+      end
+
+      it "raises when the auth tag is not known yet" do
+        header = SymmetricEncryption::Header.new(version: 2, authenticated: true)
+
+        error = assert_raises SymmetricEncryption::CipherError do
+          header.to_s
+        end
+
+        assert_includes error.message, "auth tag has to be set"
+      end
+    end
+
+    describe "#auth_data" do
+      # The auth data is everything before the auth tag, so that it can be handed to an
+      # authenticated cipher before the tag exists.
+      it "is the header without the auth tag" do
+        header = SymmetricEncryption::Header.new(version: 2, iv: "1234567890AB", authenticated: true)
+        auth_data = header.auth_data
+        header.auth_tag = "1234567890ABCDEF"
+
+        assert_equal "#{auth_data}#{[16].pack('v')}1234567890ABCDEF", header.to_s
+      end
+
+      it "matches the bytes parsed back out of the encrypted value" do
+        header = SymmetricEncryption::Header.new(version: 2, iv: "1234567890AB", authenticated: true)
+        header.auth_tag = "1234567890ABCDEF"
+
+        parsed = SymmetricEncryption::Header.new
+        parsed.parse(header.to_s)
+
+        assert_equal header.auth_data, parsed.auth_data
+      end
+    end
+
+    describe "#auth_tag=" do
+      # OpenSSL accepts a truncated auth tag, and a truncated tag is not expensive to forge.
+      it "rejects an auth tag that is too short" do
+        error = assert_raises SymmetricEncryption::CipherError do
+          SymmetricEncryption::Header.new(version: 2).auth_tag = "1234"
+        end
+
+        assert_includes error.message, "must be exactly 16 bytes"
+      end
+
+      it "rejects an auth tag that is too long" do
+        assert_raises SymmetricEncryption::CipherError do
+          SymmetricEncryption::Header.new(version: 2).auth_tag = "1234567890ABCDEFG"
+        end
+      end
     end
 
     describe "#parse" do
