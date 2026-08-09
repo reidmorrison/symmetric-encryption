@@ -6,7 +6,8 @@ module SymmetricEncryption
                 :decrypt, :random_password, :new_keys, :generate, :environment,
                 :keystore, :re_encrypt, :version, :output_file_name, :compress,
                 :environments, :cipher_name, :rolling_deploy, :rotate_keys, :rotate_kek, :prompt, :show_version,
-                :cleanup_keys, :activate_key, :migrate, :regions, :key_permissions, :key_path_supplied
+                :cleanup_keys, :activate_key, :migrate, :regions, :key_permissions, :key_path_supplied,
+                :force
 
     KEYSTORES = %i[aws heroku environment file gcp].freeze
 
@@ -23,6 +24,7 @@ module SymmetricEncryption
       @cipher_name      = "aes-256-cbc"
       @rolling_deploy   = false
       @prompt           = false
+      @force            = false
       @show_version     = false
       @keystore         = :file
       # Key rotation keeps the new key files where the current ones are, unless --key-path says otherwise.
@@ -96,6 +98,10 @@ module SymmetricEncryption
         opts.on "-o", "--output FILE_NAME",
                 "Write encrypted or decrypted file to this file, otherwise output goes to stdout." do |file_name|
           @output_file_name = file_name
+        end
+
+        opts.on "--force", "Do not ask before removing encryption keys with --cleanup-keys." do
+          @force = true
         end
 
         opts.on "-P", "--prompt", "When encrypting or decrypting, prompt for a string encrypt or decrypt." do
@@ -324,18 +330,49 @@ module SymmetricEncryption
     end
 
     def run_cleanup_keys
-      config = Config.read_file(config_file_path)
+      config  = Config.read_file(config_file_path)
+      removed = {}
       config.each_pair do |env, cfg|
         next if environments && !environments.include?(env.to_sym)
         next unless (ciphers = cfg[:ciphers])
 
-        highest = ciphers.max_by { |i| i[:version] }
+        highest      = ciphers.max_by { |i| i[:version] }
+        removed[env] = ciphers.reject { |i| i.equal?(highest) }.map { |i| i[:version] }
         ciphers.clear
         ciphers << highest
       end
 
+      return unless confirm_removal?(removed)
+
       Config.write_file(config_file_path, config)
+      removed.each { |env, versions| puts "#{env}: removed #{versions.join(', ')}" unless versions.empty? }
       puts "Removed all but the key with the highest version in: #{config_file_path}"
+    end
+
+    # Names the key versions that are about to be removed, and asks before removing them.
+    #
+    # Every version in the configuration file looks the same from here, whether it is an earlier
+    # generation of the same key or a key that is there to encrypt something different. Removing
+    # the second kind makes whatever it encrypted unreadable, so the versions are named rather
+    # than removed silently.
+    def confirm_removal?(removed)
+      versions = removed.values.flatten
+      return true if versions.empty?
+
+      puts "About to remove #{versions.size} encryption key(s) from #{config_file_path}:"
+      removed.each { |env, envs_versions| puts "  #{env}: version #{envs_versions.join(', ')}" unless envs_versions.empty? }
+      puts "Any data encrypted with a key that is removed can no longer be decrypted. A key that is",
+           "there to encrypt different data, rather than being an earlier generation of the same key,",
+           "looks exactly the same from here."
+      # Nothing is asked when there is nobody to ask, so that this stays usable from a script.
+      # The versions have been named either way.
+      return true if force || !$stdin.tty?
+
+      print "Remove them? Type 'yes' to continue: "
+      return true if $stdin.gets.to_s.strip.casecmp?("yes")
+
+      puts "Left #{config_file_path} unchanged."
+      false
     end
 
     def run_activate_key

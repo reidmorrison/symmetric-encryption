@@ -170,6 +170,52 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   Streams encrypted with an unauthenticated cipher are written and read exactly as before, byte
   for byte, and `test/benchmark_streams.rb` measures that they are no slower.
 
+- Encrypting with a cipher other than the primary one no longer means reaching past the public
+  API. `version:` selects the cipher, and the version is written into the header so that nothing
+  has to be supplied when reading the value back. Issue #60:
+
+  ~~~ruby
+  SymmetricEncryption.encrypt("Hello World", version: 3)
+
+  class Person < ActiveRecord::Base
+    attribute :api_key, :encrypted, version: 3
+  end
+
+  class Person
+    include Mongoid::Document
+
+    field :encrypted_api_key, type: String, encrypted: {version: 3}
+  end
+  ~~~
+
+  `SymmetricEncryption::Writer` already accepted `version:`. Changing the version of an attribute
+  leaves the values already written readable, since each one records the version it was
+  encrypted with.
+
+  See the [Multiple Ciphers Guide](https://encryption.reidmorrison.com/multiple_ciphers.html).
+
+- `SymmetricEncryption.cipher(version)` raises when no cipher has that version, instead of
+  returning `nil`. `SymmetricEncryption.cipher(9).encrypt("value")` reported
+  `NoMethodError: undefined method 'encrypt' for nil`, which named neither the version that was
+  asked for nor the versions that are available. It now raises
+  `SymmetricEncryption::CipherError` naming both.
+
+  `Writer`, `Header` and `ReEncryptFiles` each carried their own check for the `nil`. Those have
+  been removed, since they can no longer be reached. `ReEncryptFiles.new(version:)` raised
+  `ArgumentError` for an unknown version and now raises `SymmetricEncryption::CipherError`.
+
+- A configuration file whose ciphers use encodings that cannot read each other is refused when it
+  is loaded, rather than failing later with a decryption error that does not explain itself. An
+  encrypted value is decoded with the primary cipher's encoding before its header can say which
+  cipher encrypted it, so ciphers whose encodings disagree cannot read each other at all.
+  `:base64` and `:base64strict` can be mixed, since both decode with `Base64.decode64`.
+
+- `--cleanup-keys` names the key versions it is about to remove and asks before removing them.
+  Every version in the configuration file looks alike from the command line, whether it is an
+  earlier generation of the same key or a key that encrypts something different, and removing the
+  second kind makes whatever it encrypted unreadable. Nothing is asked when there is no terminal
+  to ask at, so scripts are unaffected, and `--force` skips the question.
+
 - `SymmetricEncryption.with_cipher` uses a cipher that is not in `symmetric-encryption.yml` for
   the duration of a block, for data encrypted with a key of its own. The usual case is a key per
   customer, held in a database table and itself encrypted with the global cipher. Issue #60:

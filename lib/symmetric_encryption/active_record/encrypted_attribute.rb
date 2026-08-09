@@ -22,7 +22,16 @@ module SymmetricEncryption
       }.freeze
       # @formatter:on
 
-      def initialize(random_iv: true, compress: false, type: :string)
+      # version [Integer]
+      #   Encrypt this attribute with the cipher that has this version, instead of the primary
+      #   cipher, so that it can be encrypted with a key of its own:
+      #
+      #     attribute :api_key, :encrypted, version: 3
+      #
+      #   Decryption reads the version out of each value's header, so changing this leaves values
+      #   that were already written readable.
+      #   Default: the primary cipher.
+      def initialize(random_iv: true, compress: false, type: :string, version: nil)
         unless SymmetricEncryption::COERCION_TYPES.include?(type)
           raise(ArgumentError, "Invalid type: #{type.inspect}. Valid types: #{SymmetricEncryption::COERCION_TYPES.inspect}")
         end
@@ -31,6 +40,7 @@ module SymmetricEncryption
         @random_iv           = random_iv
         @compress            = compress
         @encrypted_type      = type
+        @version             = version
         @rails_type          = RAILS_CAST_TYPES[type]&.new
         @multiparameter_type = MULTIPARAMETER_TYPES[type]&.new
       end
@@ -38,7 +48,7 @@ module SymmetricEncryption
       def deserialize(value)
         return if value.nil?
 
-        SymmetricEncryption.decrypt(value, type: encrypted_type)
+        SymmetricEncryption.decrypt(value, type: encrypted_type, version: version)
       end
 
       def serialize(value)
@@ -49,7 +59,8 @@ module SymmetricEncryption
           value,
           type:      encrypted_type,
           compress:  compress,
-          random_iv: random_iv
+          random_iv: random_iv,
+          version:   version
         )
       end
 
@@ -118,7 +129,7 @@ module SymmetricEncryption
         nil
       end
 
-      attr_reader :random_iv, :compress, :encrypted_type, :rails_type, :multiparameter_type
+      attr_reader :random_iv, :compress, :encrypted_type, :version, :rails_type, :multiparameter_type
     end
   end
 end

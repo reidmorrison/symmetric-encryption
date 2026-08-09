@@ -87,8 +87,36 @@ module SymmetricEncryption
 
     # Returns [Array(SymmetricEncryption::Cipher)] ciphers specified in the configuration file.
     def ciphers
-      @ciphers ||= config[:ciphers].collect { |cipher_config| Cipher.from_config(**cipher_config) }
+      @ciphers ||= config[:ciphers].collect { |cipher_config| Cipher.from_config(**cipher_config) }.tap do |ciphers|
+        validate_encodings!(ciphers)
+      end
     end
+
+    # The encodings that can be mixed in one configuration file. Both write base64, and both
+    # decode with `Base64.decode64`, so either one reads what the other wrote.
+    COMPATIBLE_ENCODINGS = %i[base64 base64strict].freeze
+
+    # Raises when the ciphers do not all use an encoding that the others can read.
+    #
+    # An encrypted value is decoded before its header can be read, and it is decoded with the
+    # _primary_ cipher's encoder, since which cipher encrypted it is only known once the header
+    # has been read. Ciphers whose encodings disagree therefore cannot read each other's values
+    # at all, which is worth saying when the configuration is loaded rather than leaving it to be
+    # discovered by a decryption that fails.
+    def validate_encodings!(ciphers)
+      encodings = ciphers.map(&:encoding).uniq
+      return if encodings.size <= 1
+      return if (encodings - COMPATIBLE_ENCODINGS).empty?
+
+      raise(
+        SymmetricEncryption::ConfigError,
+        "The ciphers in #{file_name} use encodings that cannot read each other: #{encodings.inspect}. " \
+        "An encrypted value is decoded with the primary cipher's encoding before its header says which cipher " \
+        "encrypted it, so every cipher has to use the same encoding. Only #{COMPATIBLE_ENCODINGS.inspect} can " \
+        "be mixed with each other."
+      )
+    end
+    private :validate_encodings!
 
     # Iterate through the Hash symbolizing all keys.
     def self.deep_symbolize_keys(object)

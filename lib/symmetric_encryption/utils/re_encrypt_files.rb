@@ -33,8 +33,8 @@ module SymmetricEncryption
       #     Default: Default cipher ( first in the list of configured ciphers )
       def initialize(version: SymmetricEncryption.cipher.version)
         @version = version || SymmetricEncryption.cipher.version
+        # Raises when there is no cipher with this version.
         @cipher  = SymmetricEncryption.cipher(@version)
-        raise(ArgumentError, "Undefined encryption key version: #{version}") if @cipher.nil?
       end
 
       # Re-encrypt the supplied encrypted value with the new cipher
