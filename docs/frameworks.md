@@ -116,6 +116,18 @@ still available in `age_before_type_cast`.
 `:json` and `:yaml` values are left exactly as they were assigned, which is also what Active Record's own
 `:json` type does. They are serialized when the record is saved, and parsed when it is read back.
 
+A `:date`, `:datetime` or `:time` attribute can be assigned from a form built with the `date_select`,
+`datetime_select` or `time_select` helpers, which submit one field per part of the date:
+
+~~~erb
+<%= form.date_select :date_of_birth %>
+~~~
+
+Active Record collects `date_of_birth(1i)`, `date_of_birth(2i)` and `date_of_birth(3i)` and assigns them
+in one go, and they are cast exactly as for an unencrypted date column: parts that were not submitted
+take the same defaults, an incomplete date becomes `nil`, and validations report on the cast value rather
+than on `date_of_birth_before_type_cast`.
+
 #### Note
 
 The column name in the database matches the name of the attribute in the model.

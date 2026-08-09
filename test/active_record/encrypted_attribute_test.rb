@@ -280,6 +280,66 @@ class EncryptedAttributeTest < Minitest::Test
       end
     end
 
+    # Issue #62. A `date_select` submits one field per parameter, which Active Record collects into
+    # a Hash keyed by parameter position and assigns in one go.
+    describe "multiparameter assignment" do
+      let(:date_params) { {"date_value(1i)" => "1975", "date_value(2i)" => "11", "date_value(3i)" => "9"} }
+
+      let :datetime_params do
+        {"datetime_value(1i)" => "1975", "datetime_value(2i)" => "11", "datetime_value(3i)" => "9",
+         "datetime_value(4i)" => "13", "datetime_value(5i)" => "45"}
+      end
+
+      let :time_params do
+        {"time_value(1i)" => "2000", "time_value(2i)" => "1", "time_value(3i)" => "1",
+         "time_value(4i)" => "13", "time_value(5i)" => "45"}
+      end
+
+      it "casts the submitted parameters to the declared type" do
+        unsaved = Person.new(date_params.merge(datetime_params).merge(time_params))
+
+        assert_equal Date.new(1975, 11, 9), unsaved.date_value
+        assert_equal DateTime.new(1975, 11, 9, 13, 45, 0, "+0"), unsaved.datetime_value
+        assert_equal Time.utc(2000, 1, 1, 13, 45, 0), unsaved.time_value
+      end
+
+      it "reads back what was submitted" do
+        record = Person.create!(date_params.merge(datetime_params).merge(time_params)).reload
+
+        assert_equal Date.new(1975, 11, 9), record.date_value
+        assert_equal DateTime.new(1975, 11, 9, 13, 45, 0, "+0"), record.datetime_value
+        assert_equal Time.utc(2000, 1, 1, 13, 45, 0), record.time_value
+      end
+
+      it "casts an incomplete assignment to nil, as Active Record does" do
+        unsaved = Person.new("date_value(1i)" => "1975", "date_value(2i)" => "", "date_value(3i)" => "")
+
+        assert_nil unsaved.date_value
+      end
+
+      it "rolls an out of range date over, as Active Record does" do
+        unsaved = Person.new("date_value(1i)" => "1975", "date_value(2i)" => "2", "date_value(3i)" => "31")
+
+        assert_equal Date.new(1975, 3, 3), unsaved.date_value
+      end
+
+      it "did not come from the user, so that validations report on the cast value" do
+        unsaved = Person.new(date_params)
+
+        refute_predicate unsaved, :date_value_came_from_user?
+        assert_predicate Person.new(date_value: "1975-11-09"), :date_value_came_from_user?
+      end
+
+      it "keeps a Hash assigned to a json or yaml attribute" do
+        # Only a date or a time can be assigned in parameters, so a Hash is a value everywhere else.
+        unsaved = Person.new(json_value: {"a" => 1}, yaml_value: {"b" => 2})
+
+        assert_equal({"a" => 1}, unsaved.json_value)
+        assert_equal({"b" => 2}, unsaved.yaml_value)
+        assert_predicate unsaved, :json_value_came_from_user?
+      end
+    end
+
     describe "types" do
       it "serializes" do
         assert_equal person_name, person.name
