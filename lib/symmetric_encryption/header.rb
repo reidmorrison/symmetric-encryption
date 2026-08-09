@@ -6,8 +6,9 @@ module SymmetricEncryption
   # * Decode data first before trying to extract its header.
   # * Decoding is not required when encoding is set to `:none`.
   class Header
-    # Encrypted data includes this header prior to encoding when
-    # `always_add_header` is true.
+    # Encrypted data includes this header prior to encoding when `always_add_header` is true, and
+    # whenever the header is needed to decrypt the data again: when a random iv or a key is
+    # carried in it, when the data is compressed, or when the cipher is an authenticated one.
     MAGIC_HEADER      = "@EnC".b.freeze
     MAGIC_HEADER_SIZE = MAGIC_HEADER.size
 
@@ -74,12 +75,14 @@ module SymmetricEncryption
     #     Default: false
     #
     #   iv [String]
-    #     The iv to to put in the header
+    #     The iv to put in the header.
+    #     For a chunked stream this is the nonce prefix that every chunk's nonce is derived from,
+    #     rather than an iv used directly. See `SymmetricEncryption::ChunkedStream`.
     #     Default: nil : Exclude from header
     #
     #   key [String]
-    #     The key to to put in the header.
-    #     The key is encrypted using the global encryption key
+    #     The key to put in the header.
+    #     The key is encrypted with the cipher named by `version` in this header.
     #     Default: nil : Exclude key from header
     #
     #   version: [Integer (0..255)]
@@ -232,8 +235,9 @@ module SymmetricEncryption
       # Symmetric Encryption Header
       #
       # Consists of:
-      #    4 Bytes: Magic Header Prefix: @Enc
-      #    1 Byte:  The version of the cipher used to encrypt the header.
+      #    4 Bytes: Magic Header Prefix: @EnC
+      #    1 Byte:  The version of the cipher used to encrypt the key in this header, and the
+      #             version of the cipher that encrypted the data when no key is included.
       #    1 Byte:  Flags:
       #       Bit 1: Whether the data is compressed
       #       Bit 2: Whether the IV is included
@@ -248,7 +252,7 @@ module SymmetricEncryption
       #    2 Bytes: Key Length (little endian), if included.
       #      Key in binary form
       #    2 Bytes: Cipher Name Length (little endian), if included.
-      #      Cipher name it UTF8 text
+      #      Cipher name as UTF8 text
       #    1 Byte:  The chunk size as a power of two, if this is a chunked stream.
       #    2 Bytes: Auth Tag Length (little endian), if included.
       #      Auth tag in binary form. Always the last field, so that every byte before it can be

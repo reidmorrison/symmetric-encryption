@@ -60,16 +60,19 @@ module SymmetricEncryption
       #
       # Sample Hash layout returned:
       # {
-      #   cipher_name: aes-256-cbc,
-      #   version:     8,
       #   keystore:    :aws,
+      #   cipher_name: 'aes-256-cbc',
+      #   version:     6,
       #   master_key_alias: 'alias/symmetric-encryption/application/production',
       #   key_files:   [
-      #                  {region: blah1, file_name: "~/symmetric-encryption/application_production_blah1_v6.encrypted_key"},
-      #                  {region: blah2, file_name: "~/symmetric-encryption/application_production_blah2_v6.encrypted_key"},
+      #                  {region:    'us-east-1',
+      #                   file_name: "~/.symmetric-encryption/application_production_us-east-1_v6.encrypted_key"},
+      #                  {region:    'us-west-2',
+      #                   file_name: "~/.symmetric-encryption/application_production_us-west-2_v6.encrypted_key"}
       #                ],
-      #   iv:          'T80pYzD0E6e/bJCdjZ6TiQ=='
+      #   iv:          "\xE9\xD5\x92..." # Raw binary, written to the config file as a YAML !!binary
       # }
+      #
       # permissions, owner, group:
       #   What the encrypted data key files are expected to look like on disk.
       #   See `SymmetricEncryption::Utils::FileAccess`.
@@ -134,8 +137,9 @@ module SymmetricEncryption
         args
       end
 
-      # Stores the Encryption key in a file.
-      # Secures the Encryption key by encrypting it with a key encryption key.
+      # Stores the encrypted data key in a file per region.
+      # The data key is secured by the Customer Master Key held in AWS KMS, so there is no
+      # `key_encrypting_key` to supply here, and supplying one raises.
       #
       # permissions, owner, group:
       #   What the encrypted data key files are expected to look like on disk. One entry covers
@@ -152,8 +156,8 @@ module SymmetricEncryption
               "AWS KMS keystore encrypts the key itself, so does not support supplying a key_encrypting_key")
       end
 
-      # Reads the data key environment variable, if present, otherwise a file.
-      # Decrypts the key using the master key for this region.
+      # Reads the encrypted data key from the key file for this region.
+      # Decrypts it using the master key for this region.
       def read
         key_file = key_files.find { |i| i[:region] == region }
         raise(SymmetricEncryption::ConfigError, "region: #{region} not available in the supplied key_files") unless key_file

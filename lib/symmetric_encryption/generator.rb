@@ -1,7 +1,18 @@
 module SymmetricEncryption
+  # Generates the accessors that read and write the decrypted value of an encrypted field.
+  #
+  # Internal use only. Mongoid's `encrypted: true` field option is the only caller, now that
+  # `attr_encrypted` has been removed. Active Record uses the `:encrypted` attribute type instead,
+  # see `SymmetricEncryption::ActiveRecord::EncryptedAttribute`.
   module Generator
-    # Common internal method for generating accessors for decrypted accessors
-    # Primarily used by extensions
+    # Generates `#{decrypted_name}`, `#{decrypted_name}=` and `#{decrypted_name}_changed?` on the
+    # supplied model, reading and writing the encrypted value through `#{encrypted_name}`.
+    #
+    # The accessors go into a per model `EncryptedAttributes` module that is included into the
+    # model, so that the model can override them and call `super`.
+    #
+    # options: [Hash] :type, :random_iv, :compress and :version. See the Mongoid `:encrypted`
+    #   field option. Anything else raises, since a misspelled option would otherwise be ignored.
     def self.generate_decrypted_accessors(model, decrypted_name, encrypted_name, options)
       options   = options.dup
       random_iv = options.delete(:random_iv) || false
@@ -35,13 +46,13 @@ module SymmetricEncryption
         #     v = SymmetricEncryption::Coerce.coerce(value, :string).freeze
         #     return if (@ssn == v) && !v.nil? && !(v == '')
         #     self.encrypted_ssn = @stored_encrypted_ssn =
-        #       ::SymmetricEncryption.encrypt(v, random_iv: false, compress: false, type: :string).freeze
+        #       ::SymmetricEncryption.encrypt(v, random_iv: false, compress: false, type: :string, version: nil).freeze
         #     @ssn = v
         #   end
         #
         #   def ssn
         #     if !defined?(@stored_encrypted_ssn) || (@stored_encrypted_ssn != self.encrypted_ssn)
-        #       @ssn = ::SymmetricEncryption.decrypt(self.encrypted_ssn.freeze, type: :string).freeze
+        #       @ssn = ::SymmetricEncryption.decrypt(self.encrypted_ssn.freeze, type: :string, version: nil).freeze
         #       @stored_encrypted_ssn = self.encrypted_ssn
         #     end
         #     @ssn

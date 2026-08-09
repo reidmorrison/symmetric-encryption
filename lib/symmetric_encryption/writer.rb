@@ -27,6 +27,9 @@ module SymmetricEncryption
     #     Uses Zlib to compress the data before it is encrypted and
     #     written to the file/stream.
     #     Default: true, unless the file_name extension indicates it is already compressed.
+    #     See `ALREADY_COMPRESSED`.
+    #
+    #   Every other keyword argument is passed on to `.new`.
     #
     # Note: Compression occurs before encryption
     #
@@ -82,7 +85,8 @@ module SymmetricEncryption
 
     # Encrypt an entire file.
     #
-    # Returns [Integer] the number of encrypted bytes written to the target file.
+    # Returns [Integer] the number of unencrypted bytes read from the source. The target file is
+    # larger by the header, and by whatever the encryption adds, or smaller when compressed.
     #
     # Params:
     #   source: [String|IO]
@@ -102,7 +106,50 @@ module SymmetricEncryption
       Writer.open(target, **args) { |output_file| IO.copy_stream(source, output_file) }
     end
 
-    # Encrypt data before writing to the supplied stream
+    # Encrypt data before writing to the supplied stream.
+    #
+    # Parameters:
+    #   ios: [IO]
+    #     The stream to write the encrypted data to.
+    #
+    #   version: [Integer]
+    #     Which configured cipher encrypts the stream, or encrypts its random key when
+    #     `random_key` is true. Written into the header, so nothing has to be supplied when
+    #     reading the stream back.
+    #     Default: the primary cipher.
+    #
+    #   cipher_name: [String]
+    #     Encrypt this stream with a different cipher to the configured one, for example
+    #     `aes-256-gcm` for a file when the configured cipher is `aes-256-cbc`. The name is
+    #     written into the header. Only permitted when `random_iv` is true, since the iv of the
+    #     configured cipher is not necessarily a valid iv for this one.
+    #     Default: the cipher_name of the cipher named by `version`.
+    #
+    #   header: [true|false]
+    #     Whether to write the header. Forced on when it is needed to read the stream back: when
+    #     `random_key`, `random_iv` or `compress` is true, or with an authenticated cipher.
+    #     Default: true
+    #
+    #   random_key: [true|false]
+    #     Generate a key for this stream alone, and write it into the header encrypted with the
+    #     cipher named by `version`. Requires `random_iv`.
+    #     Default: true
+    #
+    #   random_iv: [true|false]
+    #     Generate an iv for this stream alone and write it into the header.
+    #     Mandatory for an authenticated cipher, which must never re-use an iv.
+    #     Default: true
+    #
+    #   compress: [true|false]
+    #     Recorded in the header, so that `Reader.open` decompresses the stream. The compression
+    #     itself is applied by `.open`, which wraps this writer in a Zlib::GzipWriter.
+    #     Default: false
+    #
+    #   chunk_size: [Integer]
+    #     Authenticated ciphers only. The number of plain text bytes in each chunk of a chunked
+    #     stream. See `SymmetricEncryption::ChunkedStream`.
+    #     Default: Header::DEFAULT_CHUNK_SIZE
+    #
     # Marginally over the complexity limit: the branches validate the combinations of
     # random_key, random_iv and cipher_name against each other before any data is written.
     # rubocop:disable Metrics/CyclomaticComplexity
@@ -163,9 +210,9 @@ module SymmetricEncryption
     # * Closes the passed in io stream or file.
     # * `close` must be called _before_ the supplied stream is closed.
     #
-    # It is recommended to call Symmetric::EncryptedStream.open
-    # rather than creating an instance of Symmetric::Writer directly to
-    # ensure that the encrypted stream is closed before the stream itself is closed.
+    # It is recommended to call SymmetricEncryption::Writer.open with a block rather than
+    # creating an instance of SymmetricEncryption::Writer directly, to ensure that the encrypted
+    # stream is closed before the stream itself is closed.
     # Positional to match IO#close. Changing it to a keyword would break existing callers.
     def close(close_child_stream = true) # rubocop:disable Style/OptionalBooleanParameter
       return if closed?

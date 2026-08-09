@@ -29,8 +29,13 @@ module SymmetricEncryption
         }
       end
 
-      # Stores the Encryption key in an environment var.
-      # Secures the Encryption key by encrypting it with a key encryption key.
+      # Reads the Encryption key from an environment var.
+      # The Encryption key is secured by encrypting it with a key encryption key.
+      #
+      # encoding: [Symbol]
+      #   How the encrypted key is encoded in the environment variable, since an environment
+      #   variable holds text rather than binary data. See `SymmetricEncryption::Encoder`.
+      #   Default: :base64strict
       def initialize(key_encrypting_key:, key_env_var:, encoding: :base64strict)
         # Memory holds the encrypted key in an attribute. Here it lives in the environment
         # variable instead, so there is nothing to hand up.
@@ -48,7 +53,10 @@ module SymmetricEncryption
         key_encrypting_key.decrypt(binary)
       end
 
-      # Write the encrypted Encryption key to `encrypted_key` attribute.
+      # Encrypts the Encryption key and prints how to set the environment variable that holds it.
+      #
+      # Nothing is written anywhere. Setting the environment variable is the deploy's job, which
+      # is the point of this keystore: the encrypted key never lands in the config file.
       def write(key)
         encrypted_key = key_encrypting_key.encrypt(key)
         puts "\n\n********************************************************************************"
