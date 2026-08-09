@@ -21,7 +21,7 @@ module SymmetricEncryption
       @config_file_path = File.expand_path(ENV["SYMMETRIC_ENCRYPTION_CONFIG"] || "config/symmetric-encryption.yml")
       @app_name         = "symmetric-encryption"
       @key_path         = "#{Dir.home}/.symmetric-encryption"
-      @cipher_name      = "aes-256-cbc"
+      @cipher_name      = "aes-256-gcm"
       @rolling_deploy   = false
       @prompt           = false
       @force            = false
@@ -186,7 +186,7 @@ module SymmetricEncryption
 
         opts.on "-C", "--cipher-name NAME",
                 "Name of the cipher to use when generating a new config file, or when rotating keys. " \
-                "Default: aes-256-cbc" do |name|
+                "Default: aes-256-gcm" do |name|
           @cipher_name = name
         end
 

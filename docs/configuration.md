@@ -49,8 +49,9 @@ Useful options:
 * `--environments LIST` — comma separated. Default: `development,test,release,production`
 * `--key-path PATH` — where key files are written. Default: `~/.symmetric-encryption`
 * `--keystore NAME` — one of `file`, `environment`, `heroku`, `aws`, `gcp`. Default: `file`
-* `--cipher-name NAME` — Default: `aes-256-cbc`. Use `aes-256-gcm` for
-  [authenticated encryption](security.html).
+* `--cipher-name NAME` — Default: `aes-256-gcm`, which is authenticated: it detects any change
+  to an encrypted value rather than decrypting whatever it is given. See
+  [Security](security.html). Supply `aes-256-cbc` for the unauthenticated cipher used before v5.
 * `--config PATH` — Default: `config/symmetric-encryption.yml`
 * `--regions LIST` — AWS KMS only. Default: `us-east-1,us-east-2,us-west-1,us-west-2`
 
@@ -76,7 +77,7 @@ test:
 production:
   ciphers:
   - keystore: :file
-    cipher_name: aes-256-cbc
+    cipher_name: aes-256-gcm
     version: 1
     key_filename: /home/deploy/.symmetric-encryption/my_app_production_v1.encrypted_key
     iv: !binary |-
@@ -442,8 +443,9 @@ truncated key is a *different* key, and nothing already encrypted can be read wi
 
 Options that can be set on any cipher entry:
 
-* `cipher_name` — the OpenSSL cipher. Default: `aes-256-cbc`. See [Security](security.html) for
-  `aes-256-gcm`.
+* `cipher_name` — the OpenSSL cipher. `symmetric-encryption --generate` writes `aes-256-gcm`.
+  Defaults to `aes-256-cbc` when a cipher entry leaves it out, so that a configuration written
+  before v5 still reads the data it encrypted. See [Security](security.html).
 * `version` — 0 to 255. Identifies this key in the header of every value it encrypts.
 * `always_add_header` — whether to add the header when nothing else requires it. Default: `true`, and
   strongly recommended, since it is what makes key rotation work.

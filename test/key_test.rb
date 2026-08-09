@@ -135,5 +135,45 @@ class KeyTest < Minitest::Test
         assert_equal stored_iv, key.iv
       end
     end
+
+    describe "authenticated cipher" do
+      let :authenticated_key do
+        SymmetricEncryption::Key.new(key: stored_key, cipher_name: "aes-256-gcm")
+      end
+
+      it "round trips" do
+        assert_equal ssn, authenticated_key.decrypt(authenticated_key.encrypt(ssn))
+      end
+
+      it "appends the auth tag to the encrypted data" do
+        # The key encrypting keys have no header to carry the tag in, so it goes on the end.
+        encrypted = authenticated_key.encrypt(ssn)
+
+        assert_equal ssn.length + SymmetricEncryption::Header::AUTH_TAG_SIZE, encrypted.length
+      end
+
+      it "rejects data that has been tampered with" do
+        encrypted = authenticated_key.encrypt(ssn)
+        encrypted.setbyte(0, encrypted.getbyte(0) ^ 0x01)
+
+        assert_raises OpenSSL::Cipher::CipherError do
+          authenticated_key.decrypt(encrypted)
+        end
+      end
+
+      it "rejects data too short to hold an auth tag" do
+        error = assert_raises SymmetricEncryption::CipherError do
+          authenticated_key.decrypt("too short")
+        end
+
+        assert_includes error.message, "too short to hold its 16 byte auth tag"
+      end
+
+      it "secures a data encryption key, as a key encrypting key" do
+        dek = SymmetricEncryption::Key.new(cipher_name: "aes-256-gcm")
+
+        assert_equal dek.key, authenticated_key.decrypt(authenticated_key.encrypt(dek.key))
+      end
+    end
   end
 end

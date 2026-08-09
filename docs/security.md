@@ -17,7 +17,10 @@ This page covers detecting tampering with an authenticated cipher, and what Symm
 contributes towards PCI compliance.
 
 ## Authenticated encryption
-`aes-256-cbc`, the default cipher, keeps data secret but does not detect changes to it. Anyone
+`aes-256-gcm` is the cipher `symmetric-encryption --generate` writes, and it is authenticated.
+
+`aes-256-cbc`, which earlier versions generated, keeps data secret but does not detect changes to
+it. Anyone
 who can write to the encrypted value can change it, and the value that comes back out of
 `SymmetricEncryption.decrypt` is whatever those changed bytes decrypt to.
 

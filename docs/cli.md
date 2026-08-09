@@ -149,7 +149,7 @@ script. When stdin is not a terminal it does not prompt at all, but it still nam
 | `-s`, `--keystore NAME` | `file`, `environment`, `heroku`, `aws` or `gcp`. Default: `file`. |
 | `-a`, `--app-name NAME` | Application name, used in key file and variable names. Default: `symmetric-encryption`. |
 | `-S`, `--environments LIST` | Comma separated. Default: `development,test,release,production`. |
-| `-C`, `--cipher-name NAME` | Default: `aes-256-cbc`. |
+| `-C`, `--cipher-name NAME` | Default: `aes-256-gcm`. |
 | `-K`, `--key-path PATH` | Where key files are written. Default: `~/.symmetric-encryption`. |
 | `--key-permissions LIST` | Octal permissions the generated key files may have. Default: `0600,0400`. |
 | `-B`, `--regions LIST` | AWS KMS regions to encrypt the data key with. |
