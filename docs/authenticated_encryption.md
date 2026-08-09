@@ -112,6 +112,42 @@ Reading decrypts a whole chunk at a time and holds it, handing out whatever the 
 so `read`, `read(count)`, `gets` and `each_line` behave as they always have. Only one chunk is
 held in memory at a time, so the size of the file does not matter.
 
+### Seeking
+
+Chunking also makes a stream seekable. Each chunk is encrypted on its own, against a nonce
+derived from where it sits in the stream, so the chunk holding an offset can be decrypted without
+decrypting anything before it:
+
+~~~ruby
+SymmetricEncryption::Reader.open("file.enc") do |file|
+  file.seek(-1024, IO::SEEK_END)
+  file.read
+end
+~~~
+
+One chunk is read, however far into the file the offset is. `IO::SEEK_END` needs the size of the
+decrypted stream, and a chunked stream works that out from the size of the encrypted stream
+rather than by decrypting it, so this is how to ask how much data a stream holds:
+
+~~~ruby
+SymmetricEncryption::Reader.open("file.enc") do |file|
+  file.seek(0, IO::SEEK_END)
+  file.pos
+end
+~~~
+
+The size of the encrypted stream is the one thing here that no auth tag covers, and nothing is
+trusted to it. A stream that has been truncated leaves a chunk that was written as a middle chunk
+at the end, so reading after a seek fails exactly as reading from the beginning does.
+
+Write the file with `compress: false` if it has to be seekable. `Reader.open` yields a
+`Zlib::GzipReader` for a compressed stream, and that has no `seek` at all. See
+[What `Reader.open` yields](files.html#what-readeropen-yields).
+
+Every other stream is a single cipher text that can only be decrypted from its beginning, so
+seeking backwards re-reads the stream up to the point asked for, and `IO::SEEK_END` reads all of
+it to find out how long it is and then re-reads up to the point asked for.
+
 ### What a chunked stream detects
 
 Each chunk is encrypted with a nonce derived from where it sits in the stream, rather than one

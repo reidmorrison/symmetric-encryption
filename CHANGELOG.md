@@ -170,6 +170,24 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   Streams encrypted with an unauthenticated cipher are written and read exactly as before, byte
   for byte, and `test/benchmark_streams.rb` measures that they are no slower.
 
+- `SymmetricEncryption::Reader#seek` no longer decrypts everything up to the point asked for when
+  the stream is a chunked one. Chunking made this possible: each chunk is encrypted on its own,
+  against a nonce derived from where it sits in the stream, so the chunk holding an offset can be
+  decrypted without decrypting anything before it. One chunk is read whatever the offset, and
+  `IO::SEEK_END` derives the size of the decrypted stream from the size of the encrypted stream
+  rather than by reading it, so `seek(0, IO::SEEK_END)` followed by `pos` is how to ask how much
+  data a stream holds. Seeking to the end of a 25 MB file went from reading it twice to reading
+  nothing.
+
+  The size of the encrypted stream is the one input here that no auth tag covers, and nothing is
+  trusted to it. A truncated stream leaves a chunk that was written as a middle chunk at the end,
+  so reading after a seek fails exactly as reading from the beginning does.
+
+  Every other stream is a single cipher text that can only be decrypted from its beginning, and
+  seeks the same way it always has. Write with `compress: false` for a file that has to be
+  seekable, since `Reader.open` yields a `Zlib::GzipReader` for a compressed stream and that has
+  no `seek` at all.
+
 - Encrypting with a cipher other than the primary one no longer means reaching past the public
   API. `version:` selects the cipher, and the version is written into the header so that nothing
   has to be supplied when reading the value back. Issue #60:
