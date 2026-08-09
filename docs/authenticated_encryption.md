@@ -81,32 +81,64 @@ A configured `iv:` is therefore ignored by an authenticated cipher. Every value 
 Unlike Active Record encryption, the key for these values can still be rotated. See
 [Key Rotation](key_rotation.html).
 
-### Files and streams are not supported
+### Files and streams
 
-`SymmetricEncryption::Writer` and `SymmetricEncryption::Reader` refuse an authenticated cipher:
+Files and streams work exactly as they do with any other cipher:
 
 ~~~ruby
 SymmetricEncryption::Writer.open("file.enc") { |file| file.write("data") }
-# ArgumentError: AES-256-GCM is an authenticated cipher, which is not supported for files and streams.
+SymmetricEncryption::Reader.open("file.enc", &:read)
 ~~~
 
-The auth tag of an authenticated cipher only exists once everything has been encrypted, and it
-can only be checked once everything has been decrypted. A file read as a stream would therefore
-have to hand out data long before there was any way to know whether it had been tampered with,
-which is the one thing the cipher is there to prevent. Rather than quietly giving up that
-guarantee, streaming with an authenticated cipher is refused.
+There is a problem to solve behind that, though. The auth tag of an authenticated cipher only
+exists once everything has been encrypted, and it can only be checked once everything has been
+decrypted. Reading a large file as one encrypted value would mean handing out data long before
+there was any way to know whether it had been tampered with, which is the one thing the cipher
+is there to prevent.
 
-Encrypt the file itself with an unauthenticated cipher instead:
+So a stream is split into chunks, each with its own auth tag, and each chunk is verified before
+any of it is returned. Which of the two forms a stream takes is decided by how much data there
+turns out to be, and needs nothing from the caller:
+
+* Up to one chunk of data, 64 KB by default, is written as a single encrypted value with its
+  auth tag in the header, exactly as an encrypted string is written. No chunk overhead at all.
+* More than that is written as a chunked stream, at a cost of 16 bytes per chunk. That is 0.02%
+  with the default chunk size.
+
+Nothing is written until that is known, not even the header, because the smaller form has to put
+its auth tag in the header.
+
+Reading decrypts a whole chunk at a time and holds it, handing out whatever the caller asks for,
+so `read`, `read(count)`, `gets` and `each_line` behave as they always have. Only one chunk is
+held in memory at a time, so the size of the file does not matter.
+
+### What a chunked stream detects
+
+Each chunk is encrypted with a nonce derived from where it sits in the stream, rather than one
+stored next to it, and is authenticated against the bytes of the stream's header. A stored value
+is a value an attacker can change, a derived one is not. So a chunked stream detects:
+
+* Any change to the encrypted data, as any authenticated cipher does.
+* A chunk moved to another position in the stream, or repeated.
+* A chunk moved from a different stream.
+* Any change to the header, including to the version, the compression flag and the chunk size.
+* **Truncation.** Whether a chunk is the last one is part of what it is authenticated against, so
+  cutting the end off a file is detected: the chunk left at the end was encrypted as a middle
+  chunk. Without that, every chunk remaining after a truncation would verify perfectly.
+
+### Choosing the chunk size
+
+64 KB unless `chunk_size` says otherwise. It has to be a power of two between 1 KB and 16 MB:
 
 ~~~ruby
-SymmetricEncryption::Writer.open("file.enc", cipher_name: "aes-256-cbc") do |file|
-  file.write("data")
+SymmetricEncryption::Writer.open("file.enc", chunk_size: 256 * 1024) do |file|
+  file.write(data)
 end
 ~~~
 
-Every file already gets its own randomly generated key, and that key is encrypted with the global
-cipher and stored in the file's header. So the file's key is still protected by the authenticated
-global cipher, even though the file's contents are encrypted with `aes-256-cbc`.
+The reader takes the chunk size from the header, so a file written with one chunk size is read
+back without being told what it was. Larger chunks cost less per byte and hold more in memory at
+a time; smaller chunks return the first data sooner.
 
 ### Moving existing data to an authenticated cipher
 

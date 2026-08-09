@@ -122,6 +122,50 @@ module SymmetricEncryption
       decrypted << openssl_cipher.final
     end
 
+    # Reads a chunked stream from an IO stream, one chunk at a time.
+    #
+    # Holds the read ahead buffer and the number of the next chunk. `Reader` keeps one of these
+    # rather than the three separate pieces of state, so that reading an unauthenticated stream,
+    # which has none of them, is not slowed down by the extra instance variables that would
+    # otherwise be on every reader.
+    class Buffer
+      def initialize(stream, ios, buffer_size:)
+        @stream       = stream
+        @ios          = ios
+        @buffer_size  = [buffer_size, stream.frame_size].max
+        @buffer       = "".b
+        @chunk_number = 0
+      end
+
+      # Adds bytes that have already been read out of the stream, after the header.
+      def <<(bytes)
+        @buffer << bytes if bytes
+        self
+      end
+
+      # Returns [true|false] whether every byte read so far has been decrypted.
+      def empty?
+        @buffer.empty?
+      end
+
+      # Returns [String] the next decrypted chunk, or nil once the stream is exhausted.
+      #
+      # Whether a chunk is the last one is part of what it is authenticated against, so this
+      # always reads one byte further than the chunk it is about to decrypt.
+      def next_chunk
+        frame_size = @stream.frame_size
+        @buffer << @ios.read(@buffer_size, @read_buffer ||= "".b).to_s while (@buffer.bytesize <= frame_size) && !@ios.eof?
+        return if @buffer.empty?
+
+        last  = @buffer.bytesize <= frame_size
+        frame = @buffer.slice!(0, last ? @buffer.bytesize : frame_size)
+
+        decrypted      = @stream.decrypt(@chunk_number, frame, last: last)
+        @chunk_number += 1
+        decrypted
+      end
+    end
+
     private
 
     attr_reader :cipher_name, :key, :nonce_prefix, :header_bytes

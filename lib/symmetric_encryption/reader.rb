@@ -117,11 +117,10 @@ module SymmetricEncryption
     def initialize(ios, buffer_size: 4096, version: nil)
       @ios            = ios
       @buffer_size    = buffer_size
-      @version          = version
-      @header_present   = false
-      @closed           = false
-      @read_buffer      = "".b
-      @encrypted_buffer = "".b
+      @version        = version
+      @header_present = false
+      @closed         = false
+      @read_buffer    = "".b
 
       raise(ArgumentError, "Buffer size cannot be smaller than 128") unless @buffer_size >= 128
 
@@ -256,10 +255,11 @@ module SymmetricEncryption
 
     # Returns whether the end of file has been reached for this stream
     #
-    # A chunked stream reads ahead, so the encrypted buffer can still hold a chunk that has not
-    # been decrypted yet after the underlying stream has been read to its end.
+    # A chunked stream reads ahead, so it can still hold a chunk that has not been decrypted yet
+    # once the underlying stream has been read to its end. That is checked last, behind
+    # `@ios.eof?`, so that reading an unauthenticated stream never evaluates it.
     def eof?
-      @read_buffer.empty? && @encrypted_buffer.empty? && @ios.eof?
+      @read_buffer.empty? && @ios.eof? && (@chunk_buffer.nil? || @chunk_buffer.empty?)
     end
 
     # Return the number of bytes read so far from the input stream
@@ -268,7 +268,6 @@ module SymmetricEncryption
     # Rewind back to the beginning of the file
     def rewind
       @read_buffer.clear
-      @encrypted_buffer.clear
       @ios.rewind
       read_header
     end
@@ -325,15 +324,13 @@ module SymmetricEncryption
     # data. A chunked stream reads ahead, so the underlying stream reaches its end while a chunk
     # that has not been decrypted yet is still held.
     def more_to_decrypt?
-      !@encrypted_buffer.empty? || !@ios.eof?
+      !@ios.eof? || !(@chunk_buffer.nil? || @chunk_buffer.empty?)
     end
 
     # Read the header from the file if present
     def read_header
-      @pos              = 0
-      @chunk_number     = 0
-      @chunked_stream   = nil
-      @encrypted_buffer = "".b
+      @pos          = 0
+      @chunk_buffer = nil
 
       # Read first block and check for the header
       buf = @ios.read(@buffer_size, @output_buffer ||= "".b)
@@ -377,34 +374,31 @@ module SymmetricEncryption
         )
       end
 
-      @encrypted_buffer << buf if buf
+      return read_single_authenticated(header, cipher_name, key, cipher, buf) unless header.chunked?
 
-      if header.chunked?
-        @chunked_stream = ChunkedStream.new(
-          cipher_name:  cipher_name,
-          key:          key || cipher.send(:key),
-          # The header of a chunked stream holds the prefix that every chunk's nonce is derived
-          # from, rather than an iv used directly.
-          nonce_prefix: header.iv,
-          header_bytes: header.header_bytes,
-          chunk_size:   header.chunk_size
-        )
-        read_chunk
-      else
-        read_single_authenticated(header, cipher_name, key, cipher)
-      end
+      stream = ChunkedStream.new(
+        cipher_name:  cipher_name,
+        key:          key || cipher.send(:key),
+        # The header of a chunked stream holds the prefix that every chunk's nonce is derived
+        # from, rather than an iv used directly.
+        nonce_prefix: header.iv,
+        header_bytes: header.header_bytes,
+        chunk_size:   header.chunk_size
+      )
+      @chunk_buffer = ChunkedStream::Buffer.new(stream, @ios, buffer_size: @buffer_size) << buf
+      read_block
     end
 
     # Reads a stream small enough that `Writer` put its auth tag in the header rather than
     # chunking it. The whole stream has to be held before any of it can be verified, which is
     # exactly why anything larger is chunked, so the size is capped.
-    def read_single_authenticated(header, cipher_name, key, cipher)
+    def read_single_authenticated(header, cipher_name, key, cipher, buf)
+      encrypted = "".b
+      encrypted << buf if buf
       limit = 2**Header::MAX_CHUNK_SIZE_EXPONENT
-      while @encrypted_buffer.bytesize <= limit && !@ios.eof?
-        @encrypted_buffer << @ios.read(@buffer_size, @output_buffer ||= "".b).to_s
-      end
+      encrypted << @ios.read(@buffer_size, @output_buffer ||= "".b).to_s while encrypted.bytesize <= limit && !@ios.eof?
 
-      if @encrypted_buffer.bytesize > limit
+      if encrypted.bytesize > limit
         raise(
           SymmetricEncryption::CipherError,
           "This stream holds its auth tag in its header, so all of it has to be read before any of it can be " \
@@ -420,33 +414,17 @@ module SymmetricEncryption
       openssl_cipher.auth_tag  = header.auth_tag
       openssl_cipher.auth_data = header.auth_data
 
-      @read_buffer << openssl_cipher.update(@encrypted_buffer) unless @encrypted_buffer.empty?
+      @read_buffer << openssl_cipher.update(encrypted) unless encrypted.empty?
       @read_buffer << openssl_cipher.final
-      @encrypted_buffer.clear
-    end
-
-    # Reads and verifies the next chunk, appending its decrypted data to the read buffer.
-    #
-    # Whether a chunk is the last one is part of what it is authenticated against, so the next
-    # byte after it has to be looked at before it can be decrypted. That is what stops a stream
-    # being truncated: the chunk left at the end would have been encrypted as a middle chunk.
-    def read_chunk
-      frame_size = @chunked_stream.frame_size
-      while (@encrypted_buffer.bytesize <= frame_size) && !@ios.eof?
-        @encrypted_buffer << @ios.read([@buffer_size, frame_size].max, @output_buffer ||= "".b).to_s
-      end
-      return if @encrypted_buffer.empty?
-
-      last  = @encrypted_buffer.bytesize <= frame_size
-      frame = @encrypted_buffer.slice!(0, last ? @encrypted_buffer.bytesize : frame_size)
-
-      @read_buffer << @chunked_stream.decrypt(@chunk_number, frame, last: last)
-      @chunk_number += 1
     end
 
     # Read a block of data and append the decrypted data in the read buffer
     def read_block(length = nil)
-      return read_chunk if @chunked_stream
+      if @chunk_buffer
+        chunk = @chunk_buffer.next_chunk
+        @read_buffer << chunk if chunk
+        return
+      end
 
       buf = @ios.read(length || @buffer_size, @output_buffer ||= "".b)
       decrypt(buf)
