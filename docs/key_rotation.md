@@ -50,11 +50,15 @@ By default a new key is generated for every environment, to limit it to just pro
 
     symmetric-encryption --rotate-keys --rolling-deploy  --app-name my_app --environments production
     
+The command names the environments it rotated. Development and test hold their key in the configuration file
+itself, so there is no keystore to generate a new key from and they are left unchanged.
+
 Copy the key file to every server in that particular environment that runs the application or uses Symmetric Encryption.
 
 If the keys for multiple environments are generated above, then move the relevant key files to the servers for that environment.
 
-By default the key files are located in `/etc/symmetric-encryption`.
+New key files are written alongside the current ones, wherever the configuration file says they are. Supply
+`--key-path` to write them somewhere else. By default the key files are located in `/etc/symmetric-encryption`.
 
     
 ### 2. Re-encrypt all passwords in the source repository

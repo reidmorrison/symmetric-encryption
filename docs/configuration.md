@@ -403,6 +403,14 @@ Example:  Rotate existing keys migrating to AWS for the new keys:
 
     symmetric-encryption --rotate-keys --keystore aws --app-name my_app --environments production
 
+Example: Rotate the keys of an existing AWS KMS configuration:
+
+    symmetric-encryption --rotate-keys --app-name my_app --environments production
+
+When rotating an existing AWS KMS configuration, the new data key is encrypted for the same regions as the
+current key files, and the new key files are written to the same path. Supply `--regions` or `--key-path` to
+change either of them.
+
 Once the new keys have been generated, they should be moved to the relevant servers. By default the files
 are generated in `~/.symmetric-encryption` unless the flag `--key-path` was used to change the path.
 
