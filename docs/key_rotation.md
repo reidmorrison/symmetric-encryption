@@ -223,7 +223,7 @@ Two things to know before relying on this:
   refused when the configuration file is loaded.
 
 **If this is a Rails application, and the data is nothing but Active Record attributes, use
-[Active Record encryption](migrating.html) instead.** `encrypts :ssn, key: "..."` does the
+[Active Record encryption](rails.html#migrating-to-active-record-encryption) instead.** `encrypts :ssn, key: "..."` does the
 same job, without a version number to allocate and without the two warnings above.
 
 ### A key per customer

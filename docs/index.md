@@ -44,8 +44,8 @@ Symmetric Encryption is for the encryption Active Record encryption does not cov
   can be queried. Active Record encryption cannot rotate its deterministic key.
 
 Already using this gem for Active Record attributes and want to move to Active Record encryption?
-See [Migrating](migrating.html), which reads the data already in the database while Active Record
-encryption writes every new value.
+See [Migrating to Active Record encryption](rails.html#migrating-to-active-record-encryption),
+which reads the data already in the database while Active Record encryption writes every new value.
 
 ## Quick start
 

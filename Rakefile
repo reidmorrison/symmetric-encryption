@@ -23,7 +23,7 @@ end
 
 desc "Regenerate docs/llms-full.txt from the docs markdown pages"
 task :llms_full do
-  pages  = %w[index guide configuration rails mongoid files cli key_rotation security api migrating]
+  pages  = %w[index guide configuration rails mongoid files cli key_rotation security upgrading api]
   header = <<~HEADER
     # Symmetric Encryption - Complete Documentation
 

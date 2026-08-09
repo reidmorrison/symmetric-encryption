@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="description"
-    content="Symmetric Encryption for Ruby and Rails. Encrypt Active Record attributes, Mongoid fields, passwords in configuration files, and entire files at rest, with keys held outside of the source code.">
+    content="Encrypt data at rest in Ruby and Rails, with keys held outside your source code. Active Record attributes, Mongoid fields, passwords in configuration files, and entire files and streams. Keys live in a keystore, including AWS KMS and Google Cloud KMS, and rotate without downtime.">
   <title>Symmetric Encryption for Ruby and Rails. Encrypt attributes, files, and passwords in configuration files.</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" href="images/favicon.ico">
@@ -26,13 +26,13 @@
       </a>
       <div class="header-body">
         {% assign current_page = page.name | replace: '.md', '.html' %}
-        {% assign nav_items = "index.html=Home,guide.html=Guide,configuration.html=Configuration,rails.html=Rails,mongoid.html=Mongoid,files.html=Files,cli.html=Command Line,key_rotation.html=Key Rotation,security.html=Security,migrating.html=Migrating,api.html=API" | split: ',' %}
+        {% assign nav_items = "index.html=Home,guide.html=Guide,configuration.html=Configuration,rails.html=Rails,mongoid.html=Mongoid,files.html=Files,cli.html=Command Line,key_rotation.html=Key Rotation,security.html=Security,upgrading.html=Upgrading,api.html=API" | split: ',' %}
         {% for item in nav_items %}{% assign pair = item | split: '=' %}
         <a href="{{ pair[0] }}" class="btn{% if pair[0] == current_page %} active{% endif %}">{{ pair[1] }}</a>{% endfor %}
         <a href="https://github.com/reidmorrison/symmetric-encryption" class="btn">GitHub</a>
         <h1 class="project-name"><span class="brand-symmetric">Symmetric</span> <span class="brand-encryption">Encryption</span></h1>
-        <h2 class="project-tagline">Encrypt Active Record attributes, Mongoid fields, passwords in
-          configuration files, and entire files at rest.</h2>
+        <h2 class="project-tagline">Encrypt data at rest in Ruby and Rails, with keys held outside
+          your source code.</h2>
       </div>
     </div>
   </section>
