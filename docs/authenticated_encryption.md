@@ -155,4 +155,4 @@ supplying the version explicitly:
 SymmetricEncryption.decrypt(old_value, version: 1)
 ~~~
 
-### Next => [Key Rotation](key_rotation.html)
+### Next => [Multiple Ciphers](multiple_ciphers.html)

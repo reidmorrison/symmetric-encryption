@@ -43,22 +43,91 @@ module SymmetricEncryption
   # If a version is supplied
   #   Returns the primary cipher if no match was found and version == 0
   #   Returns nil if no match was found and version != 0
+  #
+  # Inside a `with_cipher` block the ciphers supplied to it are used instead, and are searched
+  # before the configured ones.
   def self.cipher(version = nil)
-    unless cipher?
+    scoped  = Fiber[SCOPED_CIPHERS] if @cipher_scoping
+    primary = scoped ? scoped.first : @cipher
+    unless primary
       raise(
         SymmetricEncryption::ConfigError,
         "Call SymmetricEncryption.load! or SymmetricEncryption.cipher= prior to encrypting or decrypting data"
       )
     end
 
-    return @cipher if version.nil? || (@cipher.version == version)
+    return primary if version.nil? || (primary.version == version)
 
-    secondary_ciphers.find { |c| c.version == version } || (@cipher if version.zero?)
+    # The scoped ciphers first, so that one of them wins a version it shares with a configured
+    # cipher, then the configured ones, so that data encrypted before the block still reads.
+    scoped&.find { |c| c.version == version } ||
+      (@cipher if @cipher && (@cipher.version == version)) ||
+      secondary_ciphers.find { |c| c.version == version } ||
+      (primary if version.zero?)
   end
 
   # Returns whether a primary cipher has been set
   def self.cipher?
-    !@cipher.nil?
+    !((Fiber[SCOPED_CIPHERS]&.first if @cipher_scoping) || @cipher).nil?
+  end
+
+  # Use the supplied cipher for the duration of the block, instead of the configured primary
+  # cipher, and put the previous one back afterwards.
+  #
+  # Intended for data that is encrypted with a key of its own, held somewhere other than
+  # `symmetric-encryption.yml`. The usual case is a key per customer, read from a database table
+  # and itself encrypted with the global cipher:
+  #
+  #   SymmetricEncryption.with_cipher(cipher_for(customer)) do
+  #     person.save!
+  #   end
+  #
+  # Everything encrypted or decrypted inside the block uses that cipher, including Active Record
+  # attributes, Mongoid fields, files and streams, since all of them ask for the cipher rather
+  # than holding on to one.
+  #
+  # Parameters
+  #   cipher [SymmetricEncryption::Cipher]
+  #     The cipher to encrypt with, and the first one searched when decrypting.
+  #
+  #   secondary_ciphers [Array<SymmetricEncryption::Cipher>]
+  #     Ciphers that are only decrypted with, so that the key in `cipher` can be rotated the same
+  #     way the configured keys are: add the new key here first, then make it the primary one.
+  #     Default: none.
+  #
+  # Notes:
+  # * The ciphers supplied here are searched before the configured ones, so a version that is
+  #   also configured is taken from here for the duration of the block.
+  # * The configured ciphers are still searched, so data encrypted before the block's cipher
+  #   existed is still readable inside the block.
+  # * Threads and fibers started inside the block inherit the scope, which includes Enumerators,
+  #   and what they do with it does not leak back out. A thread that already existed does not
+  #   inherit it, since it is copied when the thread is created: handing work to a thread pool
+  #   inside the block runs that work without the scope, so set it again in the worker.
+  # * Decrypting one customer's data inside another customer's block decrypts it with the wrong
+  #   key. An authenticated cipher, `aes-256-gcm`, fails when that happens. `aes-256-cbc` cannot
+  #   detect it and returns whatever the wrong key produces, so use an authenticated cipher for
+  #   anything encrypted this way.
+  def self.with_cipher(cipher, secondary_ciphers: [])
+    unless cipher.respond_to?(:encrypt) && cipher.respond_to?(:decrypt)
+      raise(ArgumentError, "Cipher must respond to :encrypt and :decrypt")
+    end
+
+    raise(ArgumentError, "secondary_ciphers must be a collection") unless secondary_ciphers.respond_to?(:each)
+
+    # Looking in fiber storage on every encryption costs about 2% of the time it takes to encrypt
+    # a value, which an application that never scopes a cipher should not pay. Set before the
+    # scope so that a fiber started inside the block sees it, and never unset, since another
+    # fiber can still be inside a scope of its own.
+    @cipher_scoping = true
+
+    previous = Fiber[SCOPED_CIPHERS]
+    begin
+      Fiber[SCOPED_CIPHERS] = [cipher, *secondary_ciphers].freeze
+      yield
+    ensure
+      Fiber[SCOPED_CIPHERS] = previous
+    end
   end
 
   # Set the Secondary Symmetric Ciphers Array to be used
@@ -322,10 +391,17 @@ module SymmetricEncryption
   BINARY_ENCODING = Encoding.find("binary")
   UTF8_ENCODING   = Encoding.find("UTF-8")
 
+  # Where `with_cipher` holds the ciphers for the current scope. Fiber storage rather than a
+  # thread variable, so that a fiber started inside the block, which is what an Enumerator is,
+  # inherits the scope instead of silently encrypting with the configured cipher.
+  SCOPED_CIPHERS = :symmetric_encryption_scoped_ciphers
+  private_constant :SCOPED_CIPHERS
+
   # Defaults
   @cipher                      = nil
   @secondary_ciphers           = []
   @select_cipher               = nil
   @randomize_iv                = false
   @filter_encrypted_attributes = true
+  @cipher_scoping              = false
 end

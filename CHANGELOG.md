@@ -170,6 +170,42 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   Streams encrypted with an unauthenticated cipher are written and read exactly as before, byte
   for byte, and `test/benchmark_streams.rb` measures that they are no slower.
 
+- `SymmetricEncryption.with_cipher` uses a cipher that is not in `symmetric-encryption.yml` for
+  the duration of a block, for data encrypted with a key of its own. The usual case is a key per
+  customer, held in a database table and itself encrypted with the global cipher. Issue #60:
+
+  ~~~ruby
+  SymmetricEncryption.with_cipher(customer.cipher) do
+    person.update!(ssn: "123-45-6789")
+  end
+  ~~~
+
+  Everything encrypted or decrypted inside the block uses that cipher, including Active Record
+  attributes, Mongoid fields, files and streams, since all of them ask for the cipher rather than
+  holding on to one. Data encrypted with the configured ciphers is still readable inside the
+  block, so a customer's own key does not cut the application off from everything else.
+
+  A version is a single byte, so `symmetric-encryption.yml` holds at most 256 ciphers, which is
+  ample for rotating a key and nowhere near enough for one per customer. Choosing the key by what
+  is in scope rather than by what is in the value removes that limit: two customers can both use
+  version 1.
+
+  That is also the risk, and it is worth stating plainly. Decrypting one customer's data while
+  another customer's cipher is in scope decrypts it with the wrong key, and nothing in the value
+  says who it belonged to. With `aes-256-gcm` that fails. With `aes-256-cbc` it cannot be
+  detected, and occasionally returns whatever the wrong key produces, so use an authenticated
+  cipher for anything encrypted this way.
+
+  Supply `secondary_ciphers:` to rotate a scoped key, the same way the configured keys rotate:
+  add the new key as the primary one and keep the old one for reading until nothing needs it.
+
+  The scope belongs to the current fiber. Threads and fibers started inside the block inherit it,
+  which includes Enumerators, and what they do with it does not leak back out. A thread that
+  already existed does not, so work handed to a thread pool or a background job runs without the
+  scope and has to set it again.
+
+  See the [Multiple Ciphers Guide](https://encryption.reidmorrison.com/multiple_ciphers.html).
+
 - `SymmetricEncryption::ActiveRecord::RailsEncryptor` reads values that Symmetric Encryption
   encrypted, from inside Active Record encryption, so that an application can move its encrypted
   attributes to Rails 7's built-in `encrypts` without re-encrypting the database first:
