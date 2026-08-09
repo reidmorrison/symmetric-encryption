@@ -157,4 +157,4 @@ Once sufficient time has passed and you are 100% certain that there is no data
 around that is still encrypted with the old key, wipe the old key from all the production
 servers.
 
-### Next => [PCI Compliance](pci_compliance.html)
+### Next => [Migrating to Active Record encryption](rails_encryption.html)

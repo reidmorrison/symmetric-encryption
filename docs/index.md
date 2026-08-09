@@ -14,6 +14,29 @@ and consistent way for Ruby and Rails projects.
 Symmetric Encryption uses OpenSSL to encrypt and decrypt data, and can therefore
 expose all the encryption algorithms supported by OpenSSL.
 
+### Do you need this gem?
+
+Rails 7 added [Active Record encryption](https://guides.rubyonrails.org/active_record_encryption.html),
+which encrypts model attributes without any gem at all. For a Rails application whose encrypted
+data is nothing but Active Record attributes, use Active Record encryption. It is built in, it is
+maintained by the Rails team, and this gem does not do that job better.
+
+Symmetric Encryption is for the encryption that Active Record encryption does not cover:
+
+* Mongoid fields, without deploying MongoDB's client side field level encryption, which needs
+  `libmongocrypt` and a key management service before it will encrypt anything.
+* Whole files and streams, of any size, without reading them into memory.
+* Standalone Ruby, with no Rails and no Active Record. See [Standalone](standalone.html).
+* Passwords in `database.yml` and other configuration files, decrypted before Rails has
+  finished booting, which is what makes an encrypted database password possible.
+* Data encryption keys held in AWS KMS or Google Cloud KMS. See [Configuration](configuration.html).
+* Rotating the key for a value that has to encrypt to the same ciphertext every time so that it
+  can be queried. Active Record encryption cannot rotate its deterministic key.
+
+Already using this gem for Active Record attributes and want to move them to Active Record
+encryption? See [Migrating to Active Record encryption](rails_encryption.html), which reads the
+data already in the database while Active Record encryption writes every new value.
+
 ### Examples
 
 #### Encryption
@@ -44,6 +67,8 @@ SymmetricEncryption.decrypt "JqLJOi6dNjWI9kX9lSL1XQ=="
 * For maximum security uses randomized keys and initialization vectors extracted
   from the entire encryption key space.
 * Option to generate a new initialization vector (IV) with every encrypted value.
+* Authenticated encryption with `aes-256-gcm`, which detects any change to an encrypted value
+  instead of decrypting whatever it is given. See [Authenticated Encryption](authenticated_encryption.html).
 
 ### Validations
 

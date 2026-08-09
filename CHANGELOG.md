@@ -144,6 +144,29 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
   See the [Authenticated Encryption Guide](https://encryption.reidmorrison.com/authenticated_encryption.html).
 
+- `SymmetricEncryption::ActiveRecord::RailsEncryptor` reads values that Symmetric Encryption
+  encrypted, from inside Active Record encryption, so that an application can move its encrypted
+  attributes to Rails 7's built-in `encrypts` without re-encrypting the database first:
+
+  ~~~ruby
+  class User < ApplicationRecord
+    encrypts :ssn, previous: [{encryptor: SymmetricEncryption::ActiveRecord::RailsEncryptor.new}]
+  end
+  ~~~
+
+  Values already in the database are read by Symmetric Encryption, and every value written from
+  then on is encrypted by Active Record, so the data migrates as records are saved. It only ever
+  decrypts, so a partly migrated application cannot silently write data back in the old format.
+
+  Added because for a Rails application whose encrypted data is nothing but Active Record
+  attributes, Active Record encryption is now the better choice, and there was no supported way to
+  get there. The gem remains the answer for what Active Record encryption does not cover: Mongoid
+  fields, files and streams, standalone Ruby, passwords in configuration files that have to be
+  decrypted before Rails finishes booting, keys held in AWS KMS or Google Cloud KMS, and rotating
+  the key of a value that has to stay queryable, which Active Record encryption cannot do.
+
+  See the [Rails Encryption Guide](https://encryption.reidmorrison.com/rails_encryption.html).
+
 - `SymmetricEncryption::ActiveRecord::ExcludeFromJson` keeps encrypted attributes out of the JSON
   representation of a model, so that they cannot be leaked by `render json: @person`. Also issue
   #128:
