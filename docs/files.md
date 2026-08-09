@@ -154,6 +154,11 @@ Since compression is the default, code that works against an encrypted file writ
 should not rely on `seek` or `size`. If a library needs a method that neither provides, decrypt to
 a `Tempfile` first and hand it a real `File`.
 
+`seek` also differs in cost. On a stream encrypted with `aes-256-gcm` it jumps straight to the
+chunk holding the offset, however far into the file that is. On any other stream it re-reads the
+file up to that point, and `IO::SEEK_END` reads the whole file to find out how long it is. See
+[Seeking](authenticated_encryption.html#seeking).
+
 #### Encoding
 
 The decrypted bytes are always exact, but the encoding they are tagged with depends on which of

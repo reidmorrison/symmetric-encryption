@@ -81,6 +81,13 @@ module SymmetricEncryption
       @frame_size ||= chunk_size + Header::AUTH_TAG_SIZE
     end
 
+    # Returns [Integer] the number of bytes the stream's header occupies, and therefore the
+    # position of its first chunk. Every chunk after it is `frame_size` bytes further on, which
+    # is what makes it possible to seek to a chunk instead of reading up to it.
+    def header_size
+      @header_size ||= header_bytes.bytesize
+    end
+
     # Returns [String] the encrypted chunk, its auth tag appended.
     #
     # Parameters:
@@ -163,6 +170,44 @@ module SymmetricEncryption
         decrypted      = @stream.decrypt(@chunk_number, frame, last: last)
         @chunk_number += 1
         decrypted
+      end
+
+      # Positions the stream so that the next chunk read is the one holding `offset`.
+      #
+      # Returns [Integer] how far into that chunk the offset is, since a chunk is the smallest
+      # amount that can be decrypted and the bytes before the offset have to be dropped.
+      #
+      # Every chunk is decrypted on its own, against a nonce derived from its position rather
+      # than against the chunks before it, so the chunk holding an offset can be read without
+      # reading anything else. That is only true of a chunked stream: an unchunked one is a
+      # single cipher text that has to be decrypted from the beginning.
+      def seek(offset)
+        chunk_number, within = offset.divmod(@stream.chunk_size)
+
+        @ios.seek(@stream.header_size + (chunk_number * @stream.frame_size))
+        @buffer.clear
+        @chunk_number = chunk_number
+        within
+      end
+
+      # Returns [Integer] the number of plain text bytes in the stream, without decrypting any
+      # of it. Named for what it measures, since `empty?` above is about the read ahead buffer
+      # rather than the stream.
+      #
+      # Every chunk holds `chunk_size` plain text bytes except the last, so the size follows from
+      # the size of the encrypted stream. That size is not itself authenticated, but a change to
+      # it is: truncating the stream leaves a chunk that was written as a middle chunk at the
+      # end, and it fails its auth tag check as soon as it is read.
+      def plain_text_size
+        data = @ios.size - @stream.header_size
+        return 0 if data <= 0
+
+        chunks, remainder = data.divmod(@stream.frame_size)
+        size              = chunks * @stream.chunk_size
+        return size if remainder.zero?
+
+        # A remainder smaller than an auth tag is a truncated stream, which raises when read.
+        size + [remainder - Header::AUTH_TAG_SIZE, 0].max
       end
     end
 

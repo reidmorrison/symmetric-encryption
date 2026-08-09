@@ -1,4 +1,22 @@
 require_relative "test_helper"
+require "delegate"
+
+# Counts the encrypted bytes read out of a stream, so that seeking can be shown to read the chunk
+# that was asked for rather than everything before it.
+class CountingIO < SimpleDelegator
+  attr_reader :bytes_read
+
+  def initialize(ios)
+    super
+    @bytes_read = 0
+  end
+
+  def read(*)
+    result = __getobj__.read(*)
+    @bytes_read += result.bytesize if result
+    result
+  end
+end
 
 # A stream encrypted with an authenticated cipher is split into chunks, each with its own auth
 # tag, so that it can be verified as it is read rather than only once all of it has been read.
@@ -138,15 +156,129 @@ class ChunkedStreamTest < Minitest::Test
           assert_equal the_data, file.read
         end
       end
+    end
 
-      it "seeks" do
+    # Every chunk is encrypted on its own, against a nonce derived from where it sits in the
+    # stream, so the chunk holding an offset can be decrypted without decrypting the chunks
+    # before it. A stream that is not chunked has to be decrypted from its beginning.
+    describe "seeking" do
+      before do
         write(the_data)
+      end
 
-        SymmetricEncryption::Reader.open(the_file_name) do |file|
-          file.seek(the_chunk_size + 5)
+      # Offsets on a chunk boundary, part way into a chunk, and at either end of the stream.
+      # Literals rather than `the_chunk_size`, which a `let` does not make available out here.
+      [0, 1, 1023, 1024, 1029, 3000].each do |offset|
+        it "seeks to #{offset}" do
+          SymmetricEncryption::Reader.open(the_file_name) do |file|
+            file.seek(offset)
 
-          assert_equal the_data.byteslice((the_chunk_size + 5)..), file.read
+            assert_equal offset, file.pos
+            assert_equal the_data.byteslice(offset..), file.read
+          end
         end
+      end
+
+      it "seeks backwards" do
+        SymmetricEncryption::Reader.open(the_file_name) do |file|
+          file.read(3000)
+          file.seek(10)
+
+          assert_equal the_data.byteslice(10..), file.read
+        end
+      end
+
+      it "seeks more than once" do
+        SymmetricEncryption::Reader.open(the_file_name) do |file|
+          file.seek(2000)
+
+          assert_equal the_data.byteslice(2000, 50), file.read(50)
+
+          file.seek(10)
+
+          assert_equal the_data.byteslice(10, 50), file.read(50)
+        end
+      end
+
+      it "seeks relative to the current position" do
+        SymmetricEncryption::Reader.open(the_file_name) do |file|
+          file.read(100)
+          file.seek(1500, IO::SEEK_CUR)
+
+          assert_equal the_data.byteslice(1600..), file.read
+        end
+      end
+
+      it "seeks backwards relative to the current position" do
+        SymmetricEncryption::Reader.open(the_file_name) do |file|
+          file.read(2000)
+          file.seek(-1500, IO::SEEK_CUR)
+
+          assert_equal the_data.byteslice(500..), file.read
+        end
+      end
+
+      it "seeks relative to the end" do
+        SymmetricEncryption::Reader.open(the_file_name) do |file|
+          file.seek(-10, IO::SEEK_END)
+
+          assert_equal the_data.byteslice(-10..), file.read
+        end
+      end
+
+      # The idiom for asking how much data a stream holds.
+      it "reports the size of the decrypted stream" do
+        SymmetricEncryption::Reader.open(the_file_name) do |file|
+          file.seek(0, IO::SEEK_END)
+
+          assert_equal the_data.bytesize, file.pos
+          assert_predicate file, :eof?
+        end
+      end
+
+      it "seeks past the end" do
+        SymmetricEncryption::Reader.open(the_file_name) do |file|
+          file.seek(the_data.bytesize + 5000)
+
+          assert_predicate file, :eof?
+          assert_nil file.read(10)
+        end
+      end
+
+      it "rejects an unknown whence" do
+        SymmetricEncryption::Reader.open(the_file_name) do |file|
+          assert_raises(ArgumentError) { file.seek(0, 99) }
+        end
+      end
+
+      # The size of the encrypted stream is what a chunked stream derives its own size from, and
+      # unlike everything else it is not covered by an auth tag. Nothing is trusted to it though:
+      # a truncated stream leaves a chunk that was written as a middle chunk at the end.
+      it "still detects a truncated stream" do
+        buffer = File.binread(the_file_name)
+        File.binwrite(the_file_name, buffer.byteslice(0, buffer.bytesize - (the_chunk_size + 16)))
+
+        assert_raises(OpenSSL::Cipher::CipherError, SymmetricEncryption::CipherError) do
+          SymmetricEncryption::Reader.open(the_file_name) do |file|
+            file.seek(-10, IO::SEEK_END)
+            file.read
+          end
+        end
+      end
+
+      it "reads the chunk that was asked for rather than everything before it" do
+        large = OpenSSL::Random.random_bytes(the_chunk_size * 1000)
+        write(large)
+        counting = CountingIO.new(File.open(the_file_name, "rb"))
+
+        SymmetricEncryption::Reader.open(counting) do |file|
+          file.seek(-10, IO::SEEK_END)
+
+          assert_equal large.byteslice(-10..), file.read
+        end
+
+        assert_operator File.size(the_file_name), :>, 1_000_000
+        assert_operator counting.bytes_read, :<, 64 * 1024
       end
     end
 

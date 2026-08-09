@@ -280,43 +280,76 @@ module SymmetricEncryption
     #  --------------+----------------------------------------------------
     #  IO::SEEK_SET  | Seeks to the absolute location given by _amount_
     #
-    # WARNING: IO::SEEK_SET will jump to the beginning of the file and
-    #          then re-read upto the point specified
-    # WARNING: IO::SEEK_END will read the entire file and then again
-    #          upto the point specified
+    # A stream encrypted with an authenticated cipher, such as `aes-256-gcm`, is written as
+    # chunks that are each encrypted on their own, so seeking within one decrypts only the chunk
+    # that was asked for, however far into the stream it is.
+    #
+    # Every other stream is a single cipher text that can only be decrypted from its beginning,
+    # so seeking backwards re-reads the stream up to the point asked for, and IO::SEEK_END reads
+    # the whole stream to find out how long it is and then re-reads up to the point asked for.
     def seek(amount, whence = IO::SEEK_SET)
-      offset = 0
       case whence
       when IO::SEEK_SET
-        offset = amount
-        rewind
+        seek_to(amount)
       when IO::SEEK_CUR
-        if amount >= 0
-          offset = amount
-        else
-          offset = @pos + amount
-          rewind
-        end
+        amount.negative? ? seek_to(@pos + amount) : skip(amount)
       when IO::SEEK_END
-        rewind
-        # Read and decrypt entire file a block at a time to get its total
-        # unencrypted size
-        size = 0
-        until eof?
-          read_block
-          size += @read_buffer.size
-          @read_buffer.clear
-        end
-        rewind
-        offset = size + amount
+        seek_to(stream_size + amount)
       else
         raise(ArgumentError, "unknown whence:#{whence} supplied to seek()")
       end
-      read(offset) if offset.positive?
       0
     end
 
     private
+
+    # Positions the stream at an absolute offset from its beginning.
+    def seek_to(offset)
+      offset = 0 if offset.negative?
+      unless random_access?
+        rewind
+        return skip(offset)
+      end
+
+      @read_buffer.clear
+      within = @chunk_buffer.seek(offset)
+      # A chunk is the smallest amount that can be decrypted, so landing part way into one means
+      # decrypting it and dropping the bytes before the offset.
+      unless within.zero?
+        read_block
+        @read_buffer.slice!(0, within)
+      end
+      @pos = offset
+    end
+
+    # Moves forward by reading and discarding, the only way to move through a stream that has to
+    # be decrypted in order.
+    def skip(length)
+      read(length) if length.positive?
+    end
+
+    # Returns [Integer] the number of unencrypted bytes in the stream.
+    #
+    # A chunked stream knows this from the size of the encrypted stream. Any other stream has to
+    # be decrypted in full to find out, and is left at its end for the caller to rewind.
+    def stream_size
+      return @chunk_buffer.plain_text_size if random_access? && @ios.respond_to?(:size)
+
+      rewind
+      size = 0
+      until eof?
+        read_block
+        size += @read_buffer.size
+        @read_buffer.clear
+      end
+      size
+    end
+
+    # Returns [true|false] whether the stream can be positioned without decrypting everything up
+    # to that point. See `#seek`.
+    def random_access?
+      !@chunk_buffer.nil? && @ios.respond_to?(:seek)
+    end
 
     # Returns [true|false] whether there is more encrypted data still to be decrypted.
     #
