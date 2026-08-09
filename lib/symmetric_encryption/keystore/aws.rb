@@ -118,7 +118,20 @@ module SymmetricEncryption
 
       # Alias pointing to the active version of the master key for that region.
       def self.master_key_alias(app_name, environment)
-        @master_key_alias ||= "alias/symmetric-encryption/#{app_name}/#{environment}"
+        "alias/symmetric-encryption/#{app_name}/#{environment}"
+      end
+
+      # Returns [Hash] the arguments to carry over from an existing cipher config when generating
+      # its replacement during key rotation, so that the new key files are written alongside the
+      # current ones, in the same regions.
+      def self.rotate_args(config)
+        key_files = config[:key_files]
+        return {} if key_files.nil? || key_files.empty?
+
+        args      = {regions: key_files.collect { |key_file| key_file[:region] }.compact}
+        file_name = key_files.first[:file_name]
+        args[:key_path] = ::File.dirname(file_name) if file_name
+        args
       end
 
       # Stores the Encryption key in a file.

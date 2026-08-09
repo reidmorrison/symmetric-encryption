@@ -159,6 +159,97 @@ module SymmetricEncryption
           end
         end
 
+        describe ".master_key_alias" do
+          it "names the master key after every environment, not just the first" do
+            assert_equal "alias/symmetric-encryption/tester/release",
+                         SymmetricEncryption::Keystore::Aws.master_key_alias("tester", "release")
+            assert_equal "alias/symmetric-encryption/tester/production",
+                         SymmetricEncryption::Keystore::Aws.master_key_alias("tester", "production")
+          end
+        end
+
+        describe "key rotation" do
+          let :config do
+            SymmetricEncryption::Keystore.generate_data_keys(
+              keystore:     :aws,
+              key_path:     the_test_path,
+              app_name:     "tester",
+              environments: %i[development test production],
+              regions:      regions,
+              cipher_name:  "aes-256-cbc"
+            )
+          end
+
+          let :key_rotation do
+            SymmetricEncryption::Keystore.rotate_keys!(config, app_name: "tester")
+          end
+
+          it "adds a new key version" do
+            ciphers = key_rotation[:production][:ciphers]
+
+            assert_equal 2, ciphers.size
+            assert_equal 2, ciphers.first[:version]
+            assert_equal :aws, ciphers.first[:keystore]
+          end
+
+          it "writes the new key files alongside the current ones" do
+            key_rotation[:production][:ciphers].first[:key_files].each do |key_file|
+              assert_path_exists key_file[:file_name]
+              assert_equal the_test_path, ::File.dirname(key_file[:file_name])
+            end
+          end
+
+          it "keeps the regions the current key files cover" do
+            key_files = key_rotation[:production][:ciphers].first[:key_files]
+
+            assert_equal(regions, key_files.collect { |key_file| key_file[:region] })
+          end
+
+          it "names the master key after the environment being rotated" do
+            new_config = key_rotation[:production][:ciphers].first
+
+            assert_equal "alias/symmetric-encryption/tester/production", new_config[:master_key_alias]
+          end
+
+          it "leaves development and test alone, since they hold their key in the config file" do
+            assert_equal SymmetricEncryption::Keystore.dev_config, key_rotation[:development]
+            assert_equal SymmetricEncryption::Keystore.dev_config, key_rotation[:test]
+          end
+
+          it "writes to the supplied key path and regions instead" do
+            other_path = "#{the_test_path}/rotated"
+            FileUtils.makedirs(other_path)
+
+            rotated = SymmetricEncryption::Keystore.rotate_keys!(
+              config,
+              app_name: "tester",
+              key_path: other_path,
+              regions:  %w[eu-west-1]
+            )
+            key_files = rotated[:production][:ciphers].first[:key_files]
+
+            assert_equal(%w[eu-west-1], key_files.collect { |key_file| key_file[:region] })
+            assert_equal other_path, ::File.dirname(key_files.first[:file_name])
+            assert_path_exists key_files.first[:file_name]
+          end
+
+          it "migrates to another keystore, keeping the current key path" do
+            rotated    = SymmetricEncryption::Keystore.rotate_keys!(config, app_name: "tester", keystore: :file)
+            new_config = rotated[:production][:ciphers].first
+
+            assert_equal :file, new_config[:keystore]
+            assert_equal the_test_path, ::File.dirname(new_config[:key_filename])
+            assert_path_exists new_config[:key_filename]
+          end
+
+          it "leaves the key encrypting key to AWS KMS" do
+            before  = Marshal.load(Marshal.dump(config[:production][:ciphers]))
+            rotated = SymmetricEncryption::Keystore.rotate_key_encrypting_keys!(config, app_name: "tester")
+
+            assert_equal before, rotated[:production][:ciphers]
+          end
+        end
+
         describe "#read" do
           it "refuses a key file that can be read by others" do
             file_name = key_config[:key_files].first[:file_name]

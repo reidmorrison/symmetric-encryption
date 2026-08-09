@@ -126,6 +126,11 @@ module SymmetricEncryption
           end
         end
 
+        it "leaves development and test alone, since they hold their key in the config file" do
+          assert_equal SymmetricEncryption::Keystore.dev_config, key_rotation[:development]
+          assert_equal SymmetricEncryption::Keystore.dev_config, key_rotation[:test]
+        end
+
         describe "with key file expectations in the config" do
           let :config do
             SymmetricEncryption::Keystore.generate_data_keys(

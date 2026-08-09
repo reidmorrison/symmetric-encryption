@@ -6,7 +6,7 @@ module SymmetricEncryption
                 :decrypt, :random_password, :new_keys, :generate, :environment,
                 :keystore, :re_encrypt, :version, :output_file_name, :compress,
                 :environments, :cipher_name, :rolling_deploy, :rotate_keys, :rotate_kek, :prompt, :show_version,
-                :cleanup_keys, :activate_key, :migrate, :regions, :key_permissions
+                :cleanup_keys, :activate_key, :migrate, :regions, :key_permissions, :key_path_supplied
 
     KEYSTORES = %i[aws heroku environment file gcp].freeze
 
@@ -25,6 +25,8 @@ module SymmetricEncryption
       @prompt           = false
       @show_version     = false
       @keystore         = :file
+      # Key rotation keeps the new key files where the current ones are, unless --key-path says otherwise.
+      @key_path_supplied = false
 
       if argv.empty?
         puts parser
@@ -149,8 +151,10 @@ module SymmetricEncryption
         end
 
         opts.on "-K", "--key-path KEY_PATH",
-                "Output path in which to write generated key files. Default: ~/.symmetric-encryption" do |path|
-          @key_path = path
+                "Output path in which to write generated key files. During key rotation the new key files are " \
+                "written alongside the current ones unless this is supplied. Default: ~/.symmetric-encryption" do |path|
+          @key_path          = path
+          @key_path_supplied = true
         end
 
         opts.on "--key-permissions PERMISSIONS",
@@ -269,27 +273,54 @@ module SymmetricEncryption
         exit(-3)
       end
 
-      config = Config.read_file(config_file_path)
+      config   = Config.read_file(config_file_path)
+      snapshot = active_ciphers(config)
       SymmetricEncryption::Keystore.rotate_keys!(
         config,
         environments:   environments || [],
         app_name:       app_name,
         rolling_deploy: rolling_deploy,
-        keystore:       keystore
+        keystore:       keystore,
+        key_path:       (key_path if key_path_supplied),
+        regions:        regions
       )
-      Config.write_file(config_file_path, config)
-      puts "Existing configuration file updated with new keys: #{config_file_path}"
+      write_rotated_config(config, snapshot, "new keys")
     end
 
     def run_rotate_kek
-      config = Config.read_file(config_file_path)
+      config   = Config.read_file(config_file_path)
+      snapshot = active_ciphers(config)
       SymmetricEncryption::Keystore.rotate_key_encrypting_keys!(
         config,
         environments: environments || [],
         app_name:     app_name
       )
+      write_rotated_config(config, snapshot, "new key encrypting keys")
+    end
+
+    # Returns [Hash] the cipher entries each environment starts with, so that the environments
+    # that were actually rotated can be reported afterwards.
+    def active_ciphers(config)
+      config.transform_values { |cfg| (cfg[:ciphers] || []).dup }
+    end
+
+    # Writes the rotated config file, naming the environments that were rotated and those that
+    # were left alone. Rotation skips environments that hold their key in the config file, and
+    # `--rotate-kek` also skips the keystores that hold the key encrypting key in a cloud KMS.
+    def write_rotated_config(config, snapshot, description)
+      considered         = config.keys.select { |env| environments.nil? || environments.include?(env.to_sym) }
+      rotated, untouched = considered.partition { |env| (config[env][:ciphers] || []) != snapshot[env] }
+
+      if rotated.empty?
+        puts "No #{description} were generated. None of the environments in #{config_file_path} " \
+             "(#{considered.join(', ')}) has a keystore that this can rotate."
+        return
+      end
+
       Config.write_file(config_file_path, config)
-      puts "Existing configuration file updated with new key encrypting keys: #{config_file_path}"
+      puts "Rotated: #{rotated.join(', ')}"
+      puts "Left unchanged, no keystore to rotate: #{untouched.join(', ')}" unless untouched.empty?
+      puts "Existing configuration file updated with #{description}: #{config_file_path}"
     end
 
     def run_cleanup_keys

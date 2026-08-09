@@ -290,8 +290,31 @@ This project adheres to [Semantic Versioning](http://semver.org/).
   buffers, in `Reader#read` and `ReEncryptFiles#re_encrypt_lines`, were also literals that are
   appended to. Reported by @moznion in #172.
 
+### Fixed: key rotation
+
+- `--rotate-keys` did nothing when the keys are held in AWS KMS or Google Cloud KMS, while still
+  reporting that the configuration file had been updated. Rotation skipped any environment whose
+  configuration had no `key_encrypting_key` entry, which is exactly what those two keystores look
+  like: the key encrypting key lives in the cloud, never in the config file. Rotation now skips
+  only the environments that hold the data encrypting key in the config file itself, development
+  and test. Reported by @hovissimo in #145.
+- Key rotation writes the new key files alongside the current ones for every keystore. It only
+  knew how to find the current path for the file keystore, so rotating an AWS or GCP configuration
+  raised `ArgumentError: missing keyword: :key_path` once it got that far. Supply `--key-path` to
+  write them somewhere else.
+- Rotating an AWS KMS configuration now encrypts the new data key for the regions the current key
+  files cover, instead of falling back to the four default US regions. Supply `--regions` to
+  change them.
+- `--rotate-keys` and `--rotate-kek` now name the environments that were rotated, and say plainly
+  when nothing was rotated instead of reporting success. The configuration file is left untouched
+  in that case.
+
 ### Fixed: AWS KMS keystore
 
+- `Keystore::Aws.master_key_alias` memoized its result in a class instance variable, so the first
+  environment handled in a process decided the master key alias for every environment after it.
+  Generating or rotating keys for more than one environment in a single run secured them all with
+  the first environment's Customer Master Key.
 - A KMS call that kept raising `NotFoundException` retried forever, calling `create_master_key`
   on every iteration, which creates a new Customer Master Key in AWS each time. The attempt
   counter was declared inside the block being retried, so `retry` reset it and the limit could

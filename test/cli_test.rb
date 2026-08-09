@@ -243,6 +243,55 @@ module SymmetricEncryption
           assert_equal [1], versions_for(:preprod)
         end
 
+        it "writes the new key files alongside the current ones" do
+          generate_config(:production)
+          capture_io do
+            CLI.new(%W[--rotate-keys --config #{config_file_name} --app-name tester]).run!
+          end
+
+          cipher = Config.read_file(config_file_name)[:production][:ciphers].first
+
+          assert_equal the_test_path, File.dirname(cipher[:key_filename])
+          assert_path_exists cipher[:key_filename]
+        end
+
+        it "writes the new key files to the supplied key path" do
+          generate_config(:production)
+          other_path = "#{the_test_path}/rotated"
+          FileUtils.makedirs(other_path)
+          capture_io do
+            CLI.new(%W[--rotate-keys --key-path #{other_path} --config #{config_file_name} --app-name tester]).run!
+          end
+
+          cipher = Config.read_file(config_file_name)[:production][:ciphers].first
+
+          assert_equal other_path, File.dirname(cipher[:key_filename])
+          assert_path_exists cipher[:key_filename]
+        end
+
+        it "reports which environments were rotated" do
+          generate_config
+          out, = capture_io do
+            CLI.new(%W[--rotate-keys --config #{config_file_name} --app-name tester]).run!
+          end
+
+          assert_includes out, "Rotated: preprod, production"
+          assert_includes out, "Left unchanged, no keystore to rotate: test"
+        end
+
+        it "says so when there is nothing to rotate, rather than reporting success" do
+          generate_config(:test)
+          before = File.read(config_file_name)
+          out, = capture_io do
+            CLI.new(%W[--rotate-keys --config #{config_file_name} --app-name tester]).run!
+          end
+
+          assert_includes out, "No new keys were generated."
+          refute_includes out, "updated with new keys"
+          # Nothing changed, so the config file is left as it is.
+          assert_equal before, File.read(config_file_name)
+        end
+
         it "rejects an unknown keystore" do
           generate_config
           out, = capture_io do

@@ -177,6 +177,56 @@ module SymmetricEncryption
           end
         end
 
+        describe "key rotation" do
+          let :config do
+            with_stubbed_client do
+              SymmetricEncryption::Keystore.generate_data_keys(
+                keystore:     :gcp,
+                key_path:     the_test_path,
+                app_name:     "tester",
+                environments: %i[development test production],
+                cipher_name:  "aes-256-cbc"
+              )
+            end
+          end
+
+          let :key_rotation do
+            # Generate the current keys first: stub_any_instance cannot be nested.
+            current = config
+            with_stubbed_client { SymmetricEncryption::Keystore.rotate_keys!(current, app_name: "tester") }
+          end
+
+          it "adds a new key version" do
+            ciphers = key_rotation[:production][:ciphers]
+
+            assert_equal 2, ciphers.size
+            assert_equal 2, ciphers.first[:version]
+            assert_equal :gcp, ciphers.first[:keystore]
+          end
+
+          it "writes the new key file alongside the current one" do
+            new_config = key_rotation[:production][:ciphers].first
+
+            assert_path_exists new_config[:key_file]
+            assert_equal the_test_path, ::File.dirname(new_config[:key_file])
+          end
+
+          it "leaves development and test alone, since they hold their key in the config file" do
+            assert_equal SymmetricEncryption::Keystore.dev_config, key_rotation[:development]
+            assert_equal SymmetricEncryption::Keystore.dev_config, key_rotation[:test]
+          end
+
+          it "leaves the key encrypting key to Cloud KMS" do
+            current = config
+            before  = Marshal.load(Marshal.dump(current[:production][:ciphers]))
+            rotated = with_stubbed_client do
+              SymmetricEncryption::Keystore.rotate_key_encrypting_keys!(current, app_name: "tester")
+            end
+
+            assert_equal before, rotated[:production][:ciphers]
+          end
+        end
+
         describe "#write and #read" do
           let :keystore do
             SymmetricEncryption::Keystore::Gcp.new(

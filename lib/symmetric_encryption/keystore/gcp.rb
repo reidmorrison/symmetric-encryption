@@ -41,6 +41,14 @@ module SymmetricEncryption
         config
       end
 
+      # Returns [Hash] the arguments to carry over from an existing cipher config when generating
+      # its replacement during key rotation, so that the new key file is written alongside the
+      # current one.
+      def self.rotate_args(config)
+        file_name = config[:key_file]
+        file_name ? {key_path: ::File.dirname(file_name)} : {}
+      end
+
       # `key_encrypting_key` is accepted for interface compatibility only: Cloud KMS holds the
       # key encrypting key itself, so one can never be supplied here.
       #

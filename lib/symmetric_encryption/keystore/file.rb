@@ -60,6 +60,14 @@ module SymmetricEncryption
         config
       end
 
+      # Returns [Hash] the arguments to carry over from an existing cipher config when generating
+      # its replacement during key rotation, so that the new key files are written alongside the
+      # current ones.
+      def self.rotate_args(config)
+        file_name = config[:key_filename]
+        file_name ? {key_path: ::File.dirname(file_name)} : {}
+      end
+
       # Stores the Encryption key in a file.
       # Secures the Encryption key by encrypting it with a key encryption key.
       #

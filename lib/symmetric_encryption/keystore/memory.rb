@@ -36,6 +36,17 @@ module SymmetricEncryption
         }
       end
 
+      # Returns [Hash] the arguments to carry over from an existing cipher config when generating
+      # its replacement during key rotation.
+      #
+      # Nothing to carry over: the key lives in the config file itself, or in an environment
+      # variable named after the app, environment and version.
+      # rubocop:disable Lint/UnusedMethodArgument
+      def self.rotate_args(config)
+        {}
+      end
+      # rubocop:enable Lint/UnusedMethodArgument
+
       # Stores the Encryption key in a string.
       # Secures the Encryption key by encrypting it with a key encryption key.
       def initialize(key_encrypting_key:, encrypted_key: nil)

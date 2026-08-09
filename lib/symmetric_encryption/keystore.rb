@@ -53,10 +53,18 @@ module SymmetricEncryption
     #   keystore: [Symbol]
     #     If supplied, changes the keystore during key rotation.
     #
+    #   key_path: [String]
+    #     If supplied, writes the new key files to this path instead of alongside the current ones.
+    #
+    #   regions: [Array<String>]
+    #     AWS KMS only. If supplied, encrypts the new data key with the master key in these regions
+    #     instead of the regions the current key files cover.
+    #
     # Notes:
     # * iv_filename is no longer supported and is removed when creating a new random cipher.
     #     * `iv` does not need to be encrypted and is included in the clear.
-    def self.rotate_keys!(full_config, app_name:, environments: [], rolling_deploy: false, keystore: nil)
+    def self.rotate_keys!(full_config, app_name:, environments: [], rolling_deploy: false, keystore: nil,
+                          key_path: nil, regions: nil)
       full_config.each_pair do |environment, cfg|
         # Only rotate keys for specified environments. Default, all
         next if !environments.empty? && !environments.include?(environment.to_sym)
@@ -66,12 +74,14 @@ module SymmetricEncryption
 
         config = cfg[:ciphers].first
 
-        # Only generate new keys for keystore's that have a key encrypting key
-        next unless config[:key_encrypting_key] || config[:private_rsa_key]
+        # Development and test hold their key in the config file itself, so there is no keystore
+        # to generate a new key from.
+        next if config[:key]
 
         cipher_name = config[:cipher_name] || "aes-256-cbc"
 
-        keystore_class = keystore ? constantize_symbol(keystore) : keystore_for(config)
+        current_keystore_class = keystore_for(config)
+        keystore_class         = keystore ? constantize_symbol(keystore) : current_keystore_class
 
         args = {
           cipher_name: cipher_name,
@@ -79,7 +89,12 @@ module SymmetricEncryption
           version:     version,
           environment: environment
         }
-        args[:key_path] = ::File.dirname(config[:key_filename]) if config.key?(:key_filename)
+        # Where the current keys live, so that the new keys are written alongside them. Read from
+        # the keystore the config describes, which is still the source when migrating to another.
+        args.merge!(current_keystore_class.rotate_args(config))
+        # Supplied values win, since they are how the destination is changed.
+        args[:key_path] = key_path if key_path
+        args[:regions]  = regions if regions && !regions.empty?
         # Carry over what the current key files are expected to look like, otherwise the rewritten
         # config no longer describes the key files it names.
         %i[permissions owner group].each { |name| args[name] = config[name] if config.key?(name) }
@@ -105,7 +120,10 @@ module SymmetricEncryption
 
         config = cfg[:ciphers].first
 
-        # Only generate new keys for keystore's that have a key encrypting key
+        # Only the keystores that hold the key encrypting key in the config file can rotate it
+        # here. AWS KMS and GCP Cloud KMS hold the master key themselves, where it is rotated
+        # through their own management interface. Development and test hold the data encrypting
+        # key in the config file in the clear, so there is nothing securing it to replace.
         next unless config[:key_encrypting_key]
 
         version = config.delete(:version) || 1
@@ -128,7 +146,8 @@ module SymmetricEncryption
           environment: environment,
           dek:         key
         }
-        args[:key_path] = ::File.dirname(config[:key_filename]) if config.key?(:key_filename)
+        # Where the current keys live, so that the new keys are written alongside them.
+        args.merge!(keystore_class.rotate_args(config))
         # Carry over what the current key files are expected to look like, otherwise the rewritten
         # config no longer describes the key files it names.
         %i[permissions owner group].each { |name| args[name] = config[name] if config.key?(name) }
