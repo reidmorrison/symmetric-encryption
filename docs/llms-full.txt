@@ -49,8 +49,8 @@ Symmetric Encryption is for the encryption Active Record encryption does not cov
   can be queried. Active Record encryption cannot rotate its deterministic key.
 
 Already using this gem for Active Record attributes and want to move to Active Record encryption?
-See [Migrating](migrating.html), which reads the data already in the database while Active Record
-encryption writes every new value.
+See [Migrating to Active Record encryption](rails.html#migrating-to-active-record-encryption),
+which reads the data already in the database while Active Record encryption writes every new value.
 
 ## Quick start
 
@@ -1314,9 +1314,129 @@ constraint, an index shared with an unencrypted column, or any query written in 
 
 Encrypt the attributes that hold personal data, and leave the columns that identify the row alone.
 
+## Migrating to Active Record encryption
+
+Rails 7 added [Active Record encryption](https://guides.rubyonrails.org/active_record_encryption.html).
+For a Rails application whose encrypted data is nothing but Active Record attributes, it is the
+better choice: it is built in, and it is maintained by the Rails team.
+
+This page is for moving those attributes over without re-encrypting the database first, and
+without downtime. Values already in the database keep being read by Symmetric Encryption, while
+every value that is written from then on is encrypted by Active Record.
+
+If the application also encrypts Mongoid fields, files, or passwords in configuration files, keep
+this gem for those. Active Record encryption does not cover them. See
+[the home page](index.html) for what is and is not worth migrating.
+
+#### Step 1: Configure Active Record encryption
+
+~~~bash
+bin/rails db:encryption:init
+~~~
+
+Add the generated keys to the Rails credentials, as the Rails guide describes. This is entirely
+separate from `symmetric-encryption.yml`. Both sets of keys are in use during the migration.
+
+#### Step 2: Declare the attributes
+
+Replace the `attribute ... :encrypted` declaration with `encrypts`, and name this gem's encryptor
+as a previous encryption scheme:
+
+~~~ruby
+class User < ApplicationRecord
+  # Before
+  # attribute :ssn, :encrypted
+
+  encrypts :ssn, previous: [{encryptor: SymmetricEncryption::ActiveRecord::RailsEncryptor.new}]
+end
+~~~
+
+Active Record decrypts every value with its own encryptor first, and falls back to the previous
+schemes when that fails. Values encrypted by this gem are read by the previous scheme. Values
+encrypted by Active Record are read by Active Record. Both work from the first deploy.
+
+`SymmetricEncryption.load!`, or the Railtie in a Rails application, still has to run, since the
+keys are still read from `symmetric-encryption.yml`.
+
+#### Step 3: Attributes that are queried
+
+An attribute declared `random_iv: false` so that it can be used in a `where` clause becomes a
+deterministic attribute, and it needs one extra option:
+
+~~~ruby
+class User < ApplicationRecord
+  # Before
+  # attribute :api_key, :encrypted, random_iv: false
+
+  encrypts :api_key,
+           deterministic: {fixed: false},
+           previous:      [{encryptor: SymmetricEncryption::ActiveRecord::RailsEncryptor.new}]
+end
+~~~
+
+`deterministic: true` on its own encrypts new values with the _oldest_ scheme, which is this
+gem's encryptor, and that encryptor refuses to write. `fixed: false` tells Active Record to
+encrypt with the current scheme instead. Without it, saving the record raises:
+
+~~~
+ActiveRecord::Encryption::Errors::Encryption: SymmetricEncryption::ActiveRecord::RailsEncryptor
+only decrypts, ...
+~~~
+
+Note that queries only find values that Active Record encrypted. A row still holding a value that
+this gem encrypted will not match, so finish step 4 before relying on the query.
+
+#### Step 4: Migrate the data
+
+Values move over as records are saved. To migrate the rest, re-save them:
+
+~~~ruby
+User.find_each { |user| user.update_column(:ssn, user.ssn) }
+~~~
+
+`update_column` writes through the attribute type, so the value is decrypted by Symmetric
+Encryption and written back encrypted by Active Record, without running validations or callbacks.
+
+`update!(ssn: user.ssn)` does _not_ work. Assigning the value it already has is not a change, so
+Active Record writes nothing and the row is left as it was. Use `update_column` as above, or
+`user.ssn_will_change!` followed by `user.save!` when validations and callbacks should run.
+
+Check that nothing is left before moving on:
+
+~~~ruby
+User.find_each.count { |user| SymmetricEncryption.encrypted?(user.ssn_before_type_cast) }
+# => 0
+~~~
+
+#### Step 5: Remove the previous scheme
+
+Once no value in the database was encrypted by this gem, drop the `previous:` option:
+
+~~~ruby
+class User < ApplicationRecord
+  encrypts :ssn
+end
+~~~
+
+If nothing else in the application uses Symmetric Encryption, remove the gem and
+`symmetric-encryption.yml`. Keep the keys somewhere safe until there is a restored backup that
+proves nothing still needs them.
+
+#### Notes
+
+* The encryptor only decrypts. It never writes a value in this gem's format, so a partly migrated
+  application cannot silently go backwards.
+* Only ciphers using one of the base64 encodings are supported, which is the default. A cipher
+  configured with `encoding: :none` returns binary data, which does not belong in the text column
+  Active Record encryption expects.
+* Active Record encryption cannot rotate its deterministic key, while this gem can. If an
+  attribute has to be both queryable and re-keyed, that is a reason not to migrate it. See
+  [Security](security.html).
+
 ## Next steps
 
-* [Migrating](migrating.html): from `attr_encrypted`, and to Active Record encryption.
+* [Upgrading](upgrading.html): what changes between major versions, including the removal of
+  `attr_encrypted`.
 * [Key Rotation](key_rotation.html): introducing a new key without downtime.
 * [Mongoid](mongoid.html): the equivalent for Mongoid documents.
 * [Security](security.html): authenticated encryption and PCI compliance.
@@ -2238,7 +2358,7 @@ Two things to know before relying on this:
   refused when the configuration file is loaded.
 
 **If this is a Rails application, and the data is nothing but Active Record attributes, use
-[Active Record encryption](migrating.html) instead.** `encrypts :ssn, key: "..."` does the
+[Active Record encryption](rails.html#migrating-to-active-record-encryption) instead.** `encrypts :ssn, key: "..."` does the
 same job, without a version number to allocate and without the two warnings above.
 
 ### A key per customer
@@ -2834,6 +2954,220 @@ Recommend that neither of the above key custodians have access to the database b
 
 ---
 
+<!-- source: docs/upgrading.md -->
+
+## Upgrading
+
+
+
+What changes between major versions, and what to do about it. Each section covers upgrading *to*
+that version, so read from your current version downwards.
+
+Data encrypted by any earlier version stays readable throughout. The encrypted value format has not
+changed, and backward compatibility with it is a hard requirement.
+
+Moving *away* from this gem to Active Record encryption is a different job: see
+[Rails](rails.html#migrating-to-active-record-encryption).
+
+## Upgrading to v5
+
+### Minimum versions
+
+Ruby 3.2 and Rails 7.2. Earlier versions are end-of-life and are no longer tested.
+
+### New configurations are generated with `aes-256-gcm`
+
+`symmetric-encryption --generate` now writes `aes-256-gcm` instead of `aes-256-cbc`. `aes-256-cbc`
+keeps data secret but cannot tell whether it has been changed; `aes-256-gcm` is authenticated, so
+decryption fails rather than returning whatever the altered bytes decrypt to. See
+[Security](security.html).
+
+**Existing configuration files are unaffected.** They name their own `cipher_name`, and a cipher
+entry that omits it still defaults to `aes-256-cbc`, so data already encrypted stays readable.
+Nothing has to be done to upgrade.
+
+To move an existing application over, add a new key with the new cipher and keep the old one as a
+secondary, which is ordinary [key rotation](key_rotation.html):
+
+~~~
+symmetric-encryption --rotate-keys --cipher-name aes-256-gcm --environments production
+~~~
+
+Values encrypted with the old key keep being read, because the cipher version travels in each
+value's header. Two things to know before switching:
+
+* Encrypted values grow by roughly 30 bytes, since an authenticated value always carries a header
+  and a 16 byte auth tag. Check any column whose length is tight.
+* A value encrypted with `random_iv: false`, so that it can be queried, derives its initialization
+  vector from the value itself rather than using the configured one. The same input still encrypts
+  to the same output, so lookups keep working.
+
+### `attr_encrypted` has been removed
+
+It was already unusable under Rails 7, which defines its own conflicting `encrypted_attributes`
+method. Replace each declaration with the equivalent `attribute` declaration. The options are
+unchanged:
+
+~~~ruby
+# Before
+class Person < ActiveRecord::Base
+  attr_encrypted :name, random_iv: false
+  attr_encrypted :age, random_iv: true, type: :integer
+end
+
+# After
+class Person < ActiveRecord::Base
+  attribute :name, :encrypted, random_iv: false
+  attribute :age, :encrypted, type: :integer
+end
+~~~
+
+Data encrypted by `attr_encrypted` is still readable, the encrypted value format is unchanged.
+
+One thing to watch: `attr_encrypted` required the database column to be named `encrypted_name`,
+whereas the attribute type uses a column with the same name as the attribute. Either rename the
+columns in a migration, or declare the attributes against the existing column names.
+
+Removed along with it: `encrypted_attributes`, `encrypted_keys`, `encrypted_columns`,
+`encrypted_attribute?` and `encrypted_column?`.
+
+### Encrypted attributes are cast when assigned
+
+Previously an assigned value kept its original type until the record had been saved and reloaded:
+
+~~~ruby
+person.age = "124"
+person.age
+# Before: "124"
+# After:  124
+~~~
+
+The declared type is now applied immediately, using Active Record's own casting rules, so an
+encrypted attribute behaves like the equivalent unencrypted one. Two consequences worth checking
+before upgrading:
+
+* A blank string becomes `nil` for every type other than `:string`, so the column now holds `NULL`
+  rather than an encrypted `""`.
+* A value that cannot be cast no longer raises `Coercible::UnsupportedCoercion`. It becomes whatever
+  Active Record would use: `0` for `:integer` (and `"12abc"` becomes `12`), `0.0` for `:float` and
+  `:decimal`, `nil` for `:date`, `:datetime` and `:time`, and `true` for `:boolean`. Add
+  `validates :age, numericality: true` to reject it, exactly as for an unencrypted attribute. The
+  assigned value is still available in `age_before_type_cast`, which is what that validation reports
+  on.
+
+A `type:` that is not one of the supported types is now rejected with an `ArgumentError` naming the
+valid ones when the attribute is declared, rather than failing later with a coercion error.
+
+See [Rails](rails.html#type-casting) for the full casting rules.
+
+### Encrypted attributes are filtered from logs
+
+Attributes declared with the `:encrypted` type are added to the model's `filter_attributes` as they
+are declared, so `inspect` and the Rails logs show `[FILTERED]` instead of the decrypted value. This
+is what Active Record's own `encrypts` does.
+
+Turn it off before the models are loaded if the previous behaviour is wanted:
+
+~~~ruby
+# config/application.rb
+config.symmetric_encryption.filter_encrypted_attributes = false
+~~~
+
+`as_json` is deliberately not covered. See [Rails](rails.html#rendering-json).
+
+### Google Cloud KMS requires `google-cloud-kms` v2
+
+Update the dependency if you use that keystore.
+
+## Upgrading to v4
+
+### Keyword arguments
+
+Version 4 adopted keyword arguments for optional arguments across the API.
+
+This does *not* change:
+
+~~~ruby
+encrypted = SymmetricEncryption.encrypt("Hello World")
+SymmetricEncryption.decrypt(encrypted)
+~~~
+
+These are not backward compatible:
+
+~~~ruby
+# Before
+SymmetricEncryption.encrypt("Hello World", false, false, :date)
+SymmetricEncryption.decrypt(encrypted, 2, :date)
+
+# After
+SymmetricEncryption.encrypt("Hello World", random_iv: false, compress: false, type: :date)
+SymmetricEncryption.decrypt(encrypted, version: 2, type: :date)
+~~~
+
+Only the arguments that are needed have to be supplied:
+
+~~~ruby
+SymmetricEncryption.encrypt("Hello World", type: :date)
+~~~
+
+### Rake tasks replaced by a command line interface
+
+Key generation and configuration are managed by the `symmetric-encryption` command:
+
+~~~
+symmetric-encryption --help
+~~~
+
+See [Command Line](cli.html).
+
+### Configuration file changes
+
+The configuration file is now modified in place rather than generated from templates, so that the
+command line interface can generate new keys and update the file itself.
+
+**Back up `symmetric-encryption.yml` before upgrading** if it is not already in version control.
+This matters most for configurations with custom code, and for earlier Heroku configurations.
+
+The defaults for `encoding` and `always_add_header` also changed. If they are not set explicitly,
+set them to the old defaults *before* upgrading, then move to the new ones deliberately:
+
+~~~yaml
+# Prior defaults. Set these explicitly before upgrading if they are missing.
+encoding:          :base64
+always_add_header: false
+~~~
+
+~~~yaml
+# New defaults.
+encoding:          :base64strict
+always_add_header: true
+~~~
+
+`always_add_header: true` is strongly recommended: the header is what carries the cipher version,
+and therefore what makes [key rotation](key_rotation.html) possible.
+
+## Upgrading to v3
+
+* `SymmetricEncryption.decrypt` no longer rotates through every configured key when one fails to
+  decrypt. In a small but significant number of cases it was possible to decrypt data with the wrong
+  key: the result was garbage, but it was returned as a string rather than raising. Supply
+  `SymmetricEncryption.select_cipher` to choose the cipher yourself when an encrypted value has no
+  header and several ciphers are configured.
+* The configuration file format prior to v1 is no longer supported.
+* Encryption keys can be set from environment variables, through the new `:encrypted_key` and
+  `:encrypted_iv` options. This also supports reading them from other sources, such as LDAP or a
+  central directory service.
+* `Cipher.parse_magic_header!` returns a Struct rather than an Array.
+
+## Next steps
+
+* [Configuration](configuration.html): the configuration file and the keystores.
+* [Key Rotation](key_rotation.html): introducing a new key without downtime.
+* [Rails](rails.html): encrypted Active Record attributes, and migrating to Active Record encryption.
+
+
+---
+
 <!-- source: docs/api.md -->
 
 ## API
@@ -3083,141 +3417,4 @@ Encodings: `:base64strict`, `:base64`, `:base64urlsafe`, `:base16`, `:none`.
 
 * [Guide](guide.html): these methods in context.
 * [Files](files.html): `Writer` and `Reader` in depth.
-* [Configuration](configuration.html): the configuration file and the keystores.
-
-
----
-
-<!-- source: docs/migrating.md -->
-
-## Migrating
-
-
-
-Moving to Symmetric Encryption from an older version of it, or away from it to Active Record
-encryption.
-
-## To Active Record encryption
-
-Rails 7 added [Active Record encryption](https://guides.rubyonrails.org/active_record_encryption.html).
-For a Rails application whose encrypted data is nothing but Active Record attributes, it is the
-better choice: it is built in, and it is maintained by the Rails team.
-
-This page is for moving those attributes over without re-encrypting the database first, and
-without downtime. Values already in the database keep being read by Symmetric Encryption, while
-every value that is written from then on is encrypted by Active Record.
-
-If the application also encrypts Mongoid fields, files, or passwords in configuration files, keep
-this gem for those. Active Record encryption does not cover them. See
-[the home page](index.html) for what is and is not worth migrating.
-
-### Step 1: Configure Active Record encryption
-
-~~~bash
-bin/rails db:encryption:init
-~~~
-
-Add the generated keys to the Rails credentials, as the Rails guide describes. This is entirely
-separate from `symmetric-encryption.yml`. Both sets of keys are in use during the migration.
-
-### Step 2: Declare the attributes
-
-Replace the `attribute ... :encrypted` declaration with `encrypts`, and name this gem's encryptor
-as a previous encryption scheme:
-
-~~~ruby
-class User < ApplicationRecord
-  # Before
-  # attribute :ssn, :encrypted
-
-  encrypts :ssn, previous: [{encryptor: SymmetricEncryption::ActiveRecord::RailsEncryptor.new}]
-end
-~~~
-
-Active Record decrypts every value with its own encryptor first, and falls back to the previous
-schemes when that fails. Values encrypted by this gem are read by the previous scheme. Values
-encrypted by Active Record are read by Active Record. Both work from the first deploy.
-
-`SymmetricEncryption.load!`, or the Railtie in a Rails application, still has to run, since the
-keys are still read from `symmetric-encryption.yml`.
-
-### Step 3: Attributes that are queried
-
-An attribute declared `random_iv: false` so that it can be used in a `where` clause becomes a
-deterministic attribute, and it needs one extra option:
-
-~~~ruby
-class User < ApplicationRecord
-  # Before
-  # attribute :api_key, :encrypted, random_iv: false
-
-  encrypts :api_key,
-           deterministic: {fixed: false},
-           previous:      [{encryptor: SymmetricEncryption::ActiveRecord::RailsEncryptor.new}]
-end
-~~~
-
-`deterministic: true` on its own encrypts new values with the _oldest_ scheme, which is this
-gem's encryptor, and that encryptor refuses to write. `fixed: false` tells Active Record to
-encrypt with the current scheme instead. Without it, saving the record raises:
-
-~~~
-ActiveRecord::Encryption::Errors::Encryption: SymmetricEncryption::ActiveRecord::RailsEncryptor
-only decrypts, ...
-~~~
-
-Note that queries only find values that Active Record encrypted. A row still holding a value that
-this gem encrypted will not match, so finish step 4 before relying on the query.
-
-### Step 4: Migrate the data
-
-Values move over as records are saved. To migrate the rest, re-save them:
-
-~~~ruby
-User.find_each { |user| user.update_column(:ssn, user.ssn) }
-~~~
-
-`update_column` writes through the attribute type, so the value is decrypted by Symmetric
-Encryption and written back encrypted by Active Record, without running validations or callbacks.
-
-`update!(ssn: user.ssn)` does _not_ work. Assigning the value it already has is not a change, so
-Active Record writes nothing and the row is left as it was. Use `update_column` as above, or
-`user.ssn_will_change!` followed by `user.save!` when validations and callbacks should run.
-
-Check that nothing is left before moving on:
-
-~~~ruby
-User.find_each.count { |user| SymmetricEncryption.encrypted?(user.ssn_before_type_cast) }
-# => 0
-~~~
-
-### Step 5: Remove the previous scheme
-
-Once no value in the database was encrypted by this gem, drop the `previous:` option:
-
-~~~ruby
-class User < ApplicationRecord
-  encrypts :ssn
-end
-~~~
-
-If nothing else in the application uses Symmetric Encryption, remove the gem and
-`symmetric-encryption.yml`. Keep the keys somewhere safe until there is a restored backup that
-proves nothing still needs them.
-
-### Notes
-
-* The encryptor only decrypts. It never writes a value in this gem's format, so a partly migrated
-  application cannot silently go backwards.
-* Only ciphers using one of the base64 encodings are supported, which is the default. A cipher
-  configured with `encoding: :none` returns binary data, which does not belong in the text column
-  Active Record encryption expects.
-* Active Record encryption cannot rotate its deterministic key, while this gem can. If an
-  attribute has to be both queryable and re-keyed, that is a reason not to migrate it. See
-  [Security](security.html).
-
-## Next steps
-
-* [Rails](rails.html): encrypted Active Record attributes in depth.
-* [Key Rotation](key_rotation.html): rotating keys without downtime.
 * [Configuration](configuration.html): the configuration file and the keystores.

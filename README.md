@@ -1,34 +1,78 @@
 # Symmetric Encryption
-[![Gem Version](https://img.shields.io/gem/v/symmetric-encryption.svg)](https://rubygems.org/gems/symmetric-encryption) [![Build Status](https://github.com/reidmorrison/symmetric-encryption/workflows/build/badge.svg)](https://github.com/reidmorrison/symmetric-encryption/actions?query=workflow%3Abuild) [![Downloads](https://img.shields.io/gem/dt/symmetric-encryption.svg)](https://rubygems.org/gems/symmetric-encryption) [![License](https://img.shields.io/badge/license-Apache%202.0-brightgreen.svg)](http://opensource.org/licenses/Apache-2.0) ![](https://img.shields.io/badge/status-Production%20Ready-blue.svg) 
+[![Gem Version](https://img.shields.io/gem/v/symmetric-encryption.svg)](https://rubygems.org/gems/symmetric-encryption) [![Build Status](https://github.com/reidmorrison/symmetric-encryption/workflows/build/badge.svg)](https://github.com/reidmorrison/symmetric-encryption/actions?query=workflow%3Abuild) [![Downloads](https://img.shields.io/gem/dt/symmetric-encryption.svg)](https://rubygems.org/gems/symmetric-encryption) [![License](https://img.shields.io/badge/license-Apache%202.0-brightgreen.svg)](http://opensource.org/licenses/Apache-2.0) ![](https://img.shields.io/badge/status-Production%20Ready-blue.svg)
 
-* https://encryption.reidmorrison.com/
+Encrypt data at rest in Ruby and Rails, with keys held outside your source code.
 
-Transparently encrypt ActiveRecord, and Mongoid attributes. Encrypt passwords in configuration files. Encrypt entire files at rest.
+* Active Record attributes and Mongoid fields.
+* Passwords in `database.yml` and other configuration files.
+* Entire files and streams, of any size, without loading them into memory.
+* Keys in a keystore: a file, an environment variable, AWS KMS, or Google Cloud KMS.
+* Key rotation without downtime, since every encrypted value records which key encrypted it.
 
-## Introduction
+**Documentation: [encryption.reidmorrison.com](https://encryption.reidmorrison.com/)**
 
-Any project that wants to meet PCI compliance has to ensure that the data is encrypted
-whilst in flight and at rest. Amongst many other requirements all passwords
-in configuration files also have to be encrypted.
+## Do you need it?
 
-Symmetric Encryption helps achieve compliance by supporting encryption of data in a simple
-and consistent way.
+Rails 7 added [Active Record encryption](https://guides.rubyonrails.org/active_record_encryption.html).
+**If everything you need to encrypt is an Active Record attribute, use that instead.** It is built
+in, and it is maintained by the Rails team.
 
-Symmetric Encryption uses OpenSSL to encrypt and decrypt data, and can therefore
-expose all the encryption algorithms supported by OpenSSL.
+This gem covers what it does not: Mongoid fields, whole files and streams, standalone Ruby,
+passwords decrypted before Rails has finished booting, keys held in a cloud KMS, and rotating the key
+of a value that has to stay queryable. See
+[Do you need it?](https://encryption.reidmorrison.com/#do-you-need-it) for the full comparison.
+
+## Quick start
+
+~~~ruby
+gem "symmetric-encryption"
+~~~
+
+Generate a configuration file and a key for every environment:
+
+~~~
+symmetric-encryption --generate --app-name my_app
+~~~
+
+Encrypt an Active Record attribute. The column is a `string`, since the encrypted value is text:
+
+~~~ruby
+class Person < ActiveRecord::Base
+  attribute :ssn, :encrypted
+end
+
+person = Person.create!(name: "Jack", ssn: "123456789")
+person.ssn
+# => "123456789"
+~~~
+
+Continue with the [Guide](https://encryption.reidmorrison.com/guide.html), which builds up from
+here one step at a time.
 
 ## Documentation
 
-[Symmetric Encryption Guide](https://encryption.reidmorrison.com/)
+* [Guide](https://encryption.reidmorrison.com/guide.html) — the library, one step at a time.
+* [Configuration](https://encryption.reidmorrison.com/configuration.html) — the configuration file and every keystore.
+* [Rails](https://encryption.reidmorrison.com/rails.html) — encrypted Active Record attributes.
+* [Mongoid](https://encryption.reidmorrison.com/mongoid.html) — encrypted Mongoid fields.
+* [Files](https://encryption.reidmorrison.com/files.html) — encrypted files and streams.
+* [Command Line](https://encryption.reidmorrison.com/cli.html) — the `symmetric-encryption` command.
+* [Key Rotation](https://encryption.reidmorrison.com/key_rotation.html) — introducing a new key without downtime.
+* [Security](https://encryption.reidmorrison.com/security.html) — authenticated encryption and PCI compliance.
+* [Upgrading](https://encryption.reidmorrison.com/upgrading.html) — what changes between major versions.
+* [API](https://encryption.reidmorrison.com/api.html) — the method reference.
 
-## IOStreams
+## Supported versions
 
-Checkout the sister project [IOStreams](https://iostreams.reidmorrison.com): a streaming library that makes
-compression, encryption, file format, and storage location transparent to your code.
+Ruby 3.2 or later, and Rails 7.2 or later when used with Rails. Upgrading from an earlier version of
+this gem? See [Upgrading](https://encryption.reidmorrison.com/upgrading.html).
 
-It has direct support for Symmetric Encryption, so a file name ending in `.enc` is encrypted or decrypted
-with the configuration this gem already loaded. Reach for it when encryption is one step in a larger
-pipeline, for example reading a record at a time out of an encrypted, compressed CSV held in S3:
+## Sister projects
+
+[IOStreams](https://iostreams.reidmorrison.com) is a streaming library that makes compression,
+encryption, file format, and storage location transparent to your code. It has direct support for
+Symmetric Encryption, so a file name ending in `.enc` is encrypted or decrypted with the
+configuration this gem already loaded. Reach for it when encryption is one step in a larger pipeline:
 
 ~~~ruby
 IOStreams.path("s3://my-bucket/customers.csv.gz.enc").each(:hash) do |record|
@@ -36,159 +80,12 @@ IOStreams.path("s3://my-bucket/customers.csv.gz.enc").each(:hash) do |record|
 end
 ~~~
 
-See the [Files and Streams Guide](https://encryption.reidmorrison.com/files.html) for when to use IOStreams
-and when `SymmetricEncryption::Writer` and `SymmetricEncryption::Reader` are enough on their own.
+See [Files and Streams](https://encryption.reidmorrison.com/files.html#streaming-with-iostreams) for
+when to use IOStreams and when `SymmetricEncryption::Writer` and `SymmetricEncryption::Reader` are
+enough on their own.
 
-## Rocket Job
-
-Checkout the sister project [Rocket Job](https://rocketjob.reidmorrison.com): Ruby's missing batch system.
-
-Fully supports Symmetric Encryption to encrypt data in flight and at rest while running jobs in the background.
-
-## Upgrading to SymmetricEncryption V5
-
-`attr_encrypted` has been removed. It was already unusable under Rails 7, which defines its own
-conflicting `encrypted_attributes` method.
-
-Migrate the use of `attr_encrypted` to `attribute` as described in the [Frameworks Guide](https://encryption.reidmorrison.com/frameworks.html).
-Data encrypted by `attr_encrypted` is still readable, the encrypted value format is unchanged.
-
-The minimum supported versions are now Ruby 3.2 and Rails 7.2.
-
-## Upgrading to SymmetricEncryption V4
-
-Version 4 of Symmetric Encryption has completely adopted the Ruby keyword arguments on most API's where
-multiple arguments are being passed, or where a Hash was being used before.
-
-The encrypt and decrypt API now require keyword arguments for any optional arguments.
-
-The following does _not_ change:
-
-~~~ruby
-encrypted = SymmetricEncryption.encrypt('Hello World')
-SymmetricEncryption.decrypt(encrypted)
-~~~
-
-The following is _not_ backward compatible:
-~~~ruby
-SymmetricEncryption.encrypt('Hello World', false, false, :date)
-~~~
-
-Needs to be changed to:
-~~~ruby
-SymmetricEncryption.encrypt('Hello World', random_iv: false, compress: false, type: :date)
-~~~
-
-Or, just to change the type:
-~~~ruby
-SymmetricEncryption.encrypt('Hello World', type: :date)
-~~~
-
-Similarly the `decrypt` api has also changed:
-~~~ruby
-SymmetricEncryption.decrypt(encrypted, 2, :date)
-~~~
-
-Needs to be changed to:
-~~~ruby
-SymmetricEncryption.decrypt(encrypted, version: 2, type: :string)
-~~~
-
-The Rake tasks have been replaced with a new command line interface for managing key configuration and generation. 
-For more info:
-~~~
-symmetric-encryption --help
-~~~
-
-#### Configuration changes
-
-In Symmetric Encryption V4 the configuration file is now modified directly instead
-of using templates. This change is necessary to allow the command line interface to
-generate new keys and automatically update the configuration file.
- 
-Please backup your existing `symmetric-encryption.yml` prior to upgrading if it is not
-already in a version control system. This is critical for configurations that have custom
-code or for prior configurations targeting heroku.
-
-In Symmetric Encryption V4 the defaults for `encoding` and `always_add_header` have changed.
-If these values are not explicitly set in the `symmetric-encryption.yml` file, set them
-prior to upgrading.
-
-Prior defaults, set explicitly to these values if missing for all environments:
-~~~yaml
-      encoding:          :base64
-      always_add_header: false
-~~~
-
-New defaults are:
-~~~yaml
-      encoding:          :base64strict
-      always_add_header: true
-~~~
-
-
-## Upgrading to SymmetricEncryption V3
-
-In version 3 of SymmetricEncryption, the following changes have been made that
-may have backward compatibility issues:
-
-* `SymmetricEncryption.decrypt` no longer rotates through all the decryption keys
-  when previous ciphers fail to decrypt the encrypted string.
-  In a very small, yet significant number of cases it was possible to decrypt data
-  using the incorrect key. Clearly the data returned was garbage, but it still
-  returned a string of data instead of throwing an exception.
-  See `SymmetricEncryption.select_cipher` to supply your own custom logic to
-  determine the correct cipher to use when the encrypted string does not have a
-  header and multiple ciphers are defined.
-
-* Configuration file format prior to V1 is no longer supported.
-
-* New configuration option has been added to support setting encryption keys
-  from environment variables.
-
-* `Cipher.parse_magic_header!` now returns a Struct instead of an Array.
-
-* New config options `:encrypted_key` and `:encrypted_iv` to support setting
-  the encryption key in environment variables, or from other sources such as ldap
-  or a central directory service.
-
-## New features in V1.1 and V2
-
-* Ability to randomly generate a new initialization vector (iv) with every
-  encryption and put the iv in the encrypted data as its header, without having
-  to use `SymmetricEncryption::Writer`.
-
-* With file encryption randomly generate a new key and initialization vector (iv) with every
-  file encryption and put the key and iv in the encrypted data as its header which
-  is encrypted using the global key and iv.
-
-* Support for compression.
-
-* `SymmetricEncryption.encrypt` has two additional optional parameters:
-    * random_iv `[true|false]`
-        * Whether the encypted value should use a random IV every time the
-          field is encrypted.
-        * It is recommended to set this to true where feasible. If the encrypted
-          value could be used as part of a SQL where clause, or as part
-          of any lookup, then it must be false.
-        * Setting random_iv to true will result in a different encrypted output for
-          the same input string.
-        * Note: Only set to true if the field will never be used as part of
-          the where clause in an SQL query.
-        * Note: When random_iv is true it will add a 8 byte header, plus the bytes
-          to store the random IV in every returned encrypted string, prior to the
-          encoding if any.
-        * Note: Adds a 6 byte header prior to encoding, if not already configured
-          to add the header to all encrypted values.
-        * Default: false
-        * Highly Recommended where feasible: true
-
-    * compress [true|false]
-        * Whether to compress prior to encryption.
-        * Should only be used for large strings since compression overhead and
-          the overhead of adding the 'magic' header may exceed any benefits of
-          compression.
-        * Default: false
+[Rocket Job](https://rocketjob.reidmorrison.com) is Ruby's missing batch system. It fully supports
+Symmetric Encryption to encrypt data in flight and at rest while running jobs in the background.
 
 ## Author
 
@@ -202,6 +99,5 @@ This project uses [Semantic Versioning](http://semver.org/).
 
 ## Disclaimer
 
-Although this library has assisted in meeting PCI Compliance and has passed
-previous PCI audits, it in no way guarantees that PCI Compliance will be
-achieved by anyone using this library.
+Although this library has assisted in meeting PCI Compliance and has passed previous PCI audits, it
+in no way guarantees that PCI Compliance will be achieved by anyone using this library.
