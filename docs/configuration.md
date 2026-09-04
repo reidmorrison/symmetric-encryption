@@ -1,13 +1,11 @@
 ---
 layout: default
+title: Configuration
 redirect_from:
   - /heroku.html
   - /standalone.html
   - /v3_configuration.html
 ---
-
-## Configuration
-{:.no_toc}
 
 **Contents**
 

@@ -1,13 +1,11 @@
 ---
 layout: default
+title: Rails
 redirect_from:
   - /frameworks.html
   - /migrating.html
   - /rails_encryption.html
 ---
-
-## Rails
-{:.no_toc}
 
 **Contents**
 

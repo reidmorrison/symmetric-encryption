@@ -1,11 +1,9 @@
 ---
 layout: default
+title: Command Line
 redirect_from:
   - /rake_tasks.html
 ---
-
-## Command Line
-{:.no_toc}
 
 **Contents**
 

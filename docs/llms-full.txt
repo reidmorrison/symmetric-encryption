@@ -13,8 +13,6 @@ A per-page index is available at https://encryption.reidmorrison.com/llms.txt
 
 ## What is Symmetric Encryption?
 
-
-
 Symmetric Encryption encrypts data at rest in Ruby and Rails applications, using OpenSSL, with the
 encryption keys held outside of the source code.
 
@@ -207,8 +205,6 @@ holds only a pointer to it, or an encrypted copy of it that the keystore can unl
 <!-- source: docs/guide.md -->
 
 ## Guide
-
-
 
 This guide builds up from encrypting a single string to encrypting model attributes, configuration
 file passwords, and whole files. Each step assumes the ones before it, so you can read it top to
@@ -573,8 +569,6 @@ attribute :api_key, :encrypted, version: 3
 <!-- source: docs/configuration.md -->
 
 ## Configuration
-
-
 
 There are two things to configure: **which ciphers** an environment uses, and **where their keys
 live**. The first goes in `config/symmetric-encryption.yml`, which belongs in source control. The
@@ -1033,8 +1027,6 @@ else raises.
 
 ## Rails
 
-
-
 Encrypted attributes are declared with the
 [Active Record Attributes API](https://api.rubyonrails.org/classes/ActiveRecord/Attributes/ClassMethods.html),
 using the `:encrypted` type this gem registers.
@@ -1448,8 +1440,6 @@ proves nothing still needs them.
 
 ## Mongoid
 
-
-
 Symmetric Encryption adds an `encrypted:` option to Mongoid fields. Declaring it generates a getter,
 a setter, and a `_changed?` method for the decrypted value, so the document is worked with in the
 clear while MongoDB only ever holds ciphertext.
@@ -1597,8 +1587,6 @@ SymmetricEncryption.load!("config/symmetric-encryption.yml", "production")
 <!-- source: docs/files.md -->
 
 ## Files and Streams
-
-
 
 `SymmetricEncryption::Writer` and `SymmetricEncryption::Reader` encrypt and decrypt entire files
 and IO streams. Data is processed a block at a time, so files larger than available memory are
@@ -1966,8 +1954,6 @@ current primary cipher and fails loudly if that is not the one it was encrypted 
 
 ## Command Line
 
-
-
 The `symmetric-encryption` command generates configuration files and keys, rotates keys, and
 encrypts and decrypts files and strings.
 
@@ -2144,8 +2130,6 @@ script. When stdin is not a terminal it does not prompt at all, but it still nam
 <!-- source: docs/key_rotation.md -->
 
 ## Key Rotation
-
-
 
 According to the PCI Compliance documentation: "Cryptographic keys must be changed on an annual basis."
 
@@ -2473,8 +2457,6 @@ end
 <!-- source: docs/security.md -->
 
 ## Security
-
-
 
 This page covers detecting tampering with an authenticated cipher, and what Symmetric Encryption
 contributes towards PCI compliance.
@@ -2958,8 +2940,6 @@ Recommend that neither of the above key custodians have access to the database b
 
 ## Upgrading
 
-
-
 What changes between major versions, and what to do about it. Each section covers upgrading *to*
 that version, so read from your current version downwards.
 
@@ -3171,8 +3151,6 @@ and therefore what makes [key rotation](key_rotation.html) possible.
 <!-- source: docs/api.md -->
 
 ## API
-
-
 
 Reference for the methods this gem exposes. For a walk through of how to use them, start with the
 [Guide](guide.html).

@@ -1,11 +1,9 @@
 ---
 layout: default
+title: Key Rotation
 redirect_from:
   - /multiple_ciphers.html
 ---
-
-## Key Rotation
-{:.no_toc}
 
 **Contents**
 

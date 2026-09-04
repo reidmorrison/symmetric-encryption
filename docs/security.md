@@ -1,12 +1,10 @@
 ---
 layout: default
+title: Security
 redirect_from:
   - /authenticated_encryption.html
   - /pci_compliance.html
 ---
-
-## Security
-{:.no_toc}
 
 **Contents**
 
