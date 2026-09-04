@@ -1,9 +1,7 @@
 ---
 layout: default
+heading: What is Symmetric Encryption?
 ---
-
-## What is Symmetric Encryption?
-{:.no_toc}
 
 **Contents**
 

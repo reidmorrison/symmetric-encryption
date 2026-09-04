@@ -1,9 +1,7 @@
 ---
 layout: default
+title: API
 ---
-
-## API
-{:.no_toc}
 
 **Contents**
 

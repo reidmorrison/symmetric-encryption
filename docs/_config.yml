@@ -1,5 +1,77 @@
+# Shared look and feel comes from reidmorrison/rm-docs-theme, which supplies
+# the layout, the sidebar, the stylesheet and the syntax sheet. This repo keeps
+# only its own content: the markdown pages and docs/images.
+#
+# Pinned to a major tag. v1 moves as the theme is fixed, so this site picks up
+# changes on its next build; breaking changes go to v2 and are opted into here.
+remote_theme: reidmorrison/rm-docs-theme@v1
+
 markdown: kramdown
 kramdown:
   toc_levels: "2..3"
+
 plugins:
+  # Pre-existing: several pages carry redirect_from front matter for URLs that
+  # were separate pages before the docs were consolidated. Do not remove it
+  # without removing those, or the old URLs start 404ing.
   - jekyll-redirect-from
+  # GitHub Pages enables this on its own, but a local `bundle exec jekyll
+  # build` does not: Jekyll only auto-requires gems in the :jekyll_plugins
+  # bundler group, so without it the theme is silently skipped and every page
+  # reports "Layout 'default' does not exist".
+  - jekyll-remote-theme
+
+# Read by the theme's masthead, head and footer. The theme ships no defaults:
+# Jekyll exposes only _layouts, _includes, _sass and assets from a theme, so
+# every site declares this block in full.
+project:
+  name: Symmetric Encryption
+  tagline: Encrypt data at rest. Rotate keys without downtime.
+  github: reidmorrison/symmetric-encryption
+  gem: symmetric-encryption
+  license: Apache 2.0 License
+
+  # `seo_title` is the home page's <title>; every other page builds its own
+  # from front matter. Both strings are carried over from the layout this
+  # replaces, which hard-coded one title and one description for all eleven
+  # pages.
+  seo_title: "Symmetric Encryption for Ruby and Rails. Encrypt attributes, files, and passwords in configuration files."
+  description: >-
+    Encrypt data at rest in Ruby and Rails, with keys held outside your source
+    code. Active Record attributes, Mongoid fields, passwords in configuration
+    files, and entire files and streams. Keys live in a keystore, including AWS
+    KMS and Google Cloud KMS, and rotate without downtime.
+
+# The sidebar. Group names match the other doc sites so the family reads the
+# same way; order within a group is reading order, not alphabetical.
+nav:
+  - group: Start here
+    items:
+      - { page: index.html,         label: Overview }
+      - { page: guide.html,         label: Guide }
+
+  - group: Configuration
+    items:
+      - { page: configuration.html, label: Configuration }
+      - { page: key_rotation.html,  label: Key Rotation }
+
+  - group: Integration
+    items:
+      - { page: rails.html,         label: Rails }
+      - { page: mongoid.html,       label: Mongoid }
+      - { page: files.html,         label: Files and Streams }
+
+  - group: In production
+    items:
+      - { page: security.html,      label: Security }
+      - { page: cli.html,           label: Command Line }
+
+  - group: Reference
+    items:
+      - { page: api.html,           label: API }
+      - { page: upgrading.html,     label: Upgrading }
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor

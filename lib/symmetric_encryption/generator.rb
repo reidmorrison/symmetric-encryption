@@ -38,7 +38,7 @@ module SymmetricEncryption
       # Generate getter and setter methods.
       # The cop wants a comment against each interpolated def. The worked example at the top of the
       # heredoc covers all three of them at once, which reads better than repeating it.
-      # rubocop:disable Style/DocumentDynamicEvalDefinition
+      # rubocop:disable-next Style/DocumentDynamicEvalDefinition
       mod.module_eval(<<~ACCESSORS, __FILE__, __LINE__ + 1)
         # For `field :encrypted_ssn, encrypted: true` on a Mongoid model this generates:
         #
@@ -88,7 +88,6 @@ module SymmetricEncryption
           #{encrypted_name}_changed?
         end
       ACCESSORS
-      # rubocop:enable Style/DocumentDynamicEvalDefinition
     end
   end
 end

@@ -1,9 +1,7 @@
 ---
 layout: default
+title: Mongoid
 ---
-
-## Mongoid
-{:.no_toc}
 
 **Contents**
 

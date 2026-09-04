@@ -1,9 +1,7 @@
 ---
 layout: default
+title: Guide
 ---
-
-## Guide
-{:.no_toc}
 
 **Contents**
 

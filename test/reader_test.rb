@@ -426,7 +426,7 @@ class ReaderTest < Minitest::Test
 
     # Whether the block form of `.open` closes the stream it was given is exactly what is under
     # test here, so these streams are deliberately opened without a block.
-    # rubocop:disable Style/FileOpen
+    # rubocop:disable-next Style/FileOpen
     describe "closing" do
       before do
         @file_name = "tmp/reader_close_test"
@@ -486,7 +486,6 @@ class ReaderTest < Minitest::Test
         assert_predicate reader, :closed?
       end
     end
-    # rubocop:enable Style/FileOpen
 
     describe "data larger than the buffer size" do
       before do

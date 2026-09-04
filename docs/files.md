@@ -1,9 +1,7 @@
 ---
 layout: default
+title: Files and Streams
 ---
-
-## Files and Streams
-{:.no_toc}
 
 **Contents**
 
