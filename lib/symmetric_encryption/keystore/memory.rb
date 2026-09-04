@@ -41,11 +41,10 @@ module SymmetricEncryption
       #
       # Nothing to carry over: the key lives in the config file itself, or in an environment
       # variable named after the app, environment and version.
-      # rubocop:disable Lint/UnusedMethodArgument
+      # rubocop:disable-next Lint/UnusedMethodArgument
       def self.rotate_args(config)
         {}
       end
-      # rubocop:enable Lint/UnusedMethodArgument
 
       # Stores the Encryption key in a string.
       # Secures the Encryption key by encrypting it with a key encryption key.
