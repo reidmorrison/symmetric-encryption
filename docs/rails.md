@@ -5,6 +5,9 @@ redirect_from:
   - /frameworks.html
   - /migrating.html
   - /rails_encryption.html
+description: >-
+  Declaring encrypted Active Record attributes with the :encrypted type: type casting,
+  keeping values out of logs and JSON, encrypting an existing column, and migrating.
 ---
 
 **Contents**

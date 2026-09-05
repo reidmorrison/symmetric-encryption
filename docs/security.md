@@ -4,6 +4,9 @@ title: Security
 redirect_from:
   - /authenticated_encryption.html
   - /pci_compliance.html
+description: >-
+  Detecting tampering with an authenticated cipher, what is and is not protected,
+  and what Symmetric Encryption contributes towards PCI compliance.
 ---
 
 **Contents**

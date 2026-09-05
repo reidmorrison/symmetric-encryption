@@ -1,6 +1,9 @@
 ---
 layout: default
 title: API
+description: >-
+  Reference for every method the gem exposes: encrypt, decrypt, try_decrypt,
+  encrypted?, with_cipher, cipher, load! and random_password.
 ---
 
 **Contents**

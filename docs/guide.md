@@ -1,6 +1,9 @@
 ---
 layout: default
 title: Guide
+description: >-
+  From encrypting a single string to model attributes, configuration file passwords
+  and whole files, in eight runnable steps.
 ---
 
 **Contents**

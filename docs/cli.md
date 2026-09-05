@@ -3,6 +3,9 @@ layout: default
 title: Command Line
 redirect_from:
   - /rake_tasks.html
+description: >-
+  The symmetric-encryption command: generating configuration and keys, encrypting
+  and decrypting files and strings, managing keys, and the full option reference.
 ---
 
 **Contents**

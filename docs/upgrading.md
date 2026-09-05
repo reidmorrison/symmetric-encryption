@@ -1,6 +1,9 @@
 ---
 layout: default
 title: Upgrading
+description: >-
+  What changes between major versions and what to do about it, for v5, v4 and v3.
+  Data encrypted by any earlier version stays readable.
 ---
 
 **Contents**
