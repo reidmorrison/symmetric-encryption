@@ -1,6 +1,9 @@
 ---
 layout: default
 title: Files and Streams
+description: >-
+  Encrypting whole files and IO streams a block at a time with Writer and Reader,
+  including compression, change detection, and streaming to an HTTP client.
 ---
 
 **Contents**

@@ -1,6 +1,9 @@
 ---
 layout: default
 title: Mongoid
+description: >-
+  Encrypting Mongoid fields with the encrypted: option: the accessors it generates,
+  the options it takes, querying an encrypted field, and validations.
 ---
 
 **Contents**

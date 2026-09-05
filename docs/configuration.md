@@ -5,6 +5,9 @@ redirect_from:
   - /heroku.html
   - /standalone.html
   - /v3_configuration.html
+description: >-
+  Which ciphers an environment uses and where their keys live: generating the
+  configuration, deploying the keys, the keystores, and the cipher options.
 ---
 
 **Contents**

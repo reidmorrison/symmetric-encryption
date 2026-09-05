@@ -3,6 +3,9 @@ layout: default
 title: Key Rotation
 redirect_from:
   - /multiple_ciphers.html
+description: >-
+  Rotating an encryption key without downtime: add the new key as secondary,
+  re-encrypt, deploy, activate it, then remove the old one.
 ---
 
 **Contents**
