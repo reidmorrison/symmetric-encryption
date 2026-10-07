@@ -3,16 +3,21 @@ appraise "rails_7.2" do
   gem "activerecord-jdbcsqlite3-adapter", "~> 72.1", platform: :jruby
   gem "jdbc-sqlite3", platform: :jruby
   gem "mongoid", "~> 8.1.0"
+  # Rails 7.2 and 8.0 pass quirks_mode to JSON.generate, which json 3 rejects.
+  gem "json", "< 3"
 end
 
 appraise "rails_8.0" do
   gem "activerecord", "~> 8.0.0"
   gem "activerecord-jdbcsqlite3-adapter", "~> 80.0.pre1", platform: :jruby
-  gem "jdbc-sqlite3", platform: :jruby
   gem "mongoid", "~> 9.0.0"
+  # Rails 7.2 and 8.0 pass quirks_mode to JSON.generate, which json 3 rejects.
+  gem "json", "< 3"
 end
 
 appraise "rails_8.1" do
   gem "activerecord", "~> 8.1.0"
   gem "mongoid", "~> 9.1.0"
+  # Overrides the root Gemfile pin: Rails 8.1 works with json 3.
+  gem "json"
 end

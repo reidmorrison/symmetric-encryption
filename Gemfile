@@ -2,11 +2,13 @@ source "https://rubygems.org"
 
 gemspec
 
-gem "activerecord", "~> 7.2.3"
-gem "activerecord-jdbcsqlite3-adapter", "~> 72.1", platform: :jruby
+gem "activerecord", "~> 8.0.0"
+gem "activerecord-jdbcsqlite3-adapter", "~> 80.0.pre1", platform: :jruby
 gem "google-cloud-kms"
 gem "jdbc-sqlite3", platform: :jruby
-gem "mongoid", "~> 8.1.0"
+gem "mongoid", "~> 9.0.0"
+# Rails 7.2 and 8.0 pass quirks_mode to JSON.generate, which json 3 rejects.
+gem "json", "< 3"
 gem "sqlite3", platform: :ruby
 
 gem "amazing_print"
